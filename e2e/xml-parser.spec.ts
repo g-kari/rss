@@ -622,6 +622,79 @@ test.describe("parseFeed — summary 文字数制限緩和 (#721)", () => {
   });
 });
 
+test.describe("parseFeed — RSS permalink GUID の link fallback (#1328)", () => {
+  test("link 欠落時は明示 true と属性省略の permalink GUID を記事URLに採用する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>GUID links</title>
+    <item>
+      <title>Explicit permalink</title>
+      <guid isPermaLink="true">https://example.com/explicit</guid>
+    </item>
+    <item>
+      <title>Default permalink</title>
+      <guid>https://example.com/default</guid>
+    </item>
+  </channel>
+</rss>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].link).toBe("https://example.com/explicit");
+    expect(result.items[1].link).toBe("https://example.com/default");
+  });
+
+  test("isPermaLink=false の GUID は記事URLに使わない", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Opaque GUID</title>
+    <item>
+      <title>Opaque item</title>
+      <guid isPermaLink="false">post-123</guid>
+    </item>
+  </channel>
+</rss>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].guid).toBe("post-123");
+    expect(result.items[0].link).toBe("");
+  });
+
+  test("link が存在するときは permalink GUID より link を優先する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Explicit link</title>
+    <item>
+      <title>Linked item</title>
+      <link>https://example.com/article</link>
+      <guid isPermaLink="true">https://example.com/guid</guid>
+    </item>
+  </channel>
+</rss>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].link).toBe("https://example.com/article");
+  });
+
+  test("permalink GUID の危険なURLスキームを排除する", () => {
+    const xml = `<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Unsafe GUID</title>
+    <item>
+      <title>Unsafe item</title>
+      <guid isPermaLink="true">javascript:alert(1)</guid>
+    </item>
+  </channel>
+</rss>`;
+
+    const result = parseFeed(xml);
+    expect(result.items[0].link).toBe("");
+  });
+});
+
 test.describe("parseFeed — Atom <id> 欠落時の link fallback (#atom-guid-fallback)", () => {
   test("id-less Atom entry は link を guid に採用し、別 entry が collapse しない", () => {
     const xml = `<?xml version="1.0" encoding="utf-8"?>

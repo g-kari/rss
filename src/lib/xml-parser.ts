@@ -15,9 +15,15 @@ interface XmlAttr {
 /** fast-xml-parser がテキストノードをオブジェクト化した場合の形 */
 type XmlTextNode = { "#text"?: string | number } | string | number | null | undefined;
 
+/** RSS 2.0 guid ノード（isPermaLink 省略時は仕様上 true） */
+interface RssGuid {
+  "#text"?: string | number;
+  "@_isPermaLink"?: string;
+}
+
 /** RSS item / Atom entry の共通フィールド */
 interface FeedItem {
-  guid?: { "#text"?: string | number } | string;
+  guid?: RssGuid | string;
   title?: XmlTextNode;
   link?: string | XmlAttr | XmlAttr[];
   description?: XmlTextNode;
@@ -281,6 +287,16 @@ function safeUrl(url: string): string {
   return isAbsoluteHttpUrl(decoded) ? decoded : "";
 }
 
+/** RSS item の明示 link を優先し、欠落時のみ permalink GUID へフォールバックする。 */
+function getRssItemLink(item: FeedItem): string {
+  const explicitLink = str(item.link);
+  if (explicitLink) return safeUrl(explicitLink);
+
+  const guid = item.guid;
+  if (typeof guid === "object" && guid?.["@_isPermaLink"] === "false") return "";
+  return safeUrl(str(guid));
+}
+
 /** XmlAttr または XmlAttr[] から最初の @_url を取得する */
 function firstAttrUrl(val: XmlAttr | XmlAttr[] | undefined): string {
   if (!val) return "";
@@ -500,7 +516,7 @@ export function parseFeed(xml: string): ParsedFeed {
       siteUrl: str(ch.link),
       items: toArray(ch.item).map((item) => {
         const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
-        const link = safeUrl(str(item.link));
+        const link = getRssItemLink(item);
         return {
           guid: str(item.guid ?? item.link),
           title: stripHtml(str(item.title)),
