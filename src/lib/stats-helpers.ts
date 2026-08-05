@@ -79,6 +79,7 @@ export function computeCurrentStreak(activeDays: Set<string>, now: Date): number
 
 /** アクティブな日付文字列の Set から最長連続活動日数を計算する。 */
 export function computeLongestStreak(activeDays: ReadonlySet<string>): number {
+  if (activeDays.size === 0) return 0;
   const dayMs = 24 * 60 * 60 * 1000;
   const timestamps: number[] = [];
   for (const day of activeDays) {
