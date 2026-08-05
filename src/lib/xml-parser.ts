@@ -464,7 +464,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       .join(", ");
     const language = getJsonFeedLanguage(item.language, data.language);
     return {
-      guid: item.id ?? item.url ?? "",
+      guid: item.id ?? item.url ?? item.external_url ?? "",
       title: item.title ?? "",
       link,
       summary,

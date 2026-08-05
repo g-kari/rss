@@ -200,6 +200,71 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
     expect(result.items[0].link).toBe("");
   });
 
+  test("id と url がない場合は external_url を guid と link に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          external_url: "https://external.example.com/posts/1",
+          title: "外部記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].guid).toBe("https://external.example.com/posts/1");
+    expect(result.items[0].link).toBe("https://external.example.com/posts/1");
+  });
+
+  test("id は url と external_url より guid として優先される", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "source-id",
+          url: "https://example.com/posts/1",
+          external_url: "https://external.example.com/posts/1",
+          title: "記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].guid).toBe("source-id");
+    expect(result.items[0].link).toBe("https://example.com/posts/1");
+  });
+
+  test("id がない場合は url を external_url より guid として優先する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          url: "https://example.com/posts/1",
+          external_url: "https://external.example.com/posts/1",
+          title: "記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].guid).toBe("https://example.com/posts/1");
+    expect(result.items[0].link).toBe("https://example.com/posts/1");
+  });
+
+  test("id・url・external_url がすべてない場合は guid と link が空になる", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [{ title: "記事", content_text: "本文" }],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].guid).toBe("");
+    expect(result.items[0].link).toBe("");
+  });
+
   test("banner_image を image の代替として ogImage に使用する", () => {
     const feed = JSON.stringify({
       version: "https://jsonfeed.org/version/1.1",
