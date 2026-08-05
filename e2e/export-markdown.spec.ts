@@ -1,11 +1,52 @@
 import { test, expect } from "@playwright/test";
 import {
+  articleToMarkdownCitation,
   articleToMarkdown,
   generateFrontmatter,
   htmlToMarkdown,
 } from "../src/lib/html-to-markdown";
 import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
+
+// ===== articleToMarkdownCitation =====
+
+test.describe("articleToMarkdownCitation — 出典付きリンク", () => {
+  test("著者・フィード名・公開日をリンクの後ろに付ける", () => {
+    const article = makeArticle({
+      title: "引用したい記事",
+      link: "https://example.com/citation",
+      author: "山田 太郎",
+      publishedAt: "2026-08-05T12:34:56Z",
+    });
+    const feed = makeFeed({ title: "技術ブログ" });
+
+    expect(articleToMarkdownCitation(article, feed)).toBe(
+      "[引用したい記事](https://example.com/citation) — 山田 太郎 · 技術ブログ · 2026-08-05",
+    );
+  });
+
+  test("出典情報がない場合は Markdown リンクだけを返す", () => {
+    const article = makeArticle({ author: undefined, publishedAt: undefined });
+
+    expect(articleToMarkdownCitation(article)).toBe("[Test Article](https://example.com/article)");
+  });
+
+  test("Markdown リンクラベルの特殊文字をエスケープする", () => {
+    const article = makeArticle({ title: String.raw`A \ [B]`, publishedAt: undefined });
+
+    expect(articleToMarkdownCitation(article)).toBe(
+      String.raw`[A \\ \[B\]](https://example.com/article)`,
+    );
+  });
+
+  test("不正な公開日は出力しない", () => {
+    const article = makeArticle({ author: "著者", publishedAt: "日付不明" });
+
+    expect(articleToMarkdownCitation(article)).toBe(
+      "[Test Article](https://example.com/article) — 著者",
+    );
+  });
+});
 
 // ===== articleToMarkdown =====
 

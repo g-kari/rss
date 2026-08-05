@@ -3,7 +3,11 @@ import { usePortalMenu } from "../../hooks/usePortalMenu";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
 import { storageGet, STORAGE_KEYS } from "../../lib/storage";
-import { articleToMarkdown } from "../../lib/html-to-markdown";
+import {
+  articleToMarkdown,
+  articleToMarkdownCitation,
+  articleToMarkdownLink,
+} from "../../lib/html-to-markdown";
 import { buildObsidianUri } from "../../lib/obsidian";
 import { isAbortError } from "../../lib/fetch";
 import { devError } from "../../lib/dev-log";
@@ -155,12 +159,9 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
           </button>
           <button
             role="menuitem"
-            onClick={() => {
-              // `\` を先にエスケープしてから `[`/`]` をエスケープする。
-              // これにより `\[` のような入力が二重エスケープされず、Markdown ラベルの整合性が保たれる。
-              const mdTitle = (article.title || article.link!).replace(/[\\[\]]/g, "\\$&");
-              copyText(`[${mdTitle}](${article.link!})`, "Markdown リンクをコピーしました (C)");
-            }}
+            onClick={() =>
+              copyText(articleToMarkdownLink(article), "Markdown リンクをコピーしました (C)")
+            }
             className={MENU_ITEM_CLS}
           >
             <svg
@@ -178,6 +179,32 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               <path d="M7 15V9l2.5 3 2.5-3v6M16 15v-4.5M14 12.5h4" />
             </svg>
             Markdown リンクをコピー
+          </button>
+          <button
+            role="menuitem"
+            onClick={() =>
+              copyText(
+                articleToMarkdownCitation(article, feed),
+                "出典付き Markdown をコピーしました",
+              )
+            }
+            className={MENU_ITEM_CLS}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M10 11H6a2 2 0 00-2 2v5h6v-7zM20 11h-4a2 2 0 00-2 2v5h6v-7z" />
+              <path d="M6 11c0-3 1.5-5 4-6M16 11c0-3 1.5-5 4-6" />
+            </svg>
+            出典付き Markdown をコピー
           </button>
           <button
             role="menuitem"

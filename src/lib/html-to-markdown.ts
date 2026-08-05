@@ -235,6 +235,36 @@ export function htmlToMarkdown(html: string): string {
   return md.replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/** 記事タイトルを Markdown リンクラベルとして安全にエスケープする。 */
+function escapeMarkdownLinkLabel(value: string): string {
+  return value.replace(/[\\[\]]/g, "\\$&");
+}
+
+/** 記事を短い Markdown リンクへ変換する。 */
+export function articleToMarkdownLink(article: Article): string {
+  const title = escapeMarkdownLinkLabel(article.title || article.link);
+  return `[${title}](${article.link})`;
+}
+
+/** ISO 8601 の公開日時から有効な YYYY-MM-DD だけを取り出す。 */
+function extractPublishedDate(publishedAt: string | null | undefined): string | undefined {
+  const date = publishedAt?.match(/^(\d{4}-\d{2}-\d{2})(?:T|$)/)?.[1];
+  if (!date || Number.isNaN(Date.parse(date))) return undefined;
+  return new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date ? date : undefined;
+}
+
+/** 記事を著者・フィード名・公開日付きの Markdown 引用形式へ変換する。 */
+export function articleToMarkdownCitation(article: Article, feed?: Feed): string {
+  const metadata = [
+    article.author?.trim(),
+    feed?.title.trim(),
+    extractPublishedDate(article.publishedAt),
+  ].filter((value): value is string => Boolean(value));
+  const link = articleToMarkdownLink(article);
+
+  return metadata.length > 0 ? `${link} — ${metadata.join(" · ")}` : link;
+}
+
 // ===== YAML frontmatter 生成 =====
 
 /** YAML 文字列値を安全にクォートする（ダブルクォート含む場合はシングルクォートで囲む） */
