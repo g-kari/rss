@@ -238,6 +238,27 @@ test.describe("articleToMarkdown — frontmatter の内容", () => {
     expect(result).toContain("published:");
     expect(result).toContain("2026-04-12");
   });
+
+  test("categories は元の順序で YAML 配列として出力する", () => {
+    const article = makeArticle({ categories: ["TypeScript", "Web"] });
+    const result = generateFrontmatter(article, makeFeed());
+    expect(result).toContain('categories:\n  - "TypeScript"\n  - "Web"');
+  });
+
+  test("categories の特殊文字と改行を YAML 向けにエスケープする", () => {
+    const article = makeArticle({ categories: ['C#: "入門"\n改訂'] });
+    const result = generateFrontmatter(article, makeFeed());
+    expect(result).toContain(`categories:\n  - 'C#: "入門" 改訂'`);
+  });
+
+  test("categories が未設定または空配列ならフィールドを省略する", () => {
+    expect(generateFrontmatter(makeArticle({ categories: undefined }), makeFeed())).not.toContain(
+      "categories:",
+    );
+    expect(generateFrontmatter(makeArticle({ categories: [] }), makeFeed())).not.toContain(
+      "categories:",
+    );
+  });
 });
 
 // ===== generateFrontmatter — エッジケース =====

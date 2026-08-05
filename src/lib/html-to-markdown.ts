@@ -360,6 +360,13 @@ export function generateFrontmatter(article: Article, feed: Feed): string {
     lines.push(`published: ${date}`);
   }
 
+  if (article.categories?.length) {
+    lines.push("categories:");
+    for (const category of article.categories) {
+      lines.push(`  - ${yamlValue(category)}`);
+    }
+  }
+
   lines.push("---");
   return lines.join("\n");
 }
