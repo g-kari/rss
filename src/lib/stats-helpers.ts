@@ -95,6 +95,26 @@ export function computeLongestStreak(activeDays: ReadonlySet<string>): number {
   return longest;
 }
 
+/** 日別読了件数から最大件数の日を返す。同数の場合は直近日を優先する。 */
+export function findBestReadingDay(
+  dailyCounts: readonly { date: string; count: number }[],
+): { date: string; count: number } | null {
+  let best: { date: string; count: number } | null = null;
+
+  for (const entry of dailyCounts) {
+    if (entry.count <= 0) continue;
+    if (
+      best === null ||
+      entry.count > best.count ||
+      (entry.count === best.count && entry.date > best.date)
+    ) {
+      best = { date: entry.date, count: entry.count };
+    }
+  }
+
+  return best;
+}
+
 /**
  * エントリリストと現在日時から weeklyTotal（今週 UTC 月曜以降のアクション数）を計算する。
  * READ_ACTIONS（fetch_full / open_original）のみカウントする。

@@ -5,6 +5,7 @@ import {
   getMondayIso,
   computeCurrentStreak,
   computeLongestStreak,
+  findBestReadingDay,
   computeWeeklyTotal,
   buildReadingHistoryCsv,
   buildReadingHistoryCsvFile,
@@ -216,6 +217,41 @@ test.describe("computeLongestStreak", () => {
     const activeDays = new Set(["2024-12-30", "2024-12-31", "2025-01-01", "2025-01-02"]);
 
     expect(computeLongestStreak(activeDays)).toBe(4);
+  });
+});
+
+test.describe("findBestReadingDay", () => {
+  test("空データでは null を返す", () => {
+    expect(findBestReadingDay([])).toBeNull();
+  });
+
+  test("すべて 0 件の場合は null を返す", () => {
+    expect(
+      findBestReadingDay([
+        { date: "2026-08-04", count: 0 },
+        { date: "2026-08-05", count: 0 },
+      ]),
+    ).toBeNull();
+  });
+
+  test("最大読了件数の日付と件数を返す", () => {
+    expect(
+      findBestReadingDay([
+        { date: "2026-08-03", count: 2 },
+        { date: "2026-08-04", count: 7 },
+        { date: "2026-08-05", count: 4 },
+      ]),
+    ).toEqual({ date: "2026-08-04", count: 7 });
+  });
+
+  test("最大件数が同じ場合は入力順に依存せず直近日を返す", () => {
+    expect(
+      findBestReadingDay([
+        { date: "2026-08-05", count: 3 },
+        { date: "2026-08-02", count: 8 },
+        { date: "2026-08-04", count: 8 },
+      ]),
+    ).toEqual({ date: "2026-08-04", count: 8 });
   });
 });
 

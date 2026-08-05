@@ -15,6 +15,7 @@ import {
   aggregateStatsForFeed,
   buildReadingHistoryCsvFile,
   computeLongestStreak,
+  findBestReadingDay,
 } from "../lib/stats-helpers";
 import { downloadBlob } from "../lib/download";
 import { devError } from "../lib/dev-log";
@@ -73,6 +74,10 @@ export default function ReadingStatsModal({
       computeLongestStreak(
         new Set(displayYearlyHeatmap?.filter(({ count }) => count > 0).map(({ date }) => date)),
       ),
+    [displayYearlyHeatmap],
+  );
+  const bestReadingDay = useMemo(
+    () => findBestReadingDay(displayYearlyHeatmap ?? []),
     [displayYearlyHeatmap],
   );
 
@@ -190,6 +195,18 @@ export default function ReadingStatsModal({
                   過去 1 年
                 </h3>
                 <HeatmapCalendar data={displayYearlyHeatmap} />
+                {bestReadingDay && (
+                  <p className="text-[11px] text-text-muted">
+                    <span className="font-medium text-text-default">自己ベスト</span>{" "}
+                    {new Date(`${bestReadingDay.date}T00:00:00Z`).toLocaleDateString("ja-JP", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                    ・{bestReadingDay.count}件
+                  </p>
+                )}
               </div>
             )}
 
