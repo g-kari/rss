@@ -65,6 +65,7 @@ export function getMondayIso(now: Date): string {
  * 今日活動がなければ昨日から遡る。
  */
 export function computeCurrentStreak(activeDays: Set<string>, now: Date): number {
+  if (activeDays.size === 0) return 0;
   const todayStr = toDateStr(now.toISOString());
   let streak = 0;
   const checkDate = new Date(now);
