@@ -40,6 +40,7 @@ export function computeNextOrder<T extends HasOrder>(items: readonly T[]): numbe
  * - `createdAtDesc`: 作成日時 新→旧 (ISO 8601 absolute 時刻ベース、tz 形式違いに耐性)
  * - `articleCountDesc`: 記事数 多→少 (同数は order 昇順 fallback)
  * - `nameAsc`: 名前 a-z (localeCompare で日本語含む正しい辞書順)
+ * - `nameDesc`: 名前 z-a (`nameAsc` と同じ照合規則の逆順)
  *
  * 元の配列を mutate せず新しい配列を返す。
  */
@@ -65,6 +66,8 @@ export function sortCollectionsBy(
       });
     case "nameAsc":
       return list.sort((a, b) => a.name.localeCompare(b.name));
+    case "nameDesc":
+      return list.sort((a, b) => b.name.localeCompare(a.name));
     case "order":
     default:
       return sortByOrder(list);
@@ -77,6 +80,7 @@ export const COLLECTION_SORT_BY_CYCLE: CollectionSortBy[] = [
   "createdAtDesc",
   "articleCountDesc",
   "nameAsc",
+  "nameDesc",
 ];
 
 /** コレクション sort 軸の表示ラベル */
@@ -85,4 +89,5 @@ export const COLLECTION_SORT_BY_LABELS: Record<CollectionSortBy, string> = {
   createdAtDesc: "作成日新→旧",
   articleCountDesc: "記事数多→少",
   nameAsc: "名前 a-z",
+  nameDesc: "名前 z-a",
 };

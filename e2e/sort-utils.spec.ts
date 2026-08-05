@@ -173,6 +173,19 @@ test.describe("sortCollectionsBy (#874 候補 1)", () => {
     expect(result[0]).toBe("あいうえお");
   });
 
+  test("sortBy=nameDesc は名前 localeCompare の逆順", () => {
+    const items = [
+      make("a", { name: "Alpha" }),
+      make("z", { name: "Zebra" }),
+      make("m", { name: "Middle" }),
+    ];
+    expect(sortCollectionsBy(items, "nameDesc").map((c) => c.name)).toEqual([
+      "Zebra",
+      "Middle",
+      "Alpha",
+    ]);
+  });
+
   test("元の配列を mutate しない", () => {
     const items = [make("a", { order: 3 }), make("b", { order: 1 })];
     const before = [...items];
@@ -191,12 +204,13 @@ test.describe("sortCollectionsBy (#874 候補 1)", () => {
     expect(result.map((c) => c.id)).toEqual(["b", "a"]);
   });
 
-  test("COLLECTION_SORT_BY_CYCLE は 4 軸を含む", () => {
+  test("COLLECTION_SORT_BY_CYCLE は 5 軸を含む", () => {
     expect(COLLECTION_SORT_BY_CYCLE).toEqual([
       "order",
       "createdAtDesc",
       "articleCountDesc",
       "nameAsc",
+      "nameDesc",
     ]);
   });
 
