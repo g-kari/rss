@@ -475,7 +475,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       content,
       ogImage: getJsonFeedImage(item),
       author,
-      publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
+      publishedAt: parseDate(item.date_published) ?? parseDate(item.date_modified),
       categories: item.tags ?? [],
       metadata: language ? [{ key: "language", value: language }] : [],
     };

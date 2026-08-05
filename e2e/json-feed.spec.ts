@@ -183,6 +183,74 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
     expect(result.items[0].content).toContain("本文");
   });
 
+  test("有効な date_published を date_modified より優先する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          content_text: "本文",
+          date_published: "2024-01-01T00:00:00Z",
+          date_modified: "2024-02-01T00:00:00Z",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].publishedAt).toBe("2024-01-01T00:00:00.000Z");
+  });
+
+  test("不正な date_published の場合は有効な date_modified を使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          content_text: "本文",
+          date_published: "not-a-date",
+          date_modified: "2024-02-01T00:00:00Z",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].publishedAt).toBe("2024-02-01T00:00:00.000Z");
+  });
+
+  test("空の date_published の場合は有効な date_modified を使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          content_text: "本文",
+          date_published: "",
+          date_modified: "2024-02-01T00:00:00Z",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].publishedAt).toBe("2024-02-01T00:00:00.000Z");
+  });
+
+  test("date_published と date_modified が両方不正な場合は publishedAt を null にする", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          content_text: "本文",
+          date_published: "not-a-date",
+          date_modified: "also-not-a-date",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].publishedAt).toBeNull();
+  });
+
   test("javascript: URL を link に設定しない", () => {
     const feed = JSON.stringify({
       version: "https://jsonfeed.org/version/1.1",
