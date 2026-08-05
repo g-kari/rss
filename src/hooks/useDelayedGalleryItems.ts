@@ -42,8 +42,10 @@ export function useDelayedGalleryItems<T>(
     const prev = prevItemsRef.current;
     prevItemsRef.current = items;
 
-    const currentIds = new Set(items.map(getId));
-    const prevIds = new Set(prev.map(getId));
+    const currentIds = new Set<string>();
+    for (const item of items) currentIds.add(getId(item));
+    const prevIds = new Set<string>();
+    for (const item of prev) prevIds.add(getId(item));
 
     const removedItems = prev.filter((a) => !currentIds.has(getId(a)));
     const addedItems = items.filter((a) => !prevIds.has(getId(a)));
