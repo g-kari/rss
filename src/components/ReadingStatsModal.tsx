@@ -59,7 +59,11 @@ export default function ReadingStatsModal({
     }
   }, [selectedFeedHash, engagementEntries, fetchEntries]);
 
-  const feedMap = useMemo(() => new Map(feeds.map((f) => [f.id, f.title])), [feeds]);
+  const feedMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const feed of feeds) map.set(feed.id, feed.title);
+    return map;
+  }, [feeds]);
 
   const drillStats = useMemo(() => {
     if (!selectedFeedHash || !engagementEntries) return null;
