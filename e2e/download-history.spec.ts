@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../src/lib/download-history";
+import {
+  addUrlToHistory,
+  countUrlsInHistory,
+  MAX_DOWNLOAD_HISTORY,
+} from "../src/lib/download-history";
 
 /**
  * 画像ダウンロード履歴管理の単体テスト (#648)。
@@ -58,5 +62,20 @@ test.describe("addUrlToHistory", () => {
 
   test("MAX_DOWNLOAD_HISTORY が 5000 で公開されている（保護対象）", () => {
     expect(MAX_DOWNLOAD_HISTORY).toBe(5000);
+  });
+});
+
+test.describe("countUrlsInHistory", () => {
+  test("履歴に存在する URL の件数を返す", () => {
+    expect(countUrlsInHistory(["a", "b", "c"], ["b", "c", "d"])).toBe(2);
+  });
+
+  test("同じ画像 URL が複数あればそれぞれ 1 件として数える", () => {
+    expect(countUrlsInHistory(["a", "a", "b"], ["a"])).toBe(2);
+  });
+
+  test("画像または履歴が空なら 0 件を返す", () => {
+    expect(countUrlsInHistory([], ["a"])).toBe(0);
+    expect(countUrlsInHistory(["a"], [])).toBe(0);
   });
 });

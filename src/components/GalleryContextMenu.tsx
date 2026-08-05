@@ -8,7 +8,7 @@ import { buildImageProxyUrl } from "../lib/image-proxy-url";
 import { computeContextMenuPosition } from "../lib/context-menu-position";
 import { BASE_MENU_CLASS } from "../lib/menu-class";
 import { downloadBlob, applyFolderPrefix } from "../lib/download";
-import { addUrlToHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
+import { addUrlToHistory, countUrlsInHistory, MAX_DOWNLOAD_HISTORY } from "../lib/download-history";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useToast } from "../contexts/ToastContext";
@@ -143,7 +143,7 @@ export default function GalleryContextMenu({
   // 既に DL 済みの画像が含まれている場合は最初に 1 度だけ確認し、OK なら全件再 DL。
   const downloadAllImages = useCallback(
     async (images: string[], article: Article) => {
-      const alreadyDownloaded = images.filter((u) => downloadHistory.includes(u)).length;
+      const alreadyDownloaded = countUrlsInHistory(images, downloadHistory);
       if (alreadyDownloaded > 0) {
         const ok = await confirm({
           title: "再ダウンロードの確認",
