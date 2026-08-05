@@ -80,6 +80,11 @@ test.describe("aggregateGlobalTopFeeds — 全ユーザー engagement 集約", (
     expect(result).toHaveLength(2);
   });
 
+  test("limit が負数でも空結果を返す", () => {
+    const user1: EngagementEntry[] = [makeEntry("feed-A", "like", 0)];
+    expect(aggregateGlobalTopFeeds([user1], -1, NOW)).toEqual([]);
+  });
+
   test("minScore 未満の feed は除外 (デフォルト 0.1)", () => {
     // 30 日前の like: 5.0 × decay(30d) ≈ 5.0 × 0.0935 ≈ 0.467
     // 60 日前の like: 5.0 × decay(60d) ≈ 5.0 × 0.00873 ≈ 0.044 (< 0.1)

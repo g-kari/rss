@@ -64,7 +64,7 @@ export function aggregateGlobalTopFeeds(
   }
 
   eligible.sort((a, b) => b[1].totalScore - a[1].totalScore);
-  const top = eligible.slice(0, limit);
+  const top = eligible.slice(0, Math.max(0, limit));
   const result: GlobalFeedScore[] = [];
   for (const [feedHash, { totalScore, userCount }] of top) {
     result.push({ feedHash, totalScore, userCount });
