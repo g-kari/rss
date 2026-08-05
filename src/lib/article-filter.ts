@@ -434,7 +434,10 @@ export function applyStateFilterAndSort(articles: Article[], opts: StateFilterOp
   }
 
   if (opts.feedId === SPECIAL_FEED_IDS.HISTORY) {
-    const orderMap = new Map(opts.historyOrder.map((id, i) => [id, i]));
+    const orderMap = new Map<string, number>();
+    for (let i = 0; i < opts.historyOrder.length; i++) {
+      orderMap.set(opts.historyOrder[i], i);
+    }
     list.sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
   } else if (opts.sortOrder === "oldest") {
     list.reverse();
