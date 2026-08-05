@@ -79,9 +79,14 @@ export function topScoredFeeds(
   limit: number,
   minScore = 0.1,
 ): string[] {
-  return [...scores.entries()]
-    .filter(([, score]) => score >= minScore)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([feedHash]) => feedHash);
+  const eligible: Array<[string, number]> = [];
+  for (const entry of scores) {
+    if (entry[1] >= minScore) eligible.push(entry);
+  }
+
+  eligible.sort((a, b) => b[1] - a[1]);
+  const top = eligible.slice(0, limit);
+  const feedHashes: string[] = [];
+  for (const [feedHash] of top) feedHashes.push(feedHash);
+  return feedHashes;
 }
