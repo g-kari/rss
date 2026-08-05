@@ -39,9 +39,13 @@ export function buildReadwiseCsv(
     const author = article.author?.trim() || feedTitleMap.get(article.feedHash) || "";
     const date = toYmd(article.publishedAt) || toYmd(article.createdAt);
 
-    lines.push(
-      [highlight, article.title, author, article.link, note, date].map(csvEscape).join(","),
-    );
+    const fields = [highlight, article.title, author, article.link, note, date];
+    let row = "";
+    for (let index = 0; index < fields.length; index++) {
+      if (index > 0) row += ",";
+      row += csvEscape(fields[index]);
+    }
+    lines.push(row);
   }
 
   return lines.join("\n") + (lines.length > 1 ? "\n" : "\n");
