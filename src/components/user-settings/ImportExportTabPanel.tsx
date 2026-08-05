@@ -2,7 +2,9 @@
 
 import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
+import { useFullTextSearch } from "../../hooks/useFullTextSearch";
 import { downloadBlob } from "../../lib/download";
+import { buildSavedSearchesJsonFile } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
 
@@ -12,6 +14,7 @@ interface ImportExportTabPanelProps {
 
 export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelProps) {
   const toast = useToast();
+  const { savedSearches } = useFullTextSearch();
   const importRef = useRef<HTMLInputElement>(null);
   const [opmlLoading, setOpmlLoading] = useState(false);
   const [clipUrlCopied, setClipUrlCopied] = useState(false);
@@ -75,6 +78,18 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
     } catch (err) {
       devError("[ImportExportTabPanel] handleCopyClipUrl failed", err);
       toast.error("コピーに失敗しました");
+    }
+  };
+
+  const handleSavedSearchesExport = () => {
+    if (savedSearches.length === 0) return;
+    try {
+      const { content, filename } = buildSavedSearchesJsonFile(savedSearches);
+      downloadBlob(new Blob([content], { type: "application/json; charset=utf-8" }), filename);
+      toast.success("保存済み検索条件をバックアップしました");
+    } catch (err) {
+      devError("[ImportExportTabPanel] saved searches export failed", err);
+      toast.error("保存済み検索条件のバックアップに失敗しました");
     }
   };
 
@@ -145,6 +160,40 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
             OPMLインポート
+          </button>
+        </div>
+
+        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+          保存済み検索条件
+        </span>
+        <div className="flex flex-col gap-2">
+          <p className="text-[12px] text-text-soft leading-relaxed">
+            名前を付けて保存した検索条件を、バックアップや別端末で再登録するときの参照用 JSON
+            ファイルに保存できます。
+          </p>
+          <button
+            type="button"
+            disabled={savedSearches.length === 0}
+            onClick={handleSavedSearchesExport}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            検索条件を JSON 保存 ({savedSearches.length}件)
           </button>
         </div>
 

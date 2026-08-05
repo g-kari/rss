@@ -1,9 +1,55 @@
 import { test, expect } from "@playwright/test";
-import { buildArticlesJson, buildNotesJson } from "../src/lib/export-json";
+import {
+  buildArticlesJson,
+  buildNotesJson,
+  buildSavedSearchesJson,
+  buildSavedSearchesJsonFile,
+} from "../src/lib/export-json";
 import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
 
 const NOW = new Date("2026-06-08T12:34:56.000Z");
+
+test.describe("buildSavedSearchesJson", () => {
+  const searches = [
+    {
+      id: "search-1",
+      name: "AI 記事",
+      query: "title:AI OR tag:機械学習",
+      createdAt: "2026-06-01T01:02:03.000Z",
+    },
+    {
+      id: "search-2",
+      name: "未読の長文",
+      query: "-is:read content:解説",
+      createdAt: "2026-06-02T04:05:06.000Z",
+    },
+  ];
+
+  test("表示順と各検索条件のフィールドを保持する", () => {
+    const result = buildSavedSearchesJson(searches, NOW);
+
+    expect(result).toEqual({
+      exportedAt: "2026-06-08T12:34:56.000Z",
+      count: 2,
+      searches,
+    });
+  });
+
+  test("空配列では count 0 と searches 空配列を返す", () => {
+    const result = buildSavedSearchesJson([], NOW);
+
+    expect(result.count).toBe(0);
+    expect(result.searches).toEqual([]);
+  });
+
+  test("日付付きファイル名と2スペースインデントの JSON 本文を返す", () => {
+    const result = buildSavedSearchesJsonFile(searches, NOW);
+
+    expect(result.filename).toBe("saved-searches_2026-06-08.json");
+    expect(result.content).toBe(JSON.stringify(buildSavedSearchesJson(searches, NOW), null, 2));
+  });
+});
 
 test.describe("buildArticlesJson", () => {
   test("空の ids では count 0 + articles 空配列", () => {

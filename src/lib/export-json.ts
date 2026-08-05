@@ -2,6 +2,45 @@ import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
 import { buildFeedTitleMap, clampSummaryText } from "@/lib/export-shared";
 
+/** 保存済み検索条件 JSON エクスポートの 1 エントリ */
+export interface SavedSearchJsonEntry {
+  id: string;
+  name: string;
+  query: string;
+  createdAt: string;
+}
+
+/** 保存済み検索条件 JSON エクスポートのトップレベル構造 */
+export interface SavedSearchesJsonExport {
+  exportedAt: string;
+  count: number;
+  searches: SavedSearchJsonEntry[];
+}
+
+/** 保存済み検索条件を表示順のまま構造化 JSON オブジェクトへ変換する純粋関数。 */
+export function buildSavedSearchesJson(
+  searches: readonly SavedSearchJsonEntry[],
+  now: Date = new Date(),
+): SavedSearchesJsonExport {
+  return {
+    exportedAt: now.toISOString(),
+    count: searches.length,
+    searches: searches.map(({ id, name, query, createdAt }) => ({ id, name, query, createdAt })),
+  };
+}
+
+/** 保存済み検索条件の JSON 本文と日付付きファイル名を組み立てる純粋関数。 */
+export function buildSavedSearchesJsonFile(
+  searches: readonly SavedSearchJsonEntry[],
+  now: Date = new Date(),
+): { content: string; filename: string } {
+  const data = buildSavedSearchesJson(searches, now);
+  return {
+    content: JSON.stringify(data, null, 2),
+    filename: `saved-searches_${data.exportedAt.slice(0, 10)}.json`,
+  };
+}
+
 /** JSON エクスポートの 1 記事エントリ */
 export interface ExportedArticleJson {
   title: string;
