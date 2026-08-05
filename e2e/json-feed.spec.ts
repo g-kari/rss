@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { buildExcludeOptions } from "../src/components/article-view/filter-shared";
 import { parseFeed } from "../src/lib/xml-parser";
+import { makeArticle } from "./helpers/article";
 
 /**
  * JSON Feed v1.1 パースの単体テスト。
@@ -292,6 +294,62 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
     expect(result.items[0].ogImage).toBe("");
   });
 
+  test("item の language を記事メタデータとして使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      language: "ja",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "English article",
+          content_text: "Body",
+          language: "  en-US  ",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].metadata).toEqual([{ key: "language", value: "en-US" }]);
+  });
+
+  test("item に language がない場合は feed の language を継承する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      language: "ja",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "日本語の記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].metadata).toEqual([{ key: "language", value: "ja" }]);
+  });
+
+  test("空文字・文字列以外の language は記事メタデータに使用しない", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      language: 42,
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_text: "本文",
+          language: "   ",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].metadata).toEqual([]);
+  });
+
   test("version フィールドがない JSON は JSON Feed として扱わない", () => {
     // jsonfeed.org を含まないため XML パーサーに fallback → "Unrecognized feed format" を投げる
     const feed = JSON.stringify({ title: "Not a feed", items: [] });
@@ -341,4 +399,9 @@ test.describe("parseFeed — JSON Feed と既存形式の共存", () => {
     expect(result.title).toBe("RSS Blog");
     expect(result.items[0].title).toBe("RSS 記事");
   });
+});
+
+test("language メタデータを除外メニューで「言語」と表示する", () => {
+  const article = makeArticle({ metadata: [{ key: "language", value: "ja" }] });
+  expect(buildExcludeOptions(article)).toContainEqual({ label: "言語「ja」", value: "ja" });
 });

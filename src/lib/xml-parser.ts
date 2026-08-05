@@ -356,6 +356,7 @@ interface JsonFeedItem {
   author?: JsonFeedAuthor;
   tags?: string[];
   attachments?: JsonFeedAttachment[];
+  language?: string;
 }
 
 interface JsonFeedRoot {
@@ -366,6 +367,7 @@ interface JsonFeedRoot {
   /** JSON Feed v1.0 互換フィールド */
   author?: JsonFeedAuthor;
   items?: JsonFeedItem[];
+  language?: string;
 }
 
 /**
@@ -399,6 +401,15 @@ function getJsonFeedImage(item: JsonFeedItem): string {
   );
 }
 
+function getJsonFeedLanguage(itemLanguage: unknown, feedLanguage: unknown): string {
+  for (const language of [itemLanguage, feedLanguage]) {
+    if (typeof language !== "string") continue;
+    const normalized = language.trim();
+    if (normalized) return normalized;
+  }
+  return "";
+}
+
 function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
@@ -414,6 +425,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       .map((a) => a.name ?? "")
       .filter(Boolean)
       .join(", ");
+    const language = getJsonFeedLanguage(item.language, data.language);
     return {
       guid: item.id ?? item.url ?? "",
       title: item.title ?? "",
@@ -424,7 +436,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       author,
       publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
       categories: item.tags ?? [],
-      metadata: [],
+      metadata: language ? [{ key: "language", value: language }] : [],
     };
   });
   return { title: data.title ?? "", siteUrl: data.home_page_url ?? "", items };

@@ -24,6 +24,7 @@ function metaLabel(key: string): string {
     region: "地域",
     prefecture: "都道府県",
     country: "国",
+    language: "言語",
   };
   return map[key] ?? key.replace(/^[a-z]+:/i, "");
 }
