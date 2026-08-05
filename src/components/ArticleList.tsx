@@ -195,7 +195,11 @@ function ArticleList({
   const feedsRef = useRef(feeds);
   feedsRef.current = feeds;
   const feedMap = useMemo(
-    () => new Map(feedsRef.current.map((f) => [f.id, f])),
+    () => {
+      const map = new Map<string, Feed>();
+      for (const feed of feedsRef.current) map.set(feed.id, feed);
+      return map;
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済、feedsRef は ref 安定参照
     [feedStructuralSignature],
   );
