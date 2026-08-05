@@ -151,18 +151,15 @@ export async function POST(request: Request) {
 
     if (folderNames.length > 0) {
       const existingGroups = await readFeedGroups(env.RSS_DATA, session.userId);
-      const existingNameSet = new Set(existingGroups.map((g) => g.name));
+      const existingGroupByName = new Map(existingGroups.map((group) => [group.name, group]));
       let nextOrder = computeNextOrder(existingGroups);
       const newGroups: FeedGroup[] = [];
 
       for (const name of folderNames) {
-        const existing = existingGroups.find((g) => g.name === name);
+        const existing = existingGroupByName.get(name);
         if (existing) {
           folderToGroupId.set(name, existing.id);
-        } else if (
-          !existingNameSet.has(name) &&
-          existingGroups.length + newGroups.length < MAX_FEED_GROUPS_PER_USER
-        ) {
+        } else if (existingGroups.length + newGroups.length < MAX_FEED_GROUPS_PER_USER) {
           const group: FeedGroup = {
             id: crypto.randomUUID(),
             name,
@@ -170,7 +167,7 @@ export async function POST(request: Request) {
             createdAt: new Date().toISOString(),
           };
           newGroups.push(group);
-          existingNameSet.add(name);
+          existingGroupByName.set(name, group);
           folderToGroupId.set(name, group.id);
         }
       }
