@@ -288,19 +288,21 @@ export function isValidCookieHeader(value: string): boolean {
  */
 export function parseSnoozedUntil(raw: unknown, maxSnoozed = 500): Record<string, string> | null {
   if (!isPlainObject(raw)) return null;
-  const now = new Date().toISOString();
+  const nowMs = Date.now();
   const result: Record<string, string> = {};
+  let count = 0;
   for (const [k, v] of Object.entries(raw)) {
-    if (Object.keys(result).length >= maxSnoozed) break;
+    if (count >= maxSnoozed) break;
     if (
       typeof k === "string" &&
       k.length > 0 &&
       k.length <= MAX_ID_LENGTH &&
       isValidIso8601(v) &&
-      Date.parse(v) > Date.parse(now) // 期限切れを除去 (タイムゾーン付き ISO 8601 対応: "+09:00" 等は文字列比較で誤廃棄するため ms 比較に変更)
+      Date.parse(v) > nowMs // 期限切れを除去 (タイムゾーン付き ISO 8601 対応: "+09:00" 等は文字列比較で誤廃棄するため ms 比較に変更)
     ) {
       result[k] = v;
+      count++;
     }
   }
-  return Object.keys(result).length > 0 ? result : null;
+  return count > 0 ? result : null;
 }
