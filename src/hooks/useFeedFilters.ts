@@ -57,18 +57,15 @@ export function useFeedFilters(
   const mutedFeedIds = useMemo(() => {
     const nowMs = Date.now();
     const ids = new Set<string>();
-    for (const f of feeds) {
-      const t = parsedUntil.get(f.id);
-      if (t != null && t > nowMs) ids.add(f.id);
-    }
     // グループミュート: muted グループに所属するフィードを追加で除外
     const mutedGroupIds = new Set<string>();
     for (const group of feedGroups) {
       if (group.muted) mutedGroupIds.add(group.id);
     }
-    if (mutedGroupIds.size > 0) {
-      for (const f of feeds) {
-        if (f.groupId && mutedGroupIds.has(f.groupId)) ids.add(f.id);
+    for (const f of feeds) {
+      const t = parsedUntil.get(f.id);
+      if ((t != null && t > nowMs) || (f.groupId != null && mutedGroupIds.has(f.groupId))) {
+        ids.add(f.id);
       }
     }
     if (equalViewFeedIds(mutedFeedIdsRef.current, ids)) return mutedFeedIdsRef.current;
