@@ -86,9 +86,12 @@ export default function ReadingStatsModal({
     [displayYearlyHeatmap],
   );
 
-  const maxDaily = displayDailyReadCounts
-    ? Math.max(...displayDailyReadCounts.map((d) => d.count), 1)
-    : 1;
+  let maxDaily = 1;
+  if (displayDailyReadCounts) {
+    for (const dailyCount of displayDailyReadCounts) {
+      if (dailyCount.count > maxDaily) maxDaily = dailyCount.count;
+    }
+  }
 
   function downloadReadingHistory() {
     if (!stats) return;
