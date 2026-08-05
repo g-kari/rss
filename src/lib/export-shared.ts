@@ -12,7 +12,9 @@ export function selectArticlesByIds(articles: Article[], ids: ReadonlySet<string
  * fallback (「不明なフィード」/ 空文字) は呼び出し側が用途別に適用する。
  */
 export function buildFeedTitleMap(feeds: Feed[]): Map<string, string> {
-  return new Map(feeds.map((f) => [f.id, f.title]));
+  const feedTitleMap = new Map<string, string>();
+  for (const feed of feeds) feedTitleMap.set(feed.id, feed.title);
+  return feedTitleMap;
 }
 
 /** summary を HTML 除去 + 先頭 max 文字に clamp する (既定 300、未設定は空文字)。 */
