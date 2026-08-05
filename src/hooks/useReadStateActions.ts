@@ -133,13 +133,14 @@ export function useReadStateActions(deps: ReadStateActionDeps): ReadStateActionR
         [SPECIAL_FEED_IDS.HISTORY]: historyIdsRef.current ?? new Set<string>(),
       };
       const specialSet = feedId ? (specialSets[feedId] ?? null) : null;
-      const ids =
-        specialSet !== null
-          ? arts.filter((a) => specialSet.has(a.id)).map((a) => a.id)
-          : feedId
-            ? arts.filter((a) => a.feedHash === feedId).map((a) => a.id)
-            : arts.map((a) => a.id);
-      const addedIds = ids.filter((id) => !read.has(id));
+      const ids: string[] = [];
+      const addedIds: string[] = [];
+      for (const article of arts) {
+        if (specialSet !== null && !specialSet.has(article.id)) continue;
+        if (specialSet === null && feedId && article.feedHash !== feedId) continue;
+        ids.push(article.id);
+        if (!read.has(article.id)) addedIds.push(article.id);
+      }
 
       setReadIds((prev) => {
         const next = new Set([...prev, ...ids]);
