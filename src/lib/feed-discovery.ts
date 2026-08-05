@@ -16,6 +16,9 @@ const DISCOVERY_TIMEOUT_MS = 5_000;
 /** HTML 読み込み上限バイト数。<head> は通常この範囲内にある */
 const MAX_DISCOVERY_BYTES = 64 * 1024;
 
+/** JSON Feed 判定用の読み込み上限。巨大レスポンスを無制限に保持しない。 */
+const MAX_JSON_FEED_DISCOVERY_BYTES = 256 * 1024;
+
 /** 一般的な RSS/Atom/JSON Feed パス候補 */
 const COMMON_FEED_PATHS = [
   "/feed",
@@ -36,6 +39,32 @@ function isFeedContentType(ct: string): boolean {
     ct.includes("text/xml") ||
     ct.includes("application/xml")
   );
+}
+
+function mediaType(contentType: string): string {
+  return contentType.split(";", 1)[0].trim().toLowerCase();
+}
+
+/** 一般 JSON MIME の本文が JSON Feed かを安全に判定する。 */
+export function isGenericJsonFeedResponse(contentType: string, body: string): boolean {
+  if (mediaType(contentType) !== "application/json") return false;
+
+  try {
+    const data: unknown = JSON.parse(body);
+    if (typeof data !== "object" || data === null || Array.isArray(data)) return false;
+
+    const record = data as Record<string, unknown>;
+    if (typeof record.version !== "string" || !Array.isArray(record.items)) return false;
+
+    const version = new URL(record.version);
+    if (version.protocol !== "https:" && version.protocol !== "http:") return false;
+    return (
+      (version.hostname === "jsonfeed.org" || version.hostname === "www.jsonfeed.org") &&
+      version.pathname.startsWith("/version/")
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -125,13 +154,17 @@ export async function discoverFeedUrl(url: string): Promise<string | null> {
     const ct = res.headers.get("content-type") ?? "";
     if (isFeedContentType(ct)) return url;
 
-    // HTML を先頭 MAX_DISCOVERY_BYTES だけ読んで <link> を探す
-    // （<head> セクションはこの範囲内に収まる）
+    // HTML は <head> を含む先頭 64KB、一般 JSON は 256KB まで読み、
+    // 追加 fetch なしでフィード判定する。
     if (!res.body) return null;
-    const bytes = await readBodyBytesPartial(res.body, MAX_DISCOVERY_BYTES);
-    const html = new TextDecoder().decode(bytes);
+    const maxBytes =
+      mediaType(ct) === "application/json" ? MAX_JSON_FEED_DISCOVERY_BYTES : MAX_DISCOVERY_BYTES;
+    const bytes = await readBodyBytesPartial(res.body, maxBytes);
+    const body = new TextDecoder().decode(bytes);
 
-    const fromLink = extractFeedLinkFromHtml(html, url);
+    if (isGenericJsonFeedResponse(ct, body)) return url;
+
+    const fromLink = extractFeedLinkFromHtml(body, url);
     if (fromLink) return fromLink;
 
     return probeCommonFeedPaths(url);

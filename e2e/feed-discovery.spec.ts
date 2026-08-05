@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { isGenericJsonFeedResponse } from "../src/lib/feed-discovery";
 import { isValidFeedUrl } from "../src/lib/url";
 
 /**
@@ -147,5 +148,38 @@ test.describe("feed-discovery — SSRF 対策: プライベート IP への href
     </head></html>`;
     const result = extractFeedLinkFromHtml(html, "https://example.com/");
     expect(result).toBe("https://cdn.example.com/rss.xml");
+  });
+});
+
+test.describe("feed-discovery — application/json の JSON Feed 判定", () => {
+  test("charset 付き application/json の JSON Feed を認識する", () => {
+    const body = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Example Feed",
+      items: [],
+    });
+    expect(isGenericJsonFeedResponse("application/json; charset=utf-8", body)).toBe(true);
+  });
+
+  test("通常の JSON API レスポンスは認識しない", () => {
+    expect(isGenericJsonFeedResponse("application/json", '{"status":"ok","items":[]}')).toBe(false);
+  });
+
+  test("jsonfeed.org を偽装した別ホストの version は認識しない", () => {
+    const body = JSON.stringify({
+      version: "https://evil.example/?target=jsonfeed.org/version/1.1",
+      items: [],
+    });
+    expect(isGenericJsonFeedResponse("application/json", body)).toBe(false);
+  });
+
+  test("壊れた JSON は認識しない", () => {
+    const body = '{"version":"https://jsonfeed.org/version/1.1","items":[';
+    expect(isGenericJsonFeedResponse("application/json", body)).toBe(false);
+  });
+
+  test("JSON Feed 本文でも application/json 以外は対象にしない", () => {
+    const body = JSON.stringify({ version: "https://jsonfeed.org/version/1.1", items: [] });
+    expect(isGenericJsonFeedResponse("text/plain", body)).toBe(false);
   });
 });
