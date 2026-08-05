@@ -96,6 +96,7 @@ function matchesCompiledEntry(kw: string, pattern: RegExp | null, text: string):
  * - 最大件数でスライス
  */
 export function sanitizeKeywords(arr: unknown[]): string[] {
+  if (arr.length === 0) return [];
   const keywords: string[] = [];
   const seen = new Set<string>();
   for (const value of arr) {

@@ -211,6 +211,10 @@ test.describe("normalizeFilter", () => {
 // ── sanitizeKeywords ───────────────────────────────────────────
 
 test.describe("sanitizeKeywords", () => {
+  test("空配列は空配列を返す", () => {
+    expect(sanitizeKeywords([])).toEqual([]);
+  });
+
   test("空文字を除去する", () => {
     expect(sanitizeKeywords(["hello", "", "  ", "world"])).toEqual(["hello", "world"]);
   });
