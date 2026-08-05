@@ -88,16 +88,18 @@ export function useSidebarFeeds({
     const matchView = (f: Feed) =>
       activeFeedView === "articles" ? !f.view || f.view === "articles" : f.view === activeFeedView;
     const matchNsfw = (f: Feed) => nsfwMode || !f.nsfw;
-    const pinned = feeds.filter(
-      (f) => pinnedFeedIds.has(f.id) && matchView(f) && matchFeed(f) && matchNsfw(f),
-    );
-    const unpinned = feeds
-      .filter((f) => !pinnedFeedIds.has(f.id) && matchView(f) && matchFeed(f) && matchNsfw(f))
-      .sort((a, b) => {
-        const aHigh = a.priority === "high" ? 0 : 1;
-        const bHigh = b.priority === "high" ? 0 : 1;
-        return aHigh - bHigh;
-      });
+    const pinned: Feed[] = [];
+    const unpinned: Feed[] = [];
+    for (const feed of feeds) {
+      if (!matchView(feed) || !matchFeed(feed) || !matchNsfw(feed)) continue;
+      if (pinnedFeedIds.has(feed.id)) pinned.push(feed);
+      else unpinned.push(feed);
+    }
+    unpinned.sort((a, b) => {
+      const aHigh = a.priority === "high" ? 0 : 1;
+      const bHigh = b.priority === "high" ? 0 : 1;
+      return aHigh - bHigh;
+    });
 
     const validGroupIds = new Set((feedGroups ?? []).map((g) => g.id));
     const byGroup = new Map<string, Feed[]>();
