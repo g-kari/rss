@@ -33,10 +33,10 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
     [feeds],
   );
 
-  const rateLimitedFeeds = useMemo(
-    () => feeds.filter((f) => f.rateLimitedUntil && new Date(f.rateLimitedUntil) > now),
-    [feeds, now],
-  );
+  const rateLimitedFeeds = useMemo(() => {
+    const nowMs = now.getTime();
+    return feeds.filter((f) => f.rateLimitedUntil && Date.parse(f.rateLimitedUntil) > nowMs);
+  }, [feeds, now]);
 
   const oversizeFeeds = useMemo(() => feeds.filter((f) => f.oversizeAlert), [feeds]);
 
