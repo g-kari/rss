@@ -65,10 +65,13 @@ export default function FilterPills({
     Boolean(categoryFilter) ||
     rawQuery.length > 0;
 
-  const feedCategories = useMemo(
-    () => [...new Set(feeds.map((f) => f.category).filter((c): c is string => c != null))].sort(),
-    [feeds],
-  );
+  const feedCategories = useMemo(() => {
+    const categories = new Set<string>();
+    for (const feed of feeds) {
+      if (feed.category != null) categories.add(feed.category);
+    }
+    return [...categories].sort();
+  }, [feeds]);
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto min-w-0">
