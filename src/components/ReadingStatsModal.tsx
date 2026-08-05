@@ -14,6 +14,7 @@ import { useToast } from "../contexts/ToastContext";
 import {
   aggregateStatsForFeed,
   buildReadingHistoryCsvFile,
+  countActiveReadingDays,
   computeLongestStreak,
   findBestReadingDay,
 } from "../lib/stats-helpers";
@@ -78,6 +79,10 @@ export default function ReadingStatsModal({
   );
   const bestReadingDay = useMemo(
     () => findBestReadingDay(displayYearlyHeatmap ?? []),
+    [displayYearlyHeatmap],
+  );
+  const activeReadingDays = useMemo(
+    () => countActiveReadingDays(displayYearlyHeatmap ?? []),
     [displayYearlyHeatmap],
   );
 
@@ -195,18 +200,24 @@ export default function ReadingStatsModal({
                   過去 1 年
                 </h3>
                 <HeatmapCalendar data={displayYearlyHeatmap} />
-                {bestReadingDay && (
-                  <p className="text-[11px] text-text-muted">
-                    <span className="font-medium text-text-default">自己ベスト</span>{" "}
-                    {new Date(`${bestReadingDay.date}T00:00:00Z`).toLocaleDateString("ja-JP", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      timeZone: "UTC",
-                    })}
-                    ・{bestReadingDay.count}件
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-muted">
+                  <p>
+                    <span className="font-medium text-text-default">読書日数</span>{" "}
+                    {activeReadingDays}日
                   </p>
-                )}
+                  {bestReadingDay && (
+                    <p>
+                      <span className="font-medium text-text-default">自己ベスト</span>{" "}
+                      {new Date(`${bestReadingDay.date}T00:00:00Z`).toLocaleDateString("ja-JP", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })}
+                      ・{bestReadingDay.count}件
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

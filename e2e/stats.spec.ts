@@ -5,6 +5,7 @@ import {
   getMondayIso,
   computeCurrentStreak,
   computeLongestStreak,
+  countActiveReadingDays,
   findBestReadingDay,
   computeWeeklyTotal,
   buildReadingHistoryCsv,
@@ -217,6 +218,33 @@ test.describe("computeLongestStreak", () => {
     const activeDays = new Set(["2024-12-30", "2024-12-31", "2025-01-01", "2025-01-02"]);
 
     expect(computeLongestStreak(activeDays)).toBe(4);
+  });
+});
+
+test.describe("countActiveReadingDays", () => {
+  test("空データでは 0 日を返す", () => {
+    expect(countActiveReadingDays([])).toBe(0);
+  });
+
+  test("読了件数が正の値の日だけを数える", () => {
+    expect(
+      countActiveReadingDays([
+        { date: "2026-08-01", count: 2 },
+        { date: "2026-08-02", count: 0 },
+        { date: "2026-08-03", count: 5 },
+        { date: "2026-08-04", count: -1 },
+      ]),
+    ).toBe(2);
+  });
+
+  test("入力順に依存せず読書日数を返す", () => {
+    expect(
+      countActiveReadingDays([
+        { date: "2026-08-05", count: 1 },
+        { date: "2026-08-03", count: 4 },
+        { date: "2026-08-04", count: 0 },
+      ]),
+    ).toBe(2);
   });
 });
 
