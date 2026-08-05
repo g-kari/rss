@@ -61,7 +61,7 @@ function sanitizeFolderName(name: string): string {
  * @returns OPML 2.0 形式の XML 文字列 (UTF-8 宣言 + `<opml version="2.0">` ルート)
  */
 export function buildOpml(feeds: Feed[], groups: FeedGroup[]): string {
-  if (feeds.length === 0 && groups.length === 0) return EMPTY_OPML;
+  if (feeds.length === 0) return EMPTY_OPML;
   const sortedGroups = sortByOrder(groups);
   const groupMap = new Map<string, Feed[]>();
   const ungrouped: Feed[] = [];

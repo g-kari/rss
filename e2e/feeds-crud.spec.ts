@@ -325,6 +325,12 @@ test.describe("buildOpml — OPML 出力", () => {
     expect(opml).toContain("<body>");
     expect(opml).toContain("</body>");
   });
+
+  test("フィードが 0 件ならグループがあっても空の XML を返す", () => {
+    const opml = buildOpml([], [makeGroup({ id: "unused", name: "Unused", order: 1 })]);
+    expect(opml).not.toContain("Unused");
+    expect(opml).toContain("<body>");
+  });
 });
 
 // ---------------------------------------------------------------------------
