@@ -30,11 +30,13 @@ export function useGlobalFilterAutoRead(
     const currentReadIds = readIdsRef.current;
     const newIds: string[] = [];
     for (const a of articles) {
-      if (checked.has(a.id) || currentReadIds.has(a.id)) continue;
-      if (!matchesKeywordFilter(a, normalized)) newIds.push(a.id);
+      if (!checked.has(a.id) && !currentReadIds.has(a.id) && !matchesKeywordFilter(a, normalized)) {
+        newIds.push(a.id);
+      }
+      // 記事 ID は一意。判定後すぐ登録して同一 effect の再走査を不要にする。
+      checked.add(a.id);
     }
     if (newIds.length > 0) markBulkRead(newIds);
-    for (const a of articles) checkedArticleIdsRef.current.add(a.id);
     // readIdsRef は useSyncedRef により常に最新値を参照するため deps 不要
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articles, globalFilter, markBulkRead]);
