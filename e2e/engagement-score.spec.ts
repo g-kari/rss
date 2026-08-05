@@ -209,6 +209,15 @@ test.describe("topScoredFeeds — limit パラメータ", () => {
     const result = topScoredFeeds(scores, 0);
     expect(result).toEqual([]);
   });
+
+  test("limit が負数でも空配列を返す", () => {
+    const scores = new Map([
+      ["best", 10.0],
+      ["second", 7.0],
+    ]);
+    const result = topScoredFeeds(scores, -1);
+    expect(result).toEqual([]);
+  });
 });
 
 test.describe("topScoredFeeds — minScore フィルタリング", () => {

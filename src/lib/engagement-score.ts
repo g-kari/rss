@@ -85,7 +85,7 @@ export function topScoredFeeds(
   }
 
   eligible.sort((a, b) => b[1] - a[1]);
-  const top = eligible.slice(0, limit);
+  const top = eligible.slice(0, Math.max(0, limit));
   const feedHashes: string[] = [];
   for (const [feedHash] of top) feedHashes.push(feedHash);
   return feedHashes;
