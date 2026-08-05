@@ -133,7 +133,11 @@ export function computeWeeklyTotal(
   now: Date,
 ): number {
   const mondayIso = getMondayIso(now);
-  return entries.filter((e) => READ_ACTIONS.has(e.action) && e.timestamp >= mondayIso).length;
+  let total = 0;
+  for (const entry of entries) {
+    if (READ_ACTIONS.has(entry.action) && entry.timestamp >= mondayIso) total++;
+  }
+  return total;
 }
 
 /**
