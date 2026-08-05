@@ -358,7 +358,10 @@ export async function mergeNewArticles(
   const latestPageIds = new Set(merged.slice(0, PAGE_SIZE).map((a) => a.id));
   const prevKnown = meta.knownIds ?? latest.map((a) => a.id);
   const historical = prevKnown.filter((id) => !latestPageIds.has(id));
-  const overflowNewIds = brandNew.filter((a) => !latestPageIds.has(a.id)).map((a) => a.id);
+  const overflowNewIds: string[] = [];
+  for (const article of brandNew) {
+    if (!latestPageIds.has(article.id)) overflowNewIds.push(article.id);
+  }
   meta.knownIds = [...historical, ...overflowNewIds, ...latestPageIds].slice(-KNOWN_IDS_MAX);
 
   meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
