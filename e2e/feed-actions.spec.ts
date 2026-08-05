@@ -29,6 +29,7 @@ interface BuilderOverrides {
   onSetDigestLimit?: (n: number | null) => Promise<void>;
   onMute?: (m: string | null) => Promise<void>;
   onReinfer?: () => Promise<void>;
+  onCopyUrl?: () => void;
   setMenuOpen?: (open: boolean) => void;
   setDetailOpen?: (open: boolean) => void;
   setFilterModalOpen?: (open: boolean) => void;
@@ -65,6 +66,7 @@ function makeProps(overrides: BuilderOverrides = {}) {
     onSetDigestLimit: overrides.onSetDigestLimit,
     onMute: overrides.onMute,
     onReinfer: overrides.onReinfer,
+    onCopyUrl: overrides.onCopyUrl ?? noop,
     setMenuOpen: overrides.setMenuOpen ?? noop,
     setDetailOpen: overrides.setDetailOpen ?? noop,
     setFilterModalOpen: overrides.setFilterModalOpen ?? noop,
@@ -103,6 +105,7 @@ test.describe("buildFeedActions — 必須 actions", () => {
     const keys = actions.map((a) => a.key);
     expect(keys).toEqual([
       "detail",
+      "copy-url",
       "priority",
       "nsfw",
       "filter",
@@ -187,6 +190,13 @@ test.describe("buildFeedActions — onClick が対応するハンドラを呼ぶ
     let called: boolean | null = null;
     const actions = buildFeedActions(makeProps({ setDetailOpen: (v) => (called = v) }));
     actions.find((a) => a.key === "detail")?.onClick();
+    expect(called).toBe(true);
+  });
+
+  test("copy-url.onClick → onCopyUrl", () => {
+    let called = false;
+    const actions = buildFeedActions(makeProps({ onCopyUrl: () => (called = true) }));
+    actions.find((a) => a.key === "copy-url")?.onClick();
     expect(called).toBe(true);
   });
 

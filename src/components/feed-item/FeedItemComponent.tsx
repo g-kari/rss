@@ -14,6 +14,7 @@ import {
 import type { FeedView, KeywordFilter } from "../../types";
 import dynamic from "next/dynamic";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useToast } from "@/contexts/ToastContext";
 import ConfirmModal from "@/components/ConfirmModal";
 
 const FeedFilterModal = dynamic(() => import("../FeedFilterModal"), { ssr: false });
@@ -22,6 +23,8 @@ import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { formatCount } from "@/lib/article-utils";
 import { computeContextMenuPosition } from "@/lib/context-menu-position";
+import { isAbortError } from "@/lib/fetch";
+import { devError } from "@/lib/dev-log";
 import type { FeedItemProps } from "./types";
 import {
   ContextMenuPortal,
@@ -103,6 +106,7 @@ function FeedItem({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const { confirm, confirmModalProps } = useConfirm();
+  const toast = useToast();
 
   // #1076: parent の stable callback に feed / feed.id を bind する wrapper。
   // これらは FeedItem の子 (buildFeedActions / portals / modals) でのみ使われ、子は FeedItem
@@ -175,6 +179,21 @@ function FeedItem({
     }
   }, [onReinfer, feed.id, loadingAction]);
 
+  const handleCopyUrl = useCallback(() => {
+    if (!navigator.clipboard) {
+      toast.error("クリップボードが使えません");
+      return;
+    }
+    navigator.clipboard
+      .writeText(feed.url)
+      .then(() => toast.success("フィード URL をコピーしました"))
+      .catch((err) => {
+        if (isAbortError(err)) return;
+        devError("[FeedItem] clipboard.writeText failed", err);
+        toast.error("コピーに失敗しました");
+      });
+  }, [feed.url, toast]);
+
   const startCategoryEdit = useCallback(() => {
     setEditCategory(feed.category ?? "");
     setCategoryEditing(true);
@@ -213,6 +232,7 @@ function FeedItem({
     onSetDigestLimit: handleSetDigestLimit,
     onMute: handleMute,
     onReinfer: onReinfer ? handleReinfer : undefined,
+    onCopyUrl: handleCopyUrl,
     setMenuOpen,
     setDetailOpen,
     setFilterModalOpen,
