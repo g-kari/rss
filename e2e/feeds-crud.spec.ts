@@ -338,6 +338,10 @@ test.describe("buildOpml — OPML 出力", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("extractFeeds — OPML パース", () => {
+  test("空の outline は空配列を返す", () => {
+    expect(extractFeeds({})).toEqual([]);
+  });
+
   test("xmlUrl のある outline は FeedEntry として返る", () => {
     const outline = {
       "@_xmlUrl": "https://example.com/feed",

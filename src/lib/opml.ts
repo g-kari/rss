@@ -123,6 +123,7 @@ export function buildOpml(feeds: Feed[], groups: FeedGroup[]): string {
  */
 export function extractFeeds(outline: OpmlOutline, depth = 0, folder?: string): FeedEntry[] {
   if (depth > MAX_OPML_DEPTH) return [];
+  if (!outline["@_xmlUrl"] && !outline.outline) return [];
   const results: FeedEntry[] = [];
   if (outline["@_xmlUrl"]) {
     results.push({
