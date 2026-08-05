@@ -21,7 +21,7 @@ const READWISE_HEADER = ["Highlight", "Title", "Author", "URL", "Note", "Date"].
  * Readwise CSV (Highlight, Title, Author, URL, Note, Date) を組み立てる純粋関数。
  *
  * Highlight はメモの 1 行目、Note はメモ全文。メモが空の記事はスキップする。
- * Author はフィードタイトル、Date は publishedAt（無ければ createdAt）の YYYY-MM-DD。
+ * Author は記事著者（無ければフィードタイトル）、Date は publishedAt（無ければ createdAt）の YYYY-MM-DD。
  */
 export function buildReadwiseCsv(
   articles: Article[],
@@ -36,7 +36,7 @@ export function buildReadwiseCsv(
     if (!note || note.trim().length === 0) continue;
 
     const highlight = note.split(/\r?\n/)[0] ?? article.title;
-    const author = feedTitleMap.get(article.feedHash) ?? "";
+    const author = article.author?.trim() || feedTitleMap.get(article.feedHash) || "";
     const date = toYmd(article.publishedAt) || toYmd(article.createdAt);
 
     lines.push(

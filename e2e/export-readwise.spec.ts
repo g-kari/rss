@@ -46,13 +46,33 @@ test.describe("buildReadwiseCsv — 1 記事の出力", () => {
     expect(csv).toContain('"Next.js 16 リリース"');
   });
 
-  test("Author 列に feed.title が入る", () => {
-    const article = makeArticle();
+  test("記事著者がある場合は Author 列へ優先して出力する", () => {
+    const article = makeArticle({ author: "Ada Lovelace" });
+    const feed = makeFeed({ id: article.feedHash, title: "Vercel Blog" });
+    const notes = { [article.id]: "メモ" };
+
+    const csv = buildReadwiseCsv([article], notes, [feed]);
+    expect(csv).toContain('"Ada Lovelace"');
+    expect(csv).not.toContain('"Vercel Blog"');
+  });
+
+  test("記事著者が空の場合は Author 列へ feed.title を出力する", () => {
+    const article = makeArticle({ author: "" });
     const feed = makeFeed({ id: article.feedHash, title: "Vercel Blog" });
     const notes = { [article.id]: "メモ" };
 
     const csv = buildReadwiseCsv([article], notes, [feed]);
     expect(csv).toContain('"Vercel Blog"');
+  });
+
+  test("記事著者と対応フィードがない場合は Author 列を空にする", () => {
+    const article = makeArticle({ author: undefined, feedHash: "unknown-hash" });
+    const notes = { [article.id]: "メモ" };
+
+    const csv = buildReadwiseCsv([article], notes, []);
+    expect(csv.split("\n")[1]).toBe(
+      '"メモ","Test Article","","https://example.com/article","メモ","2026-01-01"',
+    );
   });
 
   test("URL 列に記事リンクが入る", () => {
@@ -103,6 +123,15 @@ test.describe("buildReadwiseCsv — CSV エスケープ", () => {
 
     const csv = buildReadwiseCsv([article], notes, [feed]);
     expect(csv).toContain('"タイトルに ""引用"" を含む"');
+  });
+
+  test("カンマとダブルクォートを含む記事著者もエスケープされる", () => {
+    const article = makeArticle({ author: 'Doe, "Jane"' });
+    const feed = makeFeed({ id: article.feedHash });
+    const notes = { [article.id]: "メモ" };
+
+    const csv = buildReadwiseCsv([article], notes, [feed]);
+    expect(csv).toContain('"Doe, ""Jane"""');
   });
 
   test("カンマを含むフィールドはダブルクォートで囲まれる", () => {
