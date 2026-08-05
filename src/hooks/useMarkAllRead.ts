@@ -59,7 +59,10 @@ export function useMarkAllRead({
       activeFeedView;
 
     if (hasSubFilter) {
-      const ids = filtered.filter((a) => !isArticleRead(a, readIds, readBeforeMs)).map((a) => a.id);
+      const ids: string[] = [];
+      for (const article of filtered) {
+        if (!isArticleRead(article, readIds, readBeforeMs)) ids.push(article.id);
+      }
       if (ids.length === 0) return;
       if (ids.length >= 50) {
         const ok = await confirm({
