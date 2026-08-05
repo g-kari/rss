@@ -177,8 +177,9 @@ export function extractIds(raw: unknown, max: number): string[] | null {
 export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string> | null {
   if (!isPlainObject(raw)) return null;
   const result: Record<string, string> = {};
+  let count = 0;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (Object.keys(result).length >= maxNotes) break;
+    if (count >= maxNotes) break;
     if (
       typeof k === "string" &&
       k.length > 0 &&
@@ -188,9 +189,10 @@ export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string
       v.length <= MAX_NOTE_LENGTH
     ) {
       result[k] = v;
+      count++;
     }
   }
-  return Object.keys(result).length > 0 ? result : null;
+  return count > 0 ? result : null;
 }
 
 /**
@@ -204,8 +206,9 @@ export function parseNotes(raw: unknown, maxNotes = 1000): Record<string, string
 export function parseTagIds(raw: unknown, maxArticles = 1000): Record<string, string[]> | null {
   if (!isPlainObject(raw)) return null;
   const result: Record<string, string[]> = {};
+  let count = 0;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (Object.keys(result).length >= maxArticles) break;
+    if (count >= maxArticles) break;
     if (typeof k !== "string" || k.length === 0 || k.length > MAX_ID_LENGTH) continue;
     if (!Array.isArray(v)) continue;
     const tags: string[] = [];
@@ -219,9 +222,12 @@ export function parseTagIds(raw: unknown, maxArticles = 1000): Record<string, st
       seen.add(normalized);
       tags.push(normalized);
     }
-    if (tags.length > 0) result[k] = tags;
+    if (tags.length > 0) {
+      result[k] = tags;
+      count++;
+    }
   }
-  return Object.keys(result).length > 0 ? result : null;
+  return count > 0 ? result : null;
 }
 
 /**
