@@ -74,12 +74,22 @@ export function selectInterestArticleTitles(
   const selected: string[] = [];
   const seenTitles = new Set<string>();
 
-  for (const article of [...engagedArticles, ...articles]) {
+  for (const article of engagedArticles) {
     const title = article.title.trim();
     if (!title || seenTitles.has(title)) continue;
     seenTitles.add(title);
     selected.push(title);
     if (selected.length >= limit) break;
+  }
+
+  if (selected.length < limit) {
+    for (const article of articles) {
+      const title = article.title.trim();
+      if (!title || seenTitles.has(title)) continue;
+      seenTitles.add(title);
+      selected.push(title);
+      if (selected.length >= limit) break;
+    }
   }
 
   return selected;
