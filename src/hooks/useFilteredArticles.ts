@@ -186,10 +186,11 @@ export function useFilteredArticles({
   const feedCategoryMap = stableFeedCategoryMapRef.current;
 
   const stableFeedTitleByHashRef = useRef<Map<string, string>>(new Map());
-  const computedFeedTitleByHash = useMemo(
-    () => new Map(feeds.map((f) => [f.id, f.title] as [string, string])),
-    [feeds],
-  );
+  const computedFeedTitleByHash = useMemo(() => {
+    const titleMap = new Map<string, string>();
+    for (const feed of feeds) titleMap.set(feed.id, feed.title);
+    return titleMap;
+  }, [feeds]);
   if (!equalStringMap(stableFeedTitleByHashRef.current, computedFeedTitleByHash)) {
     stableFeedTitleByHashRef.current = computedFeedTitleByHash;
   }
