@@ -125,7 +125,8 @@ export function buildArticlesJson(
   labelOverride?: string,
 ): ArticlesJsonExport {
   const feedTitleMap = buildFeedTitleMap(feeds);
-  const feedUrlMap = new Map(feeds.map((feed) => [feed.id, feed.url]));
+  const feedUrlMap = new Map<string, string>();
+  for (const feed of feeds) feedUrlMap.set(feed.id, feed.url);
   const selected = selectArticlesByIds(articles, ids);
   const label = labelOverride ?? (mode === "reading_list" ? "後で読む" : "ブックマーク");
   return {
