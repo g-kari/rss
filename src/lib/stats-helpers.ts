@@ -101,7 +101,11 @@ export function computeLongestStreak(activeDays: ReadonlySet<string>): number {
 export function countActiveReadingDays(
   dailyCounts: readonly { date: string; count: number }[],
 ): number {
-  return dailyCounts.filter(({ count }) => count > 0).length;
+  let activeDays = 0;
+  for (const { count } of dailyCounts) {
+    if (count > 0) activeDays++;
+  }
+  return activeDays;
 }
 
 /** 日別読了件数から最大件数の日を返す。同数の場合は直近日を優先する。 */
