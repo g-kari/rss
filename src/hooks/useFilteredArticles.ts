@@ -173,11 +173,13 @@ export function useFilteredArticles({
   // O(n) 再フィルタ (500+ articles, 20-80ms ブロック) を 12×/hour 引き起こす。
   // equalStringMap で構造的等価ガード。
   const stableFeedCategoryMapRef = useRef<Map<string, string>>(new Map());
-  const computedFeedCategoryMap = useMemo(
-    () =>
-      new Map(feeds.filter((f) => f.category).map((f) => [f.id, f.category!] as [string, string])),
-    [feeds],
-  );
+  const computedFeedCategoryMap = useMemo(() => {
+    const categoryMap = new Map<string, string>();
+    for (const feed of feeds) {
+      if (feed.category) categoryMap.set(feed.id, feed.category);
+    }
+    return categoryMap;
+  }, [feeds]);
   if (!equalStringMap(stableFeedCategoryMapRef.current, computedFeedCategoryMap)) {
     stableFeedCategoryMapRef.current = computedFeedCategoryMap;
   }
