@@ -65,7 +65,8 @@ export function selectInterestArticleTitles(
 ): string[] {
   if (limit <= 0) return [];
 
-  const articleById = new Map(articles.map((article) => [article.id, article]));
+  const articleById = new Map<string, Article>();
+  for (const article of articles) articleById.set(article.id, article);
   const engagedArticles = rankEngagedArticleIds(engagementEntries, feedHash, now).flatMap((id) => {
     const article = articleById.get(id);
     return article ? [article] : [];
