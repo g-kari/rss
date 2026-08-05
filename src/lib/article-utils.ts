@@ -58,7 +58,8 @@ export function readingTime(html: string): number {
   if (!text) return 0;
   const cjkChars = (text.match(CJK_PATTERN) ?? []).length;
   // CJK 文字を空白に置換して英語の語数を算出（CJK が英語カウントに混入しないよう除去）
-  const enWords = text.replace(CJK_PATTERN, " ").split(/\s+/).filter(Boolean).length;
+  const englishText = text.replace(CJK_PATTERN, " ").trim();
+  const enWords = englishText ? englishText.split(/\s+/).length : 0;
   const mins = cjkChars / 500 + enWords / 200;
   return Math.max(1, Math.ceil(mins));
 }
