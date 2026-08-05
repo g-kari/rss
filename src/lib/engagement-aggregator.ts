@@ -41,6 +41,7 @@ export function aggregateGlobalTopFeeds(
   now?: number,
   minScore = 0.1,
 ): GlobalFeedScore[] {
+  if (limit <= 0) return [];
   const currentTime = now ?? Date.now();
   // feedHash → { totalScore, userCount }
   const agg = new Map<string, { totalScore: number; userCount: number }>();

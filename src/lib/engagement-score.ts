@@ -79,6 +79,7 @@ export function topScoredFeeds(
   limit: number,
   minScore = 0.1,
 ): string[] {
+  if (limit <= 0) return [];
   const eligible: Array<[string, number]> = [];
   for (const entry of scores) {
     if (entry[1] >= minScore) eligible.push(entry);
