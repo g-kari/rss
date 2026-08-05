@@ -200,6 +200,12 @@ test.describe("normalizeFilter", () => {
     const compiled = normalizeFilter(makeFilter(["test"], [], true));
     expect(compiled.matchCategories).toBe(true);
   });
+
+  test("キーワードが空ならコンパイル済み配列も空を返す", () => {
+    const compiled = normalizeFilter(makeFilter([], []));
+    expect(compiled.includePatterns).toEqual([]);
+    expect(compiled.excludePatterns).toEqual([]);
+  });
 });
 
 // ── sanitizeKeywords ───────────────────────────────────────────

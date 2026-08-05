@@ -121,6 +121,9 @@ export function sanitizeKeywords(arr: unknown[]): string[] {
  * - ReDoS リスクがあるパターンや不正な構文は `null` として保持し、マッチしない扱いにする
  */
 export function normalizeFilter(filter: KeywordFilter): CompiledKeywordFilter {
+  if (filter.include.length === 0 && filter.exclude.length === 0) {
+    return { ...filter, includePatterns: [], excludePatterns: [] };
+  }
   const compileKeyword = (kw: string): [normalized: string, pattern: RegExp | null] => {
     if (!isRegexKeyword(kw)) return [kw.toLowerCase(), null];
     const pattern = kw.slice(1, -1);
