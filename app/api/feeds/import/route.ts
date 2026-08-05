@@ -103,7 +103,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const existingHashes = new Set(subs.map((s) => s.feedHash));
+    const existingHashes = new Set<string>();
+    for (const subscription of subs) existingHashes.add(subscription.feedHash);
 
     type Candidate = { entry: FeedEntry; feedHash: string };
     const candidates: Candidate[] = [];
