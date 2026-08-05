@@ -111,10 +111,12 @@ export interface ParsedFeed {
  */
 const MAX_SUMMARY_LENGTH = 5000;
 
+const XML_ARRAY_FIELDS: ReadonlySet<string> = new Set(["item", "entry", "link", "category"]);
+
 const BASE_PARSER_OPTIONS = {
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
-  isArray: (name: string) => ["item", "entry", "link", "category"].includes(name),
+  isArray: (name: string) => XML_ARRAY_FIELDS.has(name),
   // GHSA-jp2q-39xq-3w4g (entity 展開 DoS) は fast-xml-parser v4.2.4 以降で修正済み。
   // v5.x では processEntities オブジェクト形式で制限値を個別に設定できる。
   //
