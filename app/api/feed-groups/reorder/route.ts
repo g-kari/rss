@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     const groups = await readFeedGroups(env.RSS_DATA, session.userId);
 
     // orderedIds と既存グループの ID 集合が完全一致するか検証
-    const existingIds = new Set(groups.map((g) => g.id));
+    const existingIds = new Set<string>();
+    for (const group of groups) existingIds.add(group.id);
     const providedIds = new Set(orderedIds as string[]);
 
     if (existingIds.size !== providedIds.size) {
