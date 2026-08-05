@@ -232,7 +232,13 @@ export async function extractUserTopics(
     if (match) {
       const parsed = JSON.parse(match[0]) as unknown;
       if (Array.isArray(parsed)) {
-        return parsed.filter((x): x is string => typeof x === "string").slice(0, 10);
+        const topics: string[] = [];
+        for (const value of parsed) {
+          if (typeof value !== "string") continue;
+          topics.push(value);
+          if (topics.length === 10) break;
+        }
+        return topics;
       }
     }
   } catch (err) {
