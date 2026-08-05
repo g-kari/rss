@@ -89,7 +89,8 @@ export function wrapSentencesInHtml(html: string): WrapSentencesResult {
   if (textNodes.length === 0) return { html, sentences: [] };
 
   // 2. センテンス分割
-  const fullText = textNodes.map((tn) => tn.node.textContent ?? "").join("");
+  let fullText = "";
+  for (const textNode of textNodes) fullText += textNode.node.textContent ?? "";
   const sentences = splitIntoSentences(fullText);
   if (sentences.length === 0) return { html, sentences: [] };
 
