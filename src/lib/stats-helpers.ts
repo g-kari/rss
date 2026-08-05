@@ -139,6 +139,7 @@ export function computeWeeklyTotal(
   entries: { timestamp: string; action: string }[],
   now: Date,
 ): number {
+  if (entries.length === 0) return 0;
   const mondayIso = getMondayIso(now);
   let total = 0;
   for (const entry of entries) {
