@@ -4,6 +4,7 @@ import {
   buildDayList,
   getMondayIso,
   computeCurrentStreak,
+  computeLongestStreak,
   computeWeeklyTotal,
   buildReadingHistoryCsv,
   buildReadingHistoryCsvFile,
@@ -184,6 +185,37 @@ test.describe("computeCurrentStreak", () => {
     const now = new Date("2025-01-02T12:00:00Z");
     const activeDays = new Set(["2024-12-30", "2024-12-31", "2025-01-01", "2025-01-02"]);
     expect(computeCurrentStreak(activeDays, now)).toBe(4);
+  });
+});
+
+test.describe("computeLongestStreak", () => {
+  test("アクティブな日がない場合は 0 を返す", () => {
+    expect(computeLongestStreak(new Set())).toBe(0);
+  });
+
+  test("複数の連続期間から最長の日数を返す", () => {
+    const activeDays = new Set([
+      "2026-07-01",
+      "2026-07-02",
+      "2026-08-01",
+      "2026-08-02",
+      "2026-08-03",
+      "2026-08-04",
+    ]);
+
+    expect(computeLongestStreak(activeDays)).toBe(4);
+  });
+
+  test("入力順に依存せず最長の日数を返す", () => {
+    const activeDays = new Set(["2026-08-05", "2026-08-03", "2026-08-04"]);
+
+    expect(computeLongestStreak(activeDays)).toBe(3);
+  });
+
+  test("月と年をまたぐ連続日数を正しく数える", () => {
+    const activeDays = new Set(["2024-12-30", "2024-12-31", "2025-01-01", "2025-01-02"]);
+
+    expect(computeLongestStreak(activeDays)).toBe(4);
   });
 });
 

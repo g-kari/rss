@@ -11,7 +11,11 @@ import { useReadingStats } from "../hooks/useReadingStats";
 import { useInboxProgress } from "../hooks/useInboxProgress";
 import { useEngagementEntries } from "../hooks/useEngagementEntries";
 import { useToast } from "../contexts/ToastContext";
-import { aggregateStatsForFeed, buildReadingHistoryCsvFile } from "../lib/stats-helpers";
+import {
+  aggregateStatsForFeed,
+  buildReadingHistoryCsvFile,
+  computeLongestStreak,
+} from "../lib/stats-helpers";
 import { downloadBlob } from "../lib/download";
 import { devError } from "../lib/dev-log";
 import type { Article, Feed } from "../types";
@@ -64,6 +68,13 @@ export default function ReadingStatsModal({
   const displayDailyReadCounts = drillStats?.dailyReadCounts ?? stats?.dailyReadCounts;
   const displayYearlyHeatmap = drillStats?.yearlyHeatmap ?? stats?.yearlyHeatmap;
   const displayWeeklyTotal = drillStats?.weeklyTotal ?? stats?.weeklyTotal ?? 0;
+  const longestStreak = useMemo(
+    () =>
+      computeLongestStreak(
+        new Set(displayYearlyHeatmap?.filter(({ count }) => count > 0).map(({ date }) => date)),
+      ),
+    [displayYearlyHeatmap],
+  );
 
   const maxDaily = displayDailyReadCounts
     ? Math.max(...displayDailyReadCounts.map((d) => d.count), 1)
@@ -162,10 +173,11 @@ export default function ReadingStatsModal({
             </button>
 
             {/* サマリーカード */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <StatCard label="今週" value={displayWeeklyTotal} />
               <StatCard label="累計" value={stats.allTimeTotal} />
               <StatCard label="連続" value={`${stats.currentStreak}日`} />
+              <StatCard label="1年最長" value={`${longestStreak}日`} />
             </div>
 
             {/* 週間目標 */}

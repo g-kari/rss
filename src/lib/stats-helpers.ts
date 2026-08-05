@@ -75,6 +75,26 @@ export function computeCurrentStreak(activeDays: Set<string>, now: Date): number
   return streak;
 }
 
+/** アクティブな日付文字列の Set から最長連続活動日数を計算する。 */
+export function computeLongestStreak(activeDays: ReadonlySet<string>): number {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const timestamps = [...activeDays]
+    .map((day) => Date.parse(`${day}T00:00:00Z`))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+  let longest = 0;
+  let current = 0;
+  let previous: number | undefined;
+
+  for (const timestamp of timestamps) {
+    current = previous !== undefined && timestamp === previous + dayMs ? current + 1 : 1;
+    longest = Math.max(longest, current);
+    previous = timestamp;
+  }
+
+  return longest;
+}
+
 /**
  * エントリリストと現在日時から weeklyTotal（今週 UTC 月曜以降のアクション数）を計算する。
  * READ_ACTIONS（fetch_full / open_original）のみカウントする。
