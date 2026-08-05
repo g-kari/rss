@@ -511,8 +511,12 @@ export async function generateRecommendations(params: {
   ]);
 
   // 購読済み URL / feedHash の Set を構築
-  const subscribedUrls = new Set(subscriptions.map((s) => s.url));
-  const subscribedFeedHashes = new Set(subscriptions.map((s) => s.feedHash));
+  const subscribedUrls = new Set<string>();
+  const subscribedFeedHashes = new Set<string>();
+  for (const subscription of subscriptions) {
+    subscribedUrls.add(subscription.url);
+    subscribedFeedHashes.add(subscription.feedHash);
+  }
 
   // トピック抽出（Gemma AI）
   const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
