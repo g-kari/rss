@@ -334,6 +334,11 @@ interface JsonFeedAuthor {
   name?: string;
 }
 
+interface JsonFeedAttachment {
+  url?: string;
+  mime_type?: string;
+}
+
 interface JsonFeedItem {
   id?: string;
   url?: string;
@@ -350,6 +355,7 @@ interface JsonFeedItem {
   /** JSON Feed v1.0 互換フィールド */
   author?: JsonFeedAuthor;
   tags?: string[];
+  attachments?: JsonFeedAttachment[];
 }
 
 interface JsonFeedRoot {
@@ -379,6 +385,20 @@ function isJsonFeedVersion(version: string): boolean {
   }
 }
 
+function getJsonFeedImage(item: JsonFeedItem): string {
+  if (item.image) return item.image;
+  if (item.banner_image) return item.banner_image;
+
+  return (
+    item.attachments?.find(
+      (attachment) =>
+        typeof attachment.url === "string" &&
+        typeof attachment.mime_type === "string" &&
+        attachment.mime_type.toLowerCase().startsWith("image/"),
+    )?.url ?? ""
+  );
+}
+
 function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
@@ -400,7 +420,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       link,
       summary,
       content,
-      ogImage: safeUrl(item.image ?? item.banner_image ?? ""),
+      ogImage: safeUrl(getJsonFeedImage(item)),
       author,
       publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
       categories: item.tags ?? [],

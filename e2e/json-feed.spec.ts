@@ -216,6 +216,82 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
     expect(result.items[0].ogImage).toBe("https://example.com/banner.jpg");
   });
 
+  test("最初の画像 attachment を ogImage の代替として使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          attachments: [
+            { url: "https://example.com/audio.mp3", mime_type: "audio/mpeg" },
+            { url: "https://example.com/photo.webp", mime_type: "image/webp" },
+          ],
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("https://example.com/photo.webp");
+  });
+
+  test("image を画像 attachment より優先して ogImage に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          image: "https://example.com/explicit.jpg",
+          attachments: [{ url: "https://example.com/attached.jpg", mime_type: "image/jpeg" }],
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("https://example.com/explicit.jpg");
+  });
+
+  test("非画像 attachment を ogImage に使用しない", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          attachments: [{ url: "https://example.com/audio.mp3", mime_type: "audio/mpeg" }],
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("");
+  });
+
+  test("危険な画像 attachment URL を ogImage に使用しない", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          attachments: [{ url: "javascript:alert(1)", mime_type: "image/png" }],
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("");
+  });
+
   test("version フィールドがない JSON は JSON Feed として扱わない", () => {
     // jsonfeed.org を含まないため XML パーサーに fallback → "Unrecognized feed format" を投げる
     const feed = JSON.stringify({ title: "Not a feed", items: [] });
