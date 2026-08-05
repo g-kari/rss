@@ -14,7 +14,7 @@ const BASE = {
   content: "<p>圏論の入り口となる Functor / Monad について本文で詳しく扱います。</p>",
   author: "山田 太郎",
   categories: ["TypeScript", "関数型", "プログラミング"],
-  link: "https://example.com/a1",
+  link: "https://example.com/posts/123?ref=rss",
   publishedAt: "2026-04-01T00:00:00.000Z",
   createdAt: "2026-04-01T00:00:00.000Z",
   guid: "g1",
@@ -51,6 +51,14 @@ test.describe("parseSearchQuery — 基本", () => {
   test("フィールド指定 title:foo は TERM with field", () => {
     const ast = parseSearchQuery("title:foo");
     expect(ast).toEqual({ kind: "TERM", field: "title", value: "foo" });
+  });
+
+  test("フィールド指定 url:example.com は TERM with field", () => {
+    expect(parseSearchQuery("url:example.com")).toEqual({
+      kind: "TERM",
+      field: "url",
+      value: "example.com",
+    });
   });
 
   test("否定 -foo は NOT", () => {
@@ -139,6 +147,21 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
   test("content:圏論 は本文にのみマッチ", () => {
     expect(matchesAdvancedQuery(BASE, "content:圏論", CTX)).toBe(true);
     expect(matchesAdvancedQuery(BASE, "content:TypeScript", CTX)).toBe(false);
+  });
+
+  test("url:example.com は記事 URL にのみマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "url:example.com", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "url:typescript", CTX)).toBe(false);
+  });
+
+  test("url: はフレーズと否定構文を組み合わせられる", () => {
+    expect(matchesAdvancedQuery(BASE, 'url:"posts/123"', CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "-url:other.example", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "-url:example.com", CTX)).toBe(false);
+  });
+
+  test("link が空でも url: 検索は安全に非一致を返す", () => {
+    expect(matchesAdvancedQuery({ ...BASE, link: "" }, "url:example.com", CTX)).toBe(false);
   });
 
   test("不明なフィールドは普通の語として扱う", () => {
