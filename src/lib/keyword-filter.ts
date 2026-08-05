@@ -202,6 +202,7 @@ export function buildFilterMap<T extends { filter?: KeywordFilter }>(
  */
 export function matchesKeywordFilter(article: Article, filter: CompiledKeywordFilter): boolean {
   const { include, exclude, includePatterns, excludePatterns, matchCategories } = filter;
+  if (include.length === 0 && exclude.length === 0) return true;
 
   const fields = [article.title, article.summary];
   if (matchCategories && article.categories) {
