@@ -167,24 +167,24 @@ function nodeToMarkdown(node: DOMNode, depth = 0): string {
 
     // リスト
     case "ul": {
-      const items = node.childNodes
-        .filter((c) => c.nodeType === ELEMENT_NODE && c.nodeName.toLowerCase() === "li")
-        .map(
-          (li) =>
-            `${"  ".repeat(depth)}- ${nodeChildrenToMarkdown(li.childNodes, depth + 1).trim()}`,
-        )
-        .join("\n");
-      return `\n${items}\n`;
+      const items: string[] = [];
+      for (const child of node.childNodes) {
+        if (child.nodeType !== ELEMENT_NODE || child.nodeName.toLowerCase() !== "li") continue;
+        items.push(
+          `${"  ".repeat(depth)}- ${nodeChildrenToMarkdown(child.childNodes, depth + 1).trim()}`,
+        );
+      }
+      return `\n${items.join("\n")}\n`;
     }
     case "ol": {
-      const items = node.childNodes
-        .filter((c) => c.nodeType === ELEMENT_NODE && c.nodeName.toLowerCase() === "li")
-        .map(
-          (li, i) =>
-            `${"  ".repeat(depth)}${i + 1}. ${nodeChildrenToMarkdown(li.childNodes, depth + 1).trim()}`,
-        )
-        .join("\n");
-      return `\n${items}\n`;
+      const items: string[] = [];
+      for (const child of node.childNodes) {
+        if (child.nodeType !== ELEMENT_NODE || child.nodeName.toLowerCase() !== "li") continue;
+        items.push(
+          `${"  ".repeat(depth)}${items.length + 1}. ${nodeChildrenToMarkdown(child.childNodes, depth + 1).trim()}`,
+        );
+      }
+      return `\n${items.join("\n")}\n`;
     }
     case "li":
       return children();
