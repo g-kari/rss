@@ -217,6 +217,45 @@ function nodeChildrenToMarkdown(nodes: DOMNode[], depth: number): string {
   return nodes.map((c) => nodeToMarkdown(c, depth)).join("");
 }
 
+function nodeToPlainText(node: DOMNode): string {
+  if (node.nodeType === TEXT_NODE) return node.textContent ?? "";
+  if (node.nodeType !== ELEMENT_NODE) return "";
+
+  const tag = node.nodeName.toLowerCase();
+  const children = () => node.childNodes.map(nodeToPlainText).join("");
+
+  switch (tag) {
+    case "script":
+    case "style":
+    case "noscript":
+    case "head":
+      return "";
+    case "br":
+      return "\n";
+    case "li":
+      return `\n• ${children().trim()}\n`;
+    case "h1":
+    case "h2":
+    case "h3":
+    case "h4":
+    case "h5":
+    case "h6":
+    case "p":
+    case "blockquote":
+    case "pre":
+    case "tr":
+    case "div":
+    case "article":
+    case "section":
+    case "main":
+      return `\n${children()}\n`;
+    case "img":
+      return node.getAttribute?.("alt") ?? "";
+    default:
+      return children();
+  }
+}
+
 // ===== 公開 API =====
 
 /**
@@ -234,6 +273,18 @@ export function htmlToMarkdown(html: string): string {
 
   // 連続する空行を最大 2 行に正規化
   return md.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** HTML を装飾なしの、改行を保ったプレーンテキストへ変換する。 */
+function htmlToPlainText(html: string): string {
+  const trimmed = html.trim();
+  if (!trimmed) return "";
+
+  return nodeToPlainText(parseHtml(trimmed))
+    .replace(/[\t\f\v ]+/g, " ")
+    .replace(/ *\r?\n */g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
 }
 
 /** 記事タイトルを Markdown リンクラベルとして安全にエスケープする。 */
@@ -327,6 +378,11 @@ export function articleToMarkdown(article: Article, feed: Feed, contentHtml?: st
   const body = bodyHtml ? htmlToMarkdown(bodyHtml) : "";
 
   return [frontmatter, "", body].filter(Boolean).join("\n");
+}
+
+/** 取得済み本文を優先し、記事本文を貼り付け向けプレーンテキストへ変換する。 */
+export function articleBodyToPlainText(article: Article, contentHtml?: string): string {
+  return htmlToPlainText(contentHtml || article.summary || "");
 }
 
 /** 記事の Markdown ダウンロード用コンテンツと安全なファイル名を生成する。 */

@@ -4,6 +4,7 @@ import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "@/contexts/ToastContext";
 import { storageGet, STORAGE_KEYS } from "../../lib/storage";
 import {
+  articleBodyToPlainText,
   articleToMarkdown,
   articleToMarkdownCitation,
   articleToMarkdownLink,
@@ -233,6 +234,29 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
               <rect x="6" y="14" width="12" height="8" />
             </svg>
             印刷
+          </button>
+          <button
+            role="menuitem"
+            onClick={() =>
+              copyText(articleBodyToPlainText(article, contentHtml), "記事本文をコピーしました")
+            }
+            className={MENU_ITEM_CLS}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 3h9l3 3v15H6z" />
+              <path d="M9 11h6M9 15h6" />
+            </svg>
+            本文をテキストコピー
           </button>
           {feed && (
             <>

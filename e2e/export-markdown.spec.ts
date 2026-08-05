@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
+  articleBodyToPlainText,
   articleToMarkdownCitation,
   articleToMarkdown,
   buildArticleMarkdownFile,
@@ -8,6 +9,32 @@ import {
 } from "../src/lib/html-to-markdown";
 import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
+
+// ===== articleBodyToPlainText =====
+
+test.describe("articleBodyToPlainText — 記事本文のプレーンテキスト化", () => {
+  test("contentHtml を優先し、ブロック要素とリストの改行を保つ", () => {
+    const article = makeArticle({ summary: "<p>サマリー</p>" });
+    const contentHtml =
+      "<h2>見出し</h2><p>本文 <strong>強調</strong> &amp; 続き</p><ul><li>項目A</li><li>項目B</li></ul>";
+
+    expect(articleBodyToPlainText(article, contentHtml)).toBe(
+      "見出し\n本文 強調 & 続き\n• 項目A\n• 項目B",
+    );
+  });
+
+  test("contentHtml がない場合は summary を使う", () => {
+    const article = makeArticle({ summary: "<p>RSS の要約<br>2 行目</p>" });
+
+    expect(articleBodyToPlainText(article)).toBe("RSS の要約\n2 行目");
+  });
+
+  test("本文も summary もない場合は空文字列を返す", () => {
+    const article = makeArticle({ summary: "" });
+
+    expect(articleBodyToPlainText(article)).toBe("");
+  });
+});
 
 // ===== buildArticleMarkdownFile =====
 
