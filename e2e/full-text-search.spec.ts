@@ -77,6 +77,14 @@ test.describe("parseSearchQuery — 基本", () => {
     });
   });
 
+  test("フィールド指定 metadata:dc:source は TERM with field", () => {
+    expect(parseSearchQuery("metadata:dc:source")).toEqual({
+      kind: "TERM",
+      field: "metadata",
+      value: "dc:source",
+    });
+  });
+
   test("否定 -foo は NOT", () => {
     const ast = parseSearchQuery("-foo");
     expect(ast?.kind).toBe("NOT");
@@ -211,6 +219,36 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
     const unrelated = { ...BASE, metadata: [{ key: "source", value: "ja" }] };
     expect(matchesAdvancedQuery(unrelated, "language:ja", CTX)).toBe(false);
     expect(matchesAdvancedQuery({ ...BASE, metadata: undefined }, "language:ja", CTX)).toBe(false);
+  });
+
+  test("metadata: はメタデータのキーと値へ大文字小文字を区別せずマッチする", () => {
+    const article = {
+      ...BASE,
+      metadata: [
+        { key: "dc:source", value: "共同通信ニュース" },
+        { key: "business_form", value: "株式会社" },
+      ],
+    };
+    expect(matchesAdvancedQuery(article, "metadata:DC:SOURCE", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "metadata:共同通信", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "metadata:株式会社", CTX)).toBe(true);
+  });
+
+  test("metadata: は他フィールドにマッチせず、未設定記事も安全に扱う", () => {
+    expect(matchesAdvancedQuery(BASE, "metadata:TypeScript", CTX)).toBe(false);
+    expect(matchesAdvancedQuery({ ...BASE, metadata: undefined }, "metadata:source", CTX)).toBe(
+      false,
+    );
+  });
+
+  test("metadata: はフレーズと否定構文を組み合わせられる", () => {
+    const article = {
+      ...BASE,
+      metadata: [{ key: "source", value: "共同通信 ニュース配信" }],
+    };
+    expect(matchesAdvancedQuery(article, 'metadata:"共同通信 ニュース"', CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "-metadata:広告", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "-metadata:共同通信", CTX)).toBe(false);
   });
 
   test("不明なフィールドは普通の語として扱う", () => {
