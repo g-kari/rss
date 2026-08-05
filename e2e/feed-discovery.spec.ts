@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { isGenericJsonFeedResponse } from "../src/lib/feed-discovery";
-import { isValidFeedUrl } from "../src/lib/url";
+import { extractFeedLinkFromHtml, isGenericJsonFeedResponse } from "../src/lib/feed-discovery";
 
 /**
  * feed-discovery.ts の extractFeedLinkFromHtml ロジックの単体テスト。
@@ -8,31 +7,6 @@ import { isValidFeedUrl } from "../src/lib/url";
  * RSS 2.0 / Atom / JSON Feed の <link rel="alternate"> タグを
  * HTML から正しく発見できることを検証する。
  */
-
-// extractFeedLinkFromHtml は private なので、同等のロジックをインライン再現して検証する
-// 注意: 実装と同様に isValidFeedUrl による SSRF 対策チェックを含む
-function extractFeedLinkFromHtml(html: string, baseUrl: string): string | null {
-  const patternTypeFirst =
-    /<link[^>]+type=["']application\/(?:(?:rss|atom)\+xml|feed\+json)["'][^>]+href=["']([^"']+)["'][^>]*\/?>/gi;
-  const patternHrefFirst =
-    /<link[^>]+href=["']([^"']+)["'][^>]+type=["']application\/(?:(?:rss|atom)\+xml|feed\+json)["'][^>]*\/?>/gi;
-
-  for (const pattern of [patternTypeFirst, patternHrefFirst]) {
-    pattern.lastIndex = 0;
-    const m = pattern.exec(html);
-    if (m?.[1]) {
-      try {
-        const resolved = new URL(m[1], baseUrl).toString();
-        // SSRF 対策: プライベートIPへのアクセスを拒否
-        if (!isValidFeedUrl(resolved)) continue;
-        return resolved;
-      } catch {
-        continue;
-      }
-    }
-  }
-  return null;
-}
 
 test.describe("feed-discovery — HTML <link> タグからのフィード URL 発見", () => {
   test("RSS 2.0: type-first パターンを検出する", () => {
@@ -73,6 +47,32 @@ test.describe("feed-discovery — HTML <link> タグからのフィード URL �
     </head><body></body></html>`;
     const result = extractFeedLinkFromHtml(html, "https://example.com/");
     expect(result).toBe("https://example.com/feed.json");
+  });
+
+  test("RSS: charset パラメータ付き type-first パターンを検出する", () => {
+    const html = `<link type="application/rss+xml; charset=utf-8" href="/rss.xml" rel="alternate">`;
+    expect(extractFeedLinkFromHtml(html, "https://example.com/")).toBe(
+      "https://example.com/rss.xml",
+    );
+  });
+
+  test("Atom: MIME パラメータ付き href-first パターンを検出する", () => {
+    const html = `<link href="/atom.xml" rel="alternate" type="application/atom+xml; profile=full">`;
+    expect(extractFeedLinkFromHtml(html, "https://example.com/")).toBe(
+      "https://example.com/atom.xml",
+    );
+  });
+
+  test("JSON Feed: charset パラメータ付き type を検出する", () => {
+    const html = `<link rel="alternate" type="application/feed+json;charset=UTF-8" href="/feed.json">`;
+    expect(extractFeedLinkFromHtml(html, "https://example.com/")).toBe(
+      "https://example.com/feed.json",
+    );
+  });
+
+  test("MIME 本体に余分な文字が付く type は検出しない", () => {
+    const html = `<link type="application/rss+xmlfoo; charset=utf-8" href="/rss.xml" rel="alternate">`;
+    expect(extractFeedLinkFromHtml(html, "https://example.com/")).toBeNull();
   });
 
   test("絶対 URL の href はそのまま返す", () => {
