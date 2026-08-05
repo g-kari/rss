@@ -377,6 +377,68 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
     expect(result.items[0].ogImage).toBe("https://example.com/explicit.jpg");
   });
 
+  test("危険な image の場合は安全な banner_image を ogImage に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          image: "javascript:alert(1)",
+          banner_image: "https://example.com/banner.jpg",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("https://example.com/banner.jpg");
+  });
+
+  test("危険な上位候補と画像 attachment を飛ばして安全な attachment を使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          image: "javascript:alert(1)",
+          banner_image: "data:image/png;base64,unsafe",
+          attachments: [
+            { url: "vbscript:msgbox(1)", mime_type: "image/png" },
+            { url: "https://example.com/safe.webp", mime_type: "image/webp" },
+          ],
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("https://example.com/safe.webp");
+  });
+
+  test("すべての画像候補が危険な場合は ogImage を空にする", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "https://example.com/1",
+          title: "記事",
+          content_html: "<p>本文</p>",
+          image: "javascript:alert(1)",
+          banner_image: "data:image/png;base64,unsafe",
+          attachments: [{ url: "vbscript:msgbox(1)", mime_type: "image/png" }],
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].ogImage).toBe("");
+  });
+
   test("非画像 attachment を ogImage に使用しない", () => {
     const feed = JSON.stringify({
       version: "https://jsonfeed.org/version/1.1",

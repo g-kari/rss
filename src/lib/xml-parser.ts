@@ -425,17 +425,21 @@ function isJsonFeedVersion(version: string): boolean {
 }
 
 function getJsonFeedImage(item: JsonFeedItem): string {
-  if (item.image) return item.image;
-  if (item.banner_image) return item.banner_image;
+  const image = safeUrl(item.image ?? "");
+  if (image) return image;
 
-  return (
-    item.attachments?.find(
-      (attachment) =>
-        typeof attachment.url === "string" &&
-        typeof attachment.mime_type === "string" &&
-        attachment.mime_type.toLowerCase().startsWith("image/"),
-    )?.url ?? ""
-  );
+  const bannerImage = safeUrl(item.banner_image ?? "");
+  if (bannerImage) return bannerImage;
+
+  for (const attachment of item.attachments ?? []) {
+    if (typeof attachment.mime_type !== "string") continue;
+    if (!attachment.mime_type.toLowerCase().startsWith("image/")) continue;
+
+    const attachmentUrl = safeUrl(attachment.url ?? "");
+    if (attachmentUrl) return attachmentUrl;
+  }
+
+  return "";
 }
 
 function getJsonFeedLanguage(itemLanguage: unknown, feedLanguage: unknown): string {
@@ -469,7 +473,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       link,
       summary,
       content,
-      ogImage: safeUrl(getJsonFeedImage(item)),
+      ogImage: getJsonFeedImage(item),
       author,
       publishedAt: parseDate(item.date_published ?? item.date_modified ?? null),
       categories: item.tags ?? [],
