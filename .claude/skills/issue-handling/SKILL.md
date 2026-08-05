@@ -44,13 +44,13 @@ done
 
 **判定**: 最新コメントが以下の **アクション語** を含むなら、**着手対象としてリスト化** (ラベル付きなら `gh issue edit N --remove-label needs-user-decision` で解除も同時に):
 
-| カテゴリ | 検出語の例 |
-|---|---|
-| 案採用 | 「案A」「案 A で」「案A採用」「これで」「これで進めて」「これで実装」 |
-| 実装指示 | 「実装して」「やって」「進めて」「実装しておけ」「実装していいぞ」 |
-| シンプル承認 | 「OK」「おｋ」「いいぞ」「お願い」「承知」「了解」 |
-| 採用宣言 | 「@<package> 採用」「<lib> 使う」「<model> でいく」 |
-| 明示的拒否 | 「**判断を求めるな**」「いちいち聞くな」 — 即解除 + 以降そのカテゴリで判断仰ぎ禁止 |
+| カテゴリ     | 検出語の例                                                                         |
+| ------------ | ---------------------------------------------------------------------------------- |
+| 案採用       | 「案A」「案 A で」「案A採用」「これで」「これで進めて」「これで実装」              |
+| 実装指示     | 「実装して」「やって」「進めて」「実装しておけ」「実装していいぞ」                 |
+| シンプル承認 | 「OK」「おｋ」「いいぞ」「お願い」「承知」「了解」                                 |
+| 採用宣言     | 「@<package> 採用」「<lib> 使う」「<model> でいく」                                |
+| 明示的拒否   | 「**判断を求めるな**」「いちいち聞くな」 — 即解除 + 以降そのカテゴリで判断仰ぎ禁止 |
 
 **ラベル維持 OK のケース**:
 
@@ -127,10 +127,10 @@ done
 
 **ユーザーコメントなしの Issue でも、設計判断が不要なら方針コメント (案 A/B/C 提示) を投稿せず直接実装に着手する**。「案 A/B/C 提示 → ユーザー判断 → 実装」のテンプレート運用を全 Issue に機械的に適用すると、本来 AI が判断できる案件もユーザーへの判断負荷をかけてしまう。本サイクル運用ルール (2026-05-11 更新):
 
-| 判断必要? | 判定基準 (1 つでも YES) | アクション |
-|---|---|---|
-| **YES** | 新規 npm/dep 追加 (`package.json` deps 追加) / 新規 infra (wasm / IndexedDB / Service Worker) / 新規 R2 / KV / D1 key / セキュリティ判断 (CSP 緩和 / SSRF whitelist) / モデル / API 選定 / UX 主観評価要 / 新規 asset (画像 / 音声) 追加 | **`needs-user-decision` ラベル付与** + 設計方針コメント投稿 |
-| **NO** | 既存 pattern の延長 / 純粋関数 + TDD で書ける / touch ≤ 5 ファイル / 機能変化なし or 既存挙動互換 / 復元可能 (git revert で戻せる) | **直接実装に着手** (方針コメント不要、サイクル内クローズを目標) |
+| 判断必要? | 判定基準 (1 つでも YES)                                                                                                                                                                                                                  | アクション                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **YES**   | 新規 npm/dep 追加 (`package.json` deps 追加) / 新規 infra (wasm / IndexedDB / Service Worker) / 新規 R2 / KV / D1 key / セキュリティ判断 (CSP 緩和 / SSRF whitelist) / モデル / API 選定 / UX 主観評価要 / 新規 asset (画像 / 音声) 追加 | **`needs-user-decision` ラベル付与** + 設計方針コメント投稿     |
+| **NO**    | 既存 pattern の延長 / 純粋関数 + TDD で書ける / touch ≤ 5 ファイル / 機能変化なし or 既存挙動互換 / 復元可能 (git revert で戻せる)                                                                                                       | **直接実装に着手** (方針コメント不要、サイクル内クローズを目標) |
 
 **判定の優先順位**: 1 つでも YES (= ユーザー判断必須) なら投稿テンプレート使用。すべて NO なら自走。
 
@@ -156,12 +156,14 @@ gh issue edit N --add-label needs-user-decision
 ```
 
 **反例 (判断不要 = 自走対象の典型)**:
+
 - 「list と detail で表示が違う」「特定 feed で画像が小さい」型のバグ修正 (root cause 特定 + 既存 pattern で修正)
 - 規範違反の sweep (旧 pattern → 新 pattern の機械的置換)
 - 純粋関数追加 + 既存 caller 1 箇所統合 (#718 x.com fallback 型)
 - e2e spec の重複定義集約 (#711 helpers 型)
 
 **判断必要 = 仰ぎ対象の典型**:
+
 - 新規エンドポイント追加 (例: `/api/video-proxy` の MIME / サイズ / cache 設計)
 - 新規 dev dependency 採用 (例: `vitest` / `@testing-library/react`)
 - 新規 infra 採用 (例: Piper wasm / Media Session + 無音 audio)
@@ -187,11 +189,11 @@ gh issue list --state open --limit 1 --json number
 
 **候補の選び方**: 次の順番を固定せず、実コードで最も根拠が強い候補を 1 件だけ選ぶ。
 
-| カテゴリ | 採用条件 | 必須の完了証拠 |
-|---|---|---|
-| 新規機能開発 | 既存機能・既存 UI・既存 API の自然な延長で、要件を客観的に確定できる | 追加した振る舞いを固定するテスト |
-| リファクタリング | 重複、dead code、責務過多、既存規範からの drift を実コードで確認できる | 既存テスト pass + 挙動不変の説明 |
-| パフォーマンス改善 | hot path、不要な再計算・I/O・render、アルゴリズム上の無駄を特定できる | before/after の時間、処理回数、計算量のいずれか |
+| カテゴリ           | 採用条件                                                               | 必須の完了証拠                                  |
+| ------------------ | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| 新規機能開発       | 既存機能・既存 UI・既存 API の自然な延長で、要件を客観的に確定できる   | 追加した振る舞いを固定するテスト                |
+| リファクタリング   | 重複、dead code、責務過多、既存規範からの drift を実コードで確認できる | 既存テスト pass + 挙動不変の説明                |
+| パフォーマンス改善 | hot path、不要な再計算・I/O・render、アルゴリズム上の無駄を特定できる  | before/after の時間、処理回数、計算量のいずれか |
 
 **自走条件**:
 
@@ -293,6 +295,7 @@ commit `<short-hash>` (`<commit message subject>`) で既に完了:
 
    a. **hit あり (1 件以上)** → 既に投稿済、新規 scope-reduction コメント投稿は **skip** (重複ノイズ防止) + 残課題 scope 再判定のみ実施
    b. **hit なし** → 新規 scope-reduction コメント投稿 + 残課題 scope を再判定 (自走可能 / 判断仰ぎ継続)
+
 4. 未発見 → 通常の自走着手フロー
 5. **scope-reduction コメント投稿は新規 code change 不要** (本文整理のみ、merge / push 不要)
 
@@ -339,16 +342,16 @@ commit `<short-hash>` (`<commit message subject>`) で既に完了:
 
 **判定キーワード** (AI 自走 5 条件全充足 = 判断不要):
 
-| エージェント finding 種別                       | 判断要否                              |
-| ----------------------------------------------- | ------------------------------------- |
-| 既存 sibling pattern 流用 (signature 化 等)     | **不要** (自走着手)                   |
-| 既存 helper / hook 集約 (重複削減)              | **不要** (自走着手)                   |
-| 規範違反 sweep (旧 pattern → 新 pattern 機械的) | **不要** (自走着手)                   |
-| dead code / unused export 削除                  | **不要** (自走着手)                   |
-| docs drift / 型注釈追加                         | **不要** (自走着手)                   |
-| 新規 hook / component 追加 + UX 変化            | **必要** (判断仰ぐ)                   |
-| API endpoint 追加 / schema 変更                 | **必要** (判断仰ぐ)                   |
-| 依存ライブラリ追加 / 乗り換え                   | **必要** (判断仰ぐ)                   |
+| エージェント finding 種別                       | 判断要否            |
+| ----------------------------------------------- | ------------------- |
+| 既存 sibling pattern 流用 (signature 化 等)     | **不要** (自走着手) |
+| 既存 helper / hook 集約 (重複削減)              | **不要** (自走着手) |
+| 規範違反 sweep (旧 pattern → 新 pattern 機械的) | **不要** (自走着手) |
+| dead code / unused export 削除                  | **不要** (自走着手) |
+| docs drift / 型注釈追加                         | **不要** (自走着手) |
+| 新規 hook / component 追加 + UX 変化            | **必要** (判断仰ぐ) |
+| API endpoint 追加 / schema 変更                 | **必要** (判断仰ぐ) |
+| 依存ライブラリ追加 / 乗り換え                   | **必要** (判断仰ぐ) |
 
 主な使用箇所: 監査エージェント finding を「案 A/B/C 整理 + needs-user-decision 付与」で起票したが、実は AI 自走 5 条件全充足だった Issue 群 (sibling pattern 流用 / 既存 helper 集約タイプ) — 本派生ケースで「監査 finding でも Step 4 を必ず実行 + 自走条件充足なら起票時から付与しない」を codify、retroactive 着手は信頼性を損ねるため次サイクル以降に持ち越し
 
@@ -460,7 +463,9 @@ commit `<short-hash>` (`<commit message subject>`) で既に完了:
 タイトル「<title>」と本文「<body>」から推測した案を整理します:
 
 ### 案 A: <推測>
+
 ### 案 B: <推測>
+
 ### 案 X (推定): <推測 + ユーザー指摘の理由を引用>
 
 実装着手前に **どれが案 X のご認識か** ご確認いただけますと幸いです。または別案があれば追記ください。
@@ -523,17 +528,19 @@ Phase 分離 Issue が全 Phase 完了したとき (= Issue close するとき) 
 ```markdown
 ## 完了内容 (N commit / M サイクル跨り)
 
-| Phase | commit | 内容 |
-|-------|--------|------|
-| A | commit-hash-1 | infra 導入 + smoke test |
-| B-1 | commit-hash-2 | 主要機能テスト N ケース |
-| B-2 | commit-hash-3 | 派生機能テスト N ケース |
-| C | commit-hash-4 | pre-commit hook / 配線 |
+| Phase | commit        | 内容                    |
+| ----- | ------------- | ----------------------- |
+| A     | commit-hash-1 | infra 導入 + smoke test |
+| B-1   | commit-hash-2 | 主要機能テスト N ケース |
+| B-2   | commit-hash-3 | 派生機能テスト N ケース |
+| C     | commit-hash-4 | pre-commit hook / 配線  |
 
 ## 最終 [metric]
+
 (test 件数 / カバレッジ / 性能数値等)
 
 ## 元 Issue で残した余地
+
 - **Phase X.5**: <内容> — <優先度判定>
 - **新規 <category> の追加**: 個別 Issue 起票時に随時
 ```
@@ -602,11 +609,11 @@ git push origin master                                 # ← その後 push (clo
 
 **判定軸 (ラベル解除タイミング)**:
 
-| 状況                                            | アクション                                                              |
-| ----------------------------------------------- | ----------------------------------------------------------------------- |
-| 採用案で実装着手 + master push 前               | **push 前にラベル解除** (本派生ケース canonical)                        |
-| `gh issue close --comment` 方式 (B 方式)        | `gh issue close` 実行で同時解除可能 (`--remove-label` flag 併用)        |
-| 既に closed 済で stale ラベル発見               | `gh issue edit --remove-label` で個別解除 + sweep ローテーション組込    |
+| 状況                                     | アクション                                                           |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| 採用案で実装着手 + master push 前        | **push 前にラベル解除** (本派生ケース canonical)                     |
+| `gh issue close --comment` 方式 (B 方式) | `gh issue close` 実行で同時解除可能 (`--remove-label` flag 併用)     |
+| 既に closed 済で stale ラベル発見        | `gh issue edit --remove-label` で個別解除 + sweep ローテーション組込 |
 
 **How to apply**: 採用案で実装着手 + `closes #N` で自動クローズする commit を master push するとき (close 時のラベル解除漏れは Issue tracker sanity を劣化させ、後の sweep で stale label noise を生む):
 
@@ -805,6 +812,7 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 `ArticleList` の `resolveThumbnail` (一覧) と `ArticleContentBody` (詳細) のように、**同じ「記事のサムネ画像」というデータを別の解決ロジック** で扱う sibling 経路は、片方が更新されてもう片方が取り残されると **「一覧に出る画像と詳細に出る画像が違う」UX バグ** を生む。
 
 典型的な divergence パターン:
+
 - 一覧: `ogpCache[link] ?? article.ogImage ?? youtube_fallback` (キャッシュ優先)
 - 詳細: `article.ogImage ?? resolvedOgImage` (RSS 値優先)
 
@@ -819,6 +827,7 @@ UX/バグ修正で「あっちの hook と同じパターンを使えば直る�
 5. UI bug 報告では「一覧では大きい画像、詳細では小さい画像」など **divergence の症状** が出やすいので、bug 受信時にまず両 view 経路を比較
 
 検出 grep 例 (sibling 経路で同じ field を読んでいる箇所):
+
 ```bash
 # article.ogImage / article.thumb / article.summary などを使う場所を sibling 経路ごとに列挙
 grep -rn "article\.ogImage\|article\.thumb\|article\.summary" src/components/article-list-body/ src/components/article-view/
@@ -949,12 +958,12 @@ grep -n "<SymbolName>" <file-containing-export>
 
 **判定パターン** (本派生サブケース で表を拡張):
 
-| cross-file 参照 | same-file internal caller | spec 参照 | 判定                                                |
-| --------------- | ------------------------- | --------- | --------------------------------------------------- |
-| 0 件            | 0 件                      | 0 件      | **真の dead** (export 削除 + helper も削除可)       |
+| cross-file 参照 | same-file internal caller | spec 参照 | 判定                                                             |
+| --------------- | ------------------------- | --------- | ---------------------------------------------------------------- |
+| 0 件            | 0 件                      | 0 件      | **真の dead** (export 削除 + helper も削除可)                    |
 | 0 件            | 1+ 件                     | 0 件      | **export keyword 削除可** (module-private 化、helper 自体は保持) |
-| 0 件            | 1+ 件                     | 1+ 件     | **export 維持** (spec が internal helper を import) |
-| 1+ 件           | -                         | -         | dead でない (cross-file 利用中)                     |
+| 0 件            | 1+ 件                     | 1+ 件     | **export 維持** (spec が internal helper を import)              |
+| 1+ 件           | -                         | -         | dead でない (cross-file 利用中)                                  |
 
 **How to apply**: dead export 監査エージェント report 受領時に必ず実行 (エージェントは cross-file grep のみで「production caller 0」と判定するが、same-file internal caller を見落とすケースが頻発、本サブケース verify なしで採用すると false positive のまま Issue 起票 / 着手 / 削除実装に進む):
 
@@ -1216,22 +1225,22 @@ TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階�
 
 判定条件 (全充足で同サイクル即時自走 OK):
 
-| 条件                | 通常版                | 案 B 現状維持系                                                                          |
-| ------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
-| 1. 最小スコープ     | touch ≤ 5             | touch ≤ 5                                                                                |
-| 2. 最安全           | 機能変化なし          | **コメント追加のみ / dead code 削除 (production caller 0)**                              |
-| 3. 推奨案明示済     | 案 A 推奨             | **案 B = 現状維持 + 明示コメント / dead code 削除を AI 自身が推奨**                      |
-| 4. 復元可能         | git log + Issue 履歴  | **git revert で 1 commit 巻き戻し可**                                                    |
-| 5. 数サイクル経過   | N=3 程度              | **免除 (機能変化なし = 判断保留と機能的に等価)**                                         |
+| 条件              | 通常版               | 案 B 現状維持系                                                     |
+| ----------------- | -------------------- | ------------------------------------------------------------------- |
+| 1. 最小スコープ   | touch ≤ 5            | touch ≤ 5                                                           |
+| 2. 最安全         | 機能変化なし         | **コメント追加のみ / dead code 削除 (production caller 0)**         |
+| 3. 推奨案明示済   | 案 A 推奨            | **案 B = 現状維持 + 明示コメント / dead code 削除を AI 自身が推奨** |
+| 4. 復元可能       | git log + Issue 履歴 | **git revert で 1 commit 巻き戻し可**                               |
+| 5. 数サイクル経過 | N=3 程度             | **免除 (機能変化なし = 判断保留と機能的に等価)**                    |
 
 **該当する典型 ケース**:
 
-| 案 B の内容                                              | 例                                                                                |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 規範違反 sibling drift 維持を JSDoc で明示               | `useModalFocusTrap` canonical pattern 統合見送り + capture-phase 意図 statement   |
-| 依存ライブラリ削除後の dead lib + 専用 spec 削除         | masonic 削除後の gallery-offviewport lib + spec                                   |
-| 純粋関数 sibling 差異の意図性 JSDoc 明示                 | sibling 純粋関数 fallback chain 差異の意図性明示                                  |
-| `architecture.md` / docs から削除済 file の記述 削除     | docs drift 後追い同期                                                             |
+| 案 B の内容                                          | 例                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 規範違反 sibling drift 維持を JSDoc で明示           | `useModalFocusTrap` canonical pattern 統合見送り + capture-phase 意図 statement |
+| 依存ライブラリ削除後の dead lib + 専用 spec 削除     | masonic 削除後の gallery-offviewport lib + spec                                 |
+| 純粋関数 sibling 差異の意図性 JSDoc 明示             | sibling 純粋関数 fallback chain 差異の意図性明示                                |
+| `architecture.md` / docs から削除済 file の記述 削除 | docs drift 後追い同期                                                           |
 
 **How to apply**: 同サイクル起票で Step 4 判断必要スクリーニング後に「推奨案 = 案 B 現状維持系」と判定したら (条件 5 サイクル経過の主目的「判断保留中の独断進行を避ける」は機能変化なし変更には適用されない、案 B 現状維持系は機能的に「判断保留状態 + 規範整合性向上」と等価で即時自走しても actionable 進捗を生むだけ):
 
@@ -1265,11 +1274,11 @@ TTS wasm 採用判断のように、ユーザーが「案 X 採用」「段階�
 
 **該当する典型ケース**:
 
-| 推奨案タイプ                                    | 例                                                                                |
-| ----------------------------------------------- | --------------------------------------------------------------------------------- |
-| 案 C = suppress comment + 防御強化 (production 無影響) | code-scanning alerts 抑制 (e2e spec fixture に `// lgtm[js/redos]` + regex `</script\s*>` 拡張) |
-| Phase N = docs only (architecture.md 章追加 / subsection 追加) | hooks 層設計 / lib グループ化 / 命名規則 章追加 (N は番号不問、Phase 1 でも Phase 2 でも該当)  |
-| 案 B = 現状維持 + 規範整合性向上 (他サイクル起票)     | docs sync / dead code 削除 / sibling drift 意図明示 JSDoc                        |
+| 推奨案タイプ                                                   | 例                                                                                              |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 案 C = suppress comment + 防御強化 (production 無影響)         | code-scanning alerts 抑制 (e2e spec fixture に `// lgtm[js/redos]` + regex `</script\s*>` 拡張) |
+| Phase N = docs only (architecture.md 章追加 / subsection 追加) | hooks 層設計 / lib グループ化 / 命名規則 章追加 (N は番号不問、Phase 1 でも Phase 2 でも該当)   |
+| 案 B = 現状維持 + 規範整合性向上 (他サイクル起票)              | docs sync / dead code 削除 / sibling drift 意図明示 JSDoc                                       |
 
 **How to apply**: Step 0 sweep で全 open Issue が判断待ち滞留状態でも (代替 4 条件で「`needs-user-decision` ラベル付き = ユーザー UX 判断必須」の機械的解釈を緩和、AI が自信を持って推奨明示済 + production 無影響なら自走 5 条件と整合):
 
@@ -1378,17 +1387,17 @@ R2 / KV / D1 などの Cloudflare サービスを新たに使う設計変更の 
 
 ### 案 A: <現行 / 低コスト案>
 
-| 操作 | 単価 | 月次推定 |
-| ---- | ---- | -------- |
-| R2 GET | $0.36 / 100万 | ~$X |
-| ...合計 | | **~$X/月** |
+| 操作    | 単価          | 月次推定   |
+| ------- | ------------- | ---------- |
+| R2 GET  | $0.36 / 100万 | ~$X        |
+| ...合計 |               | **~$X/月** |
 
 ### 案 B: <代替 / 高機能案>
 
-| 操作 | 単価 | 月次推定 |
-| ---- | ---- | -------- |
-| R2 GET | $0.36 / 100万 | ~$X |
-| ...合計 | | **~$X/月** |
+| 操作    | 単価          | 月次推定   |
+| ------- | ------------- | ---------- |
+| R2 GET  | $0.36 / 100万 | ~$X        |
+| ...合計 |               | **~$X/月** |
 
 ## 推奨
 
@@ -1401,14 +1410,14 @@ R2 / KV / D1 などの Cloudflare サービスを新たに使う設計変更の 
 
 ### コスト試算の基準単価 (Cloudflare Workers, 2025 年時点)
 
-| サービス | 操作 | 単価 |
-| -------- | ---- | ---- |
-| R2 | GET (Class B) | $0.36 / 100万リクエスト |
-| R2 | PUT/DELETE (Class A) | $4.50 / 100万リクエスト |
-| R2 | ストレージ | $0.015 / GB / 月 |
-| KV | 読み取り | $0.50 / 100万リクエスト |
-| KV | 書き込み | $5.00 / 100万リクエスト |
-| Workers | CPU 時間 | $0.02 / 100万リクエスト (Paid plan 超過分) |
+| サービス | 操作                 | 単価                                       |
+| -------- | -------------------- | ------------------------------------------ |
+| R2       | GET (Class B)        | $0.36 / 100万リクエスト                    |
+| R2       | PUT/DELETE (Class A) | $4.50 / 100万リクエスト                    |
+| R2       | ストレージ           | $0.015 / GB / 月                           |
+| KV       | 読み取り             | $0.50 / 100万リクエスト                    |
+| KV       | 書き込み             | $5.00 / 100万リクエスト                    |
+| Workers  | CPU 時間             | $0.02 / 100万リクエスト (Paid plan 超過分) |
 
 **How to apply**: 設計変更 Issue (新規 R2 key / KV 追加 / D1 採用 / Cron 頻度変更等) に初めて設計方針コメントを投稿するとき (コスト trial な変更でも月次試算が「桁感」として有用、$0 vs $1/月 vs $10/月 の差は早期に議論する価値あり):
 
