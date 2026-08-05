@@ -119,7 +119,8 @@ async function buildArticlesFromItems(
   items: ParsedItem[],
 ): Promise<{ articles: Article[]; existingLatest: Article[] }> {
   const existingLatest = await readLatestArticles(bucket, meta.feedHash);
-  const existingById = new Map(existingLatest.map((a) => [a.id, a]));
+  const existingById = new Map<string, Article>();
+  for (const article of existingLatest) existingById.set(article.id, article);
   const articles = await Promise.all(
     items.map((item) => buildArticle(item, meta.feedHash, meta.url, existingById)),
   );
