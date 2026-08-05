@@ -246,12 +246,13 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
       return (article.guid ?? "").toLowerCase();
     case "published":
       return (article.publishedAt ?? "").toLowerCase();
-    case "language":
-      return (article.metadata ?? [])
-        .filter((entry) => LANGUAGE_METADATA_KEYS.has(entry.key.toLowerCase()))
-        .map((entry) => entry.value)
-        .join(" ")
-        .toLowerCase();
+    case "language": {
+      const values: string[] = [];
+      for (const entry of article.metadata ?? []) {
+        if (LANGUAGE_METADATA_KEYS.has(entry.key.toLowerCase())) values.push(entry.value);
+      }
+      return values.join(" ").toLowerCase();
+    }
     case "metadata":
       return (article.metadata ?? [])
         .map((entry) => `${entry.key} ${entry.value}`)
