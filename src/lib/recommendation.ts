@@ -1,11 +1,13 @@
 import type {
+  Article,
+  EngagementEntry,
   EngagementLog,
   RecommendedFeed,
   RecommendationCache,
   UserSubscription,
 } from "../types";
 import { r2Get, r2Put, sha256Hex, engagementKey, userKey } from "./r2";
-import { scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
+import { rankEngagedArticleIds, scoreFeedEngagement, topScoredFeeds } from "./engagement-score";
 import { discoverFeedUrl } from "./feed-discovery";
 import { buildFeedUserMap, readFeedMeta, readLatestArticles, R2_CONCURRENCY } from "./shared-feed";
 import { pMap } from "./concurrency";
@@ -48,6 +50,38 @@ export function sanitizeForPrompt(text: string, maxLength = 120): string {
       .trim()
       .slice(0, maxLength)
   );
+}
+
+/**
+ * AI 興味推定へ渡す記事タイトルを、実際の行動シグナル優先で選択する。
+ * 行動対象が不足する場合は入力順（最新記事順）の記事で補完する。
+ */
+export function selectInterestArticleTitles(
+  articles: Article[],
+  engagementEntries: EngagementEntry[],
+  feedHash: string,
+  limit = 5,
+  now?: number,
+): string[] {
+  if (limit <= 0) return [];
+
+  const articleById = new Map(articles.map((article) => [article.id, article]));
+  const engagedArticles = rankEngagedArticleIds(engagementEntries, feedHash, now).flatMap((id) => {
+    const article = articleById.get(id);
+    return article ? [article] : [];
+  });
+  const selected: string[] = [];
+  const seenTitles = new Set<string>();
+
+  for (const article of [...engagedArticles, ...articles]) {
+    const title = article.title.trim();
+    if (!title || seenTitles.has(title)) continue;
+    seenTitles.add(title);
+    selected.push(title);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
 }
 
 /** フィード URL とプレフィックスから短縮 ID を生成する */
@@ -144,14 +178,12 @@ export async function extractUserTopics(
         readFeedMeta(bucket, feedHash),
         readLatestArticles(bucket, feedHash),
       ]);
-      return { meta, articles };
+      return { feedHash, meta, articles };
     }),
   );
-  for (const { meta, articles } of topFeedData) {
+  for (const { feedHash, meta, articles } of topFeedData) {
     if (meta?.title) feedTitles.push(meta.title);
-    for (const a of articles.slice(0, 5)) {
-      articleTitles.push(a.title);
-    }
+    articleTitles.push(...selectInterestArticleTitles(articles, engagement.entries, feedHash));
   }
 
   // 多様性確保: エンゲージメント上位以外の購読フィードからもランダムにサンプリング

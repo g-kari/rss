@@ -49,6 +49,28 @@ export function scoreFeedEngagement(entries: EngagementEntry[], now?: number): M
 }
 
 /**
+ * 指定フィードの記事 ID をエンゲージメントスコア降順で返す。
+ * フィード集計と同じアクション重み・時間減衰を使い、AI 興味推定などの記事選択に利用する。
+ */
+export function rankEngagedArticleIds(
+  entries: EngagementEntry[],
+  feedHash: string,
+  now?: number,
+): string[] {
+  const scores = new Map<string, number>();
+  const currentTime = now ?? Date.now();
+
+  for (const entry of entries) {
+    if (entry.feedHash !== feedHash) continue;
+    const score = ACTION_WEIGHTS[entry.action] * timeDecay(entry.timestamp, currentTime);
+    if (!Number.isFinite(score) || score <= 0) continue;
+    scores.set(entry.articleId, (scores.get(entry.articleId) ?? 0) + score);
+  }
+
+  return [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([articleId]) => articleId);
+}
+
+/**
  * スコア上位のフィードハッシュをスコア降順で返す。
  * minScore 未満のフィードは除外する（デフォルト 0.1）。
  */
