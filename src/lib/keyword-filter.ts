@@ -135,14 +135,24 @@ export function normalizeFilter(filter: KeywordFilter): CompiledKeywordFilter {
       return [kw, null];
     }
   };
-  const includeCompiled = filter.include.map(compileKeyword);
-  const excludeCompiled = filter.exclude.map(compileKeyword);
+  const compileKeywords = (keywords: string[]) => {
+    const normalized: string[] = [];
+    const patterns: (RegExp | null)[] = [];
+    for (const keyword of keywords) {
+      const [value, pattern] = compileKeyword(keyword);
+      normalized.push(value);
+      patterns.push(pattern);
+    }
+    return { normalized, patterns };
+  };
+  const includeCompiled = compileKeywords(filter.include);
+  const excludeCompiled = compileKeywords(filter.exclude);
   return {
     ...filter,
-    include: includeCompiled.map(([kw]) => kw),
-    exclude: excludeCompiled.map(([kw]) => kw),
-    includePatterns: includeCompiled.map(([, p]) => p),
-    excludePatterns: excludeCompiled.map(([, p]) => p),
+    include: includeCompiled.normalized,
+    exclude: excludeCompiled.normalized,
+    includePatterns: includeCompiled.patterns,
+    excludePatterns: excludeCompiled.patterns,
   };
 }
 
