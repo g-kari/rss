@@ -7,7 +7,9 @@ import {
   articleToMarkdown,
   articleToMarkdownCitation,
   articleToMarkdownLink,
+  buildArticleMarkdownFile,
 } from "../../lib/html-to-markdown";
+import { downloadBlob } from "../../lib/download";
 import { buildObsidianUri } from "../../lib/obsidian";
 import { isAbortError } from "../../lib/fetch";
 import { devError } from "../../lib/dev-log";
@@ -274,6 +276,46 @@ export default function ShareMenu({ article, feed, contentHtml }: Props) {
                   <path d="M7 15V9l2.5 3 2.5-3v6M16 9v6M13 12h6" />
                 </svg>
                 Markdown 全文コピー
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  try {
+                    const { content, filename } = buildArticleMarkdownFile(
+                      article,
+                      feed,
+                      contentHtml,
+                    );
+                    downloadBlob(
+                      new Blob([content], { type: "text/markdown; charset=utf-8" }),
+                      filename,
+                    );
+                    setOpen(false);
+                    btnRef.current?.focus();
+                    toast.success("Markdown をダウンロードしました");
+                  } catch (err) {
+                    devError("[ShareMenu] markdown download failed", err);
+                    toast.error("Markdown のダウンロードに失敗しました");
+                  }
+                }}
+                className={MENU_ITEM_CLS}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M4 20h16" />
+                </svg>
+                Markdown をダウンロード
               </button>
               <button
                 role="menuitem"

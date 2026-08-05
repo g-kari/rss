@@ -9,6 +9,7 @@
 
 import { parseHTML } from "linkedom/worker";
 import type { Article, Feed } from "@/types";
+import { sanitizeObsidianFilename } from "@/lib/obsidian";
 
 // ===== DOM 抽象化 =====
 
@@ -326,4 +327,17 @@ export function articleToMarkdown(article: Article, feed: Feed, contentHtml?: st
   const body = bodyHtml ? htmlToMarkdown(bodyHtml) : "";
 
   return [frontmatter, "", body].filter(Boolean).join("\n");
+}
+
+/** 記事の Markdown ダウンロード用コンテンツと安全なファイル名を生成する。 */
+export function buildArticleMarkdownFile(
+  article: Article,
+  feed: Feed,
+  contentHtml?: string,
+): { content: string; filename: string } {
+  const basename = sanitizeObsidianFilename(article.title) || "article";
+  return {
+    content: articleToMarkdown(article, feed, contentHtml),
+    filename: `${basename}.md`,
+  };
 }

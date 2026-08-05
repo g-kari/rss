@@ -2,11 +2,33 @@ import { test, expect } from "@playwright/test";
 import {
   articleToMarkdownCitation,
   articleToMarkdown,
+  buildArticleMarkdownFile,
   generateFrontmatter,
   htmlToMarkdown,
 } from "../src/lib/html-to-markdown";
 import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
+
+// ===== buildArticleMarkdownFile =====
+
+test.describe("buildArticleMarkdownFile — 記事ファイル生成", () => {
+  test("安全な .md ファイル名と frontmatter + 本文を返す", () => {
+    const article = makeArticle({ title: 'repo/name: "test" <#1>' });
+    const feed = makeFeed({ title: "技術ブログ" });
+
+    const result = buildArticleMarkdownFile(article, feed, "<p>保存する本文</p>");
+
+    expect(result.filename).toBe("repo-name- test 1.md");
+    expect(result.content).toContain("title: 'repo/name: \"test\" <#1>'");
+    expect(result.content).toContain("保存する本文");
+  });
+
+  test("タイトルが空の場合は article.md を使う", () => {
+    const article = makeArticle({ title: "" });
+
+    expect(buildArticleMarkdownFile(article, makeFeed()).filename).toBe("article.md");
+  });
+});
 
 // ===== articleToMarkdownCitation =====
 
