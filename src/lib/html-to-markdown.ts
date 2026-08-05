@@ -67,7 +67,7 @@ function nodeToMarkdown(node: DOMNode, depth = 0): string {
   if (node.nodeType !== ELEMENT_NODE) return "";
 
   const tag = node.nodeName.toLowerCase();
-  const children = () => node.childNodes.map((c) => nodeToMarkdown(c, depth)).join("");
+  const children = () => nodeChildrenToMarkdown(node.childNodes, depth);
 
   switch (tag) {
     // ルートラッパー
@@ -214,7 +214,9 @@ function nodeToMarkdown(node: DOMNode, depth = 0): string {
 }
 
 function nodeChildrenToMarkdown(nodes: DOMNode[], depth: number): string {
-  return nodes.map((c) => nodeToMarkdown(c, depth)).join("");
+  let result = "";
+  for (const node of nodes) result += nodeToMarkdown(node, depth);
+  return result;
 }
 
 function nodeToPlainText(node: DOMNode): string {
@@ -222,7 +224,7 @@ function nodeToPlainText(node: DOMNode): string {
   if (node.nodeType !== ELEMENT_NODE) return "";
 
   const tag = node.nodeName.toLowerCase();
-  const children = () => node.childNodes.map(nodeToPlainText).join("");
+  const children = () => nodeChildrenToPlainText(node.childNodes);
 
   switch (tag) {
     case "script":
@@ -254,6 +256,12 @@ function nodeToPlainText(node: DOMNode): string {
     default:
       return children();
   }
+}
+
+function nodeChildrenToPlainText(nodes: DOMNode[]): string {
+  let result = "";
+  for (const node of nodes) result += nodeToPlainText(node);
+  return result;
 }
 
 // ===== 公開 API =====
