@@ -184,15 +184,17 @@ export function toArray<T>(val: T | T[] | undefined): T[] {
  * alternate 相当がなければ従来どおり最初の non-self link へフォールバックする。
  */
 function getAtomAlternateHref(links: XmlAttr[]): string {
-  return (
-    links.find((link) => {
-      const rel = link["@_rel"];
-      return rel === undefined || rel === "alternate";
-    })?.["@_href"] ??
-    links.find((link) => link["@_rel"] !== "self")?.["@_href"] ??
-    links[0]?.["@_href"] ??
-    ""
-  );
+  let firstNonSelf: XmlAttr | undefined;
+
+  for (const link of links) {
+    const rel = link["@_rel"];
+    if (rel === undefined || rel === "alternate") {
+      return link["@_href"] ?? firstNonSelf?.["@_href"] ?? links[0]?.["@_href"] ?? "";
+    }
+    if (!firstNonSelf && rel !== "self") firstNonSelf = link;
+  }
+
+  return firstNonSelf?.["@_href"] ?? links[0]?.["@_href"] ?? "";
 }
 
 /**
