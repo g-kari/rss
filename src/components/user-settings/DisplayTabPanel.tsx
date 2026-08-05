@@ -23,6 +23,10 @@ import type { Theme } from "../../hooks/useThemePreference";
 import { useState } from "react";
 import { useTextInputModal } from "../../hooks/useTextInputModal";
 import TextInputModal from "../TextInputModal";
+import { useToast } from "../../contexts/ToastContext";
+import { buildThemePresetsJsonFile } from "../../lib/export-json";
+import { downloadBlob } from "../../lib/download";
+import { devError } from "../../lib/dev-log";
 
 interface DisplayTabPanelProps {
   hidden: boolean;
@@ -118,6 +122,7 @@ export default function DisplayTabPanel({
   headerShareTargetIds,
   setHeaderShareTargetIds,
 }: DisplayTabPanelProps) {
+  const toast = useToast();
   const { presets, savePreset, deletePreset } = useThemePresets();
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const { requestTextInput, textInputModalProps } = useTextInputModal();
@@ -147,6 +152,18 @@ export default function DisplayTabPanel({
     });
     if (name === null) return;
     savePreset(name, { theme, fontSize, fontFamily, lineHeight, contentWidth });
+  };
+
+  const handlePresetsExport = () => {
+    if (presets.length === 0) return;
+    try {
+      const { content, filename } = buildThemePresetsJsonFile(presets);
+      downloadBlob(new Blob([content], { type: "application/json; charset=utf-8" }), filename);
+      toast.success("テーマプリセットをバックアップしました");
+    } catch (err) {
+      devError("[DisplayTabPanel] theme presets export failed", err);
+      toast.error("テーマプリセットのバックアップに失敗しました");
+    }
   };
 
   return (
@@ -198,6 +215,14 @@ export default function DisplayTabPanel({
                 className="px-2.5 py-1 text-[11px] rounded-md border border-border-default text-text-default hover:bg-surface-hover transition-colors"
               >
                 現在の設定を保存
+              </button>
+              <button
+                type="button"
+                onClick={handlePresetsExport}
+                disabled={presets.length === 0}
+                className="px-2.5 py-1 max-md:min-h-[44px] text-[11px] rounded-md border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                JSON保存
               </button>
             </div>
             {presets.length > 0 && (

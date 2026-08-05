@@ -4,11 +4,62 @@ import {
   buildNotesJson,
   buildSavedSearchesJson,
   buildSavedSearchesJsonFile,
+  buildThemePresetsJson,
+  buildThemePresetsJsonFile,
 } from "../src/lib/export-json";
+import type { ThemePreset } from "../src/lib/theme-preset";
 import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
 
 const NOW = new Date("2026-06-08T12:34:56.000Z");
+
+test.describe("buildThemePresetsJson", () => {
+  const presets: ThemePreset[] = [
+    {
+      id: "preset-1",
+      name: "読書モード",
+      theme: "dark",
+      fontSize: "large",
+      fontFamily: "serif",
+      lineHeight: "relaxed",
+      contentWidth: "medium",
+      createdAt: 1_700_000_000_000,
+    },
+    {
+      id: "preset-2",
+      name: "コンパクト",
+      theme: "light",
+      fontSize: "small",
+      fontFamily: "sans",
+      lineHeight: "tight",
+      contentWidth: "wide",
+      createdAt: 1_710_000_000_000,
+    },
+  ];
+
+  test("表示順と各プリセットの全フィールドを保持する", () => {
+    expect(buildThemePresetsJson(presets, NOW)).toEqual({
+      exportedAt: "2026-06-08T12:34:56.000Z",
+      count: 2,
+      presets,
+    });
+  });
+
+  test("空配列では count 0 と presets 空配列を返す", () => {
+    expect(buildThemePresetsJson([], NOW)).toEqual({
+      exportedAt: "2026-06-08T12:34:56.000Z",
+      count: 0,
+      presets: [],
+    });
+  });
+
+  test("日付付きファイル名と2スペースインデントのJSON本文を返す", () => {
+    const result = buildThemePresetsJsonFile(presets, NOW);
+
+    expect(result.filename).toBe("theme-presets_2026-06-08.json");
+    expect(result.content).toBe(JSON.stringify(buildThemePresetsJson(presets, NOW), null, 2));
+  });
+});
 
 test.describe("buildSavedSearchesJson", () => {
   const searches = [

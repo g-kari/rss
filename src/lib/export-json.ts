@@ -1,6 +1,49 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
 import { buildFeedTitleMap, clampSummaryText } from "@/lib/export-shared";
+import type { ThemePreset } from "@/lib/theme-preset";
+
+/** テーマプリセットJSONエクスポートのトップレベル構造。 */
+export interface ThemePresetsJsonExport {
+  exportedAt: string;
+  count: number;
+  presets: ThemePreset[];
+}
+
+/** テーマプリセットを表示順のまま構造化JSONオブジェクトへ変換する純粋関数。 */
+export function buildThemePresetsJson(
+  presets: readonly ThemePreset[],
+  now: Date = new Date(),
+): ThemePresetsJsonExport {
+  return {
+    exportedAt: now.toISOString(),
+    count: presets.length,
+    presets: presets.map(
+      ({ id, name, theme, fontSize, fontFamily, lineHeight, contentWidth, createdAt }) => ({
+        id,
+        name,
+        theme,
+        fontSize,
+        fontFamily,
+        lineHeight,
+        contentWidth,
+        createdAt,
+      }),
+    ),
+  };
+}
+
+/** テーマプリセットのJSON本文と日付付きファイル名を組み立てる純粋関数。 */
+export function buildThemePresetsJsonFile(
+  presets: readonly ThemePreset[],
+  now: Date = new Date(),
+): { content: string; filename: string } {
+  const data = buildThemePresetsJson(presets, now);
+  return {
+    content: JSON.stringify(data, null, 2),
+    filename: `theme-presets_${data.exportedAt.slice(0, 10)}.json`,
+  };
+}
 
 /** 保存済み検索条件 JSON エクスポートの 1 エントリ */
 export interface SavedSearchJsonEntry {
