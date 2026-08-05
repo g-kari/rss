@@ -200,6 +200,60 @@ test.describe("parseFeed — JSON Feed エッジケース", () => {
     expect(result.items[0].link).toBe("");
   });
 
+  test("危険な url の場合は安全な external_url を link に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "javascript:alert(1)",
+          external_url: "https://external.example.com/posts/1",
+          title: "外部記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].link).toBe("https://external.example.com/posts/1");
+  });
+
+  test("空の url の場合は安全な external_url を link に使用する", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "",
+          external_url: "https://external.example.com/posts/1",
+          title: "外部記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].link).toBe("https://external.example.com/posts/1");
+  });
+
+  test("url と external_url が両方危険な場合は link を空にする", () => {
+    const feed = JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Blog",
+      items: [
+        {
+          id: "1",
+          url: "javascript:alert(1)",
+          external_url: "data:text/html,unsafe",
+          title: "危険な記事",
+          content_text: "本文",
+        },
+      ],
+    });
+    const result = parseFeed(feed);
+    expect(result.items[0].link).toBe("");
+  });
+
   test("id と url がない場合は external_url を guid と link に使用する", () => {
     const feed = JSON.stringify({
       version: "https://jsonfeed.org/version/1.1",

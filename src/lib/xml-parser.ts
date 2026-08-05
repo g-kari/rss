@@ -452,7 +452,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
     const raw = item.content_html ?? item.content_text ?? item.summary ?? "";
     const isHtml = !!item.content_html;
-    const link = safeUrl(item.url ?? item.external_url ?? "");
+    const link = safeUrl(item.url ?? "") || safeUrl(item.external_url ?? "");
     const content = isHtml ? applyCorePipeline(raw, link) : raw;
     const summary = item.summary
       ? stripHtmlWithBreaks(item.summary).slice(0, MAX_SUMMARY_LENGTH)
