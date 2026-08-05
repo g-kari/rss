@@ -32,10 +32,13 @@ export function useFeedFilters(
   }, [selectedGroupId, feeds]);
 
   // mutedUntil を一度だけ parse してキャッシュ — useEffect と mutedFeedIds の両方で参照
-  const parsedUntil = useMemo(
-    () => new Map(feeds.map((f) => [f.id, f.mutedUntil ? Date.parse(f.mutedUntil) : null])),
-    [feeds],
-  );
+  const parsedUntil = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const feed of feeds) {
+      map.set(feed.id, feed.mutedUntil ? Date.parse(feed.mutedUntil) : null);
+    }
+    return map;
+  }, [feeds]);
 
   // mutedUntil 期限切れで再評価するためのカウンタ。期限切れ時刻に setTimeout で increment する。
   const [mutedTick, setMutedTick] = useState(0);
