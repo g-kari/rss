@@ -12,6 +12,7 @@ const READING_HISTORY_CSV_HEADER = "日付,読了数";
 export function buildReadingHistoryCsv(
   dailyReadCounts: readonly { date: string; count: number }[],
 ): string {
+  if (dailyReadCounts.length === 0) return `\uFEFF${READING_HISTORY_CSV_HEADER}\r\n`;
   const lines = [
     READING_HISTORY_CSV_HEADER,
     ...dailyReadCounts.map(({ date, count }) => `${date},${count}`),
