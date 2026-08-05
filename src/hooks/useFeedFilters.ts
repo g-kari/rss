@@ -16,7 +16,8 @@ export function useFeedFilters(
 ) {
   const nsfwFeedIdsRef = useRef<Set<string>>(new Set());
   const nsfwFeedIds = useMemo(() => {
-    const next = new Set(feeds.filter((f) => f.nsfw).map((f) => f.id));
+    const next = new Set<string>();
+    for (const feed of feeds) if (feed.nsfw) next.add(feed.id);
     if (equalViewFeedIds(nsfwFeedIdsRef.current, next)) return nsfwFeedIdsRef.current;
     nsfwFeedIdsRef.current = next;
     return next;
