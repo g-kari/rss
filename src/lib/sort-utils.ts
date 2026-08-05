@@ -51,14 +51,23 @@ export function sortCollectionsBy(
   const list = [...collections];
   switch (sortBy) {
     case "createdAtDesc":
-      return list.sort((a, b) => {
-        const ta = Date.parse(a.createdAt);
-        const tb = Date.parse(b.createdAt);
-        if (isNaN(ta) && isNaN(tb)) return a.order - b.order;
-        if (isNaN(ta)) return 1;
-        if (isNaN(tb)) return -1;
-        return tb - ta;
-      });
+      // Date.parse は比較関数が呼ばれるたびに実行されるため、記事数が多い
+      // コレクション一覧では同じ日時を何度も解析していた。decorate して
+      // 各コレクションの日時を一度だけ解析し、比較は数値だけで行う。
+      return list
+        .map((collection) => ({
+          collection,
+          timestamp: Date.parse(collection.createdAt),
+        }))
+        .sort((a, b) => {
+          const ta = a.timestamp;
+          const tb = b.timestamp;
+          if (isNaN(ta) && isNaN(tb)) return a.collection.order - b.collection.order;
+          if (isNaN(ta)) return 1;
+          if (isNaN(tb)) return -1;
+          return tb - ta;
+        })
+        .map(({ collection }) => collection);
     case "articleCountDesc":
       return list.sort((a, b) => {
         const diff = b.articleIds.length - a.articleIds.length;
