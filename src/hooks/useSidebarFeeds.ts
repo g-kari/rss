@@ -101,7 +101,8 @@ export function useSidebarFeeds({
       return aHigh - bHigh;
     });
 
-    const validGroupIds = new Set((feedGroups ?? []).map((g) => g.id));
+    const validGroupIds = new Set<string>();
+    for (const group of feedGroups ?? []) validGroupIds.add(group.id);
     const byGroup = new Map<string, Feed[]>();
     const notGrouped: Feed[] = [];
     for (const feed of unpinned) {
