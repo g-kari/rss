@@ -69,6 +69,14 @@ test.describe("parseSearchQuery — 基本", () => {
     });
   });
 
+  test("フィールド指定 summary:モナド は TERM with field", () => {
+    expect(parseSearchQuery("summary:モナド")).toEqual({
+      kind: "TERM",
+      field: "summary",
+      value: "モナド",
+    });
+  });
+
   test("否定 -foo は NOT", () => {
     const ast = parseSearchQuery("-foo");
     expect(ast?.kind).toBe("NOT");
@@ -155,6 +163,22 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
   test("content:圏論 は本文にのみマッチ", () => {
     expect(matchesAdvancedQuery(BASE, "content:圏論", CTX)).toBe(true);
     expect(matchesAdvancedQuery(BASE, "content:TypeScript", CTX)).toBe(false);
+  });
+
+  test("summary:モナド は要約にのみマッチ", () => {
+    expect(matchesAdvancedQuery(BASE, "summary:モナド", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "summary:TypeScript", CTX)).toBe(false);
+    expect(matchesAdvancedQuery(BASE, "summary:圏論", CTX)).toBe(false);
+  });
+
+  test("summary: はフレーズと否定構文を組み合わせられる", () => {
+    expect(matchesAdvancedQuery(BASE, 'summary:"モナドとファンクター"', CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "-summary:Rust", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(BASE, "-summary:モナド", CTX)).toBe(false);
+  });
+
+  test("要約が空でも summary: 検索は安全に非一致を返す", () => {
+    expect(matchesAdvancedQuery({ ...BASE, summary: "" }, "summary:モナド", CTX)).toBe(false);
   });
 
   test("url:example.com は記事 URL にのみマッチ", () => {

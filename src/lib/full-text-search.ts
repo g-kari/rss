@@ -1,7 +1,7 @@
 /**
  * 全フィード横断のフルテキスト検索 (Issue #102)
  *
- * - フィールド指定: title:foo / author:bar / feed:baz / category:qux / content:hello / url:example.com / language:ja
+ * - フィールド指定: title:foo / author:bar / feed:baz / category:qux / summary:hello / content:hello / url:example.com / language:ja
  * - フレーズ検索: "hello world"
  * - 否定: -foo / -title:foo
  * - 暗黙 AND, 明示 OR ("foo OR bar")
@@ -16,6 +16,7 @@ export type SearchField =
   | "author"
   | "feed"
   | "category"
+  | "summary"
   | "content"
   | "tag"
   | "url"
@@ -26,6 +27,7 @@ const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
   "author",
   "feed",
   "category",
+  "summary",
   "content",
   "tag",
   "url",
@@ -215,6 +217,8 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
       return (article.author ?? "").toLowerCase();
     case "category":
       return (article.categories ?? []).join(" ").toLowerCase();
+    case "summary":
+      return article.summary.toLowerCase();
     case "feed":
       return (ctx.feedTitleByHash.get(article.feedHash) ?? "").toLowerCase();
     case "content": {
