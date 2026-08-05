@@ -179,20 +179,32 @@ function FeedItem({
     }
   }, [onReinfer, feed.id, loadingAction]);
 
-  const handleCopyUrl = useCallback(() => {
-    if (!navigator.clipboard) {
-      toast.error("クリップボードが使えません");
-      return;
-    }
-    navigator.clipboard
-      .writeText(feed.url)
-      .then(() => toast.success("フィード URL をコピーしました"))
-      .catch((err) => {
-        if (isAbortError(err)) return;
-        devError("[FeedItem] clipboard.writeText failed", err);
-        toast.error("コピーに失敗しました");
-      });
-  }, [feed.url, toast]);
+  const copyUrl = useCallback(
+    (url: string, successMessage: string) => {
+      if (!navigator.clipboard) {
+        toast.error("クリップボードが使えません");
+        return;
+      }
+      navigator.clipboard
+        .writeText(url)
+        .then(() => toast.success(successMessage))
+        .catch((err) => {
+          if (isAbortError(err)) return;
+          devError("[FeedItem] clipboard.writeText failed", err);
+          toast.error("コピーに失敗しました");
+        });
+    },
+    [toast],
+  );
+
+  const handleCopyUrl = useCallback(
+    () => copyUrl(feed.url, "フィード URL をコピーしました"),
+    [copyUrl, feed.url],
+  );
+  const handleCopySiteUrl = useCallback(
+    () => copyUrl(feed.siteUrl, "サイト URL をコピーしました"),
+    [copyUrl, feed.siteUrl],
+  );
 
   const startCategoryEdit = useCallback(() => {
     setEditCategory(feed.category ?? "");
@@ -233,6 +245,7 @@ function FeedItem({
     onMute: handleMute,
     onReinfer: onReinfer ? handleReinfer : undefined,
     onCopyUrl: handleCopyUrl,
+    onCopySiteUrl: handleCopySiteUrl,
     setMenuOpen,
     setDetailOpen,
     setFilterModalOpen,

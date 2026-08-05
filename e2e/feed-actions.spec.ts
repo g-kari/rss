@@ -30,6 +30,7 @@ interface BuilderOverrides {
   onMute?: (m: string | null) => Promise<void>;
   onReinfer?: () => Promise<void>;
   onCopyUrl?: () => void;
+  onCopySiteUrl?: () => void;
   setMenuOpen?: (open: boolean) => void;
   setDetailOpen?: (open: boolean) => void;
   setFilterModalOpen?: (open: boolean) => void;
@@ -67,6 +68,7 @@ function makeProps(overrides: BuilderOverrides = {}) {
     onMute: overrides.onMute,
     onReinfer: overrides.onReinfer,
     onCopyUrl: overrides.onCopyUrl ?? noop,
+    onCopySiteUrl: overrides.onCopySiteUrl ?? noop,
     setMenuOpen: overrides.setMenuOpen ?? noop,
     setDetailOpen: overrides.setDetailOpen ?? noop,
     setFilterModalOpen: overrides.setFilterModalOpen ?? noop,
@@ -106,6 +108,7 @@ test.describe("buildFeedActions — 必須 actions", () => {
     expect(keys).toEqual([
       "detail",
       "copy-url",
+      "copy-site-url",
       "priority",
       "nsfw",
       "filter",
@@ -183,6 +186,11 @@ test.describe("buildFeedActions — visible / show フラグ", () => {
     expect(actions.find((a) => a.key === "retry")?.show).not.toBe(false);
     expect(actions.find((a) => a.key === "delete")?.show).not.toBe(false);
   });
+
+  test("siteUrl が空の場合 copy-site-url は show:false", () => {
+    const actions = buildFeedActions(makeProps({ feed: makeFeed({ siteUrl: "" }) }));
+    expect(actions.find((a) => a.key === "copy-site-url")?.show).toBe(false);
+  });
 });
 
 test.describe("buildFeedActions — onClick が対応するハンドラを呼ぶ", () => {
@@ -197,6 +205,13 @@ test.describe("buildFeedActions — onClick が対応するハンドラを呼ぶ
     let called = false;
     const actions = buildFeedActions(makeProps({ onCopyUrl: () => (called = true) }));
     actions.find((a) => a.key === "copy-url")?.onClick();
+    expect(called).toBe(true);
+  });
+
+  test("copy-site-url.onClick → onCopySiteUrl", () => {
+    let called = false;
+    const actions = buildFeedActions(makeProps({ onCopySiteUrl: () => (called = true) }));
+    actions.find((a) => a.key === "copy-site-url")?.onClick();
     expect(called).toBe(true);
   });
 

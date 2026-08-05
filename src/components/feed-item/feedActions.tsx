@@ -17,6 +17,7 @@ export interface FeedActionBuilderProps {
   loadingAction: "retry" | "reinfer" | null;
   groups?: FeedGroup[];
   onCopyUrl: () => void;
+  onCopySiteUrl: () => void;
 
   // 任意ハンドラ（未指定なら該当 action は show:false）
   onTogglePriority?: () => void;
@@ -76,6 +77,7 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
     onMute,
     onReinfer,
     onCopyUrl,
+    onCopySiteUrl,
     setMenuOpen,
     setDetailOpen,
     setFilterModalOpen,
@@ -136,6 +138,29 @@ export function buildFeedActions(props: FeedActionBuilderProps): Action[] {
         </svg>
       ),
       onClick: onCopyUrl,
+      className: "text-text-faint hover:text-text-default",
+    },
+    {
+      key: "copy-site-url",
+      label: "サイト URL をコピー",
+      icon: (
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M5.8 3.2l1-1a2 2 0 012.8 2.8l-2 2a2 2 0 01-2.8 0" />
+          <path d="M4.2 6.8l-1 1A2 2 0 01.4 5l2-2a2 2 0 012.8 0" />
+        </svg>
+      ),
+      onClick: onCopySiteUrl,
+      show: feed.siteUrl !== "",
       className: "text-text-faint hover:text-text-default",
     },
     {
