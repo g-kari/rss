@@ -152,7 +152,8 @@ export async function POST(request: Request) {
 
     if (folderNames.length > 0) {
       const existingGroups = await readFeedGroups(env.RSS_DATA, session.userId);
-      const existingGroupByName = new Map(existingGroups.map((group) => [group.name, group]));
+      const existingGroupByName = new Map<string, FeedGroup>();
+      for (const group of existingGroups) existingGroupByName.set(group.name, group);
       let nextOrder = computeNextOrder(existingGroups);
       const newGroups: FeedGroup[] = [];
 
