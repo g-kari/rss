@@ -11,13 +11,14 @@ export async function pMap<T, R>(
 ): Promise<R[]> {
   const results = Array.from<R>({ length: items.length });
   let next = 0;
+  const workerCount = normalizeConcurrency(concurrency, items.length);
   async function worker() {
     while (next < items.length) {
       const i = next++;
       results[i] = await fn(items[i]);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
   return results;
 }
 
@@ -29,6 +30,7 @@ export async function pMapSettled<T, R>(
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = Array.from({ length: items.length });
   let next = 0;
+  const workerCount = normalizeConcurrency(concurrency, items.length);
   async function worker(): Promise<void> {
     while (next < items.length) {
       const i = next++;
@@ -39,6 +41,12 @@ export async function pMapSettled<T, R>(
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  await Promise.all(Array.from({ length: workerCount }, worker));
   return results;
+}
+
+function normalizeConcurrency(concurrency: number, itemCount: number): number {
+  if (itemCount === 0) return 0;
+  if (!Number.isFinite(concurrency)) return 1;
+  return Math.min(Math.max(1, Math.floor(concurrency)), itemCount);
 }

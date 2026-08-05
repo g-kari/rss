@@ -112,6 +112,15 @@ test.describe("pMapSettled — concurrency オプション", () => {
     ]);
   });
 
+  test("concurrency が 0 以下でも全件処理される", async () => {
+    const result = await pMapSettled([1, 2, 3], async (n) => n * 2, 0);
+    expect(result).toEqual([
+      { status: "fulfilled", value: 2 },
+      { status: "fulfilled", value: 4 },
+      { status: "fulfilled", value: 6 },
+    ]);
+  });
+
   test("concurrency で同時実行数が制限される", async () => {
     let concurrent = 0;
     let maxConcurrent = 0;
@@ -232,5 +241,10 @@ test.describe("pMap — concurrency オプション", () => {
       1,
     );
     expect(order).toEqual([1, 2, 3]);
+  });
+
+  test("concurrency が負数でも全件処理される", async () => {
+    const result = await pMap([1, 2, 3], async (n) => n + 1, -2);
+    expect(result).toEqual([2, 3, 4]);
   });
 });
