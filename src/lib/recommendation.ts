@@ -20,7 +20,11 @@ const MODEL: AiModelId = "@cf/google/gemma-3-12b-it" as AiModelId;
 
 /** Promise.allSettled の結果から fulfilled かつ非 null の値だけを収集する */
 function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
-  return settled.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
+  const values: T[] = [];
+  for (const result of settled) {
+    if (result.status === "fulfilled" && result.value) values.push(result.value);
+  }
+  return values;
 }
 
 /**
