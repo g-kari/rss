@@ -1,7 +1,7 @@
 /**
  * 全フィード横断のフルテキスト検索 (Issue #102)
  *
- * - フィールド指定: title:foo / author:bar / feed:baz / category:qux / content:hello / url:example.com
+ * - フィールド指定: title:foo / author:bar / feed:baz / category:qux / content:hello / url:example.com / language:ja
  * - フレーズ検索: "hello world"
  * - 否定: -foo / -title:foo
  * - 暗黙 AND, 明示 OR ("foo OR bar")
@@ -11,7 +11,15 @@
 
 import { stripHtml } from "./html";
 
-export type SearchField = "title" | "author" | "feed" | "category" | "content" | "tag" | "url";
+export type SearchField =
+  | "title"
+  | "author"
+  | "feed"
+  | "category"
+  | "content"
+  | "tag"
+  | "url"
+  | "language";
 
 const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
   "title",
@@ -21,7 +29,10 @@ const FIELD_NAMES: ReadonlySet<SearchField> = new Set([
   "content",
   "tag",
   "url",
+  "language",
 ]);
+
+const LANGUAGE_METADATA_KEYS: ReadonlySet<string> = new Set(["language", "dc:language"]);
 
 export type SearchNode =
   | { kind: "TERM"; field?: SearchField; value: string }
@@ -38,6 +49,7 @@ export interface SearchableArticle {
   content?: string;
   author?: string;
   categories?: string[];
+  metadata?: ReadonlyArray<{ key: string; value: string }>;
 }
 
 export interface SearchContext {
@@ -218,6 +230,12 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
       return (ctx.tagsByArticleId?.[article.id] ?? []).join(" ").toLowerCase();
     case "url":
       return (article.link ?? "").toLowerCase();
+    case "language":
+      return (article.metadata ?? [])
+        .filter((entry) => LANGUAGE_METADATA_KEYS.has(entry.key.toLowerCase()))
+        .map((entry) => entry.value)
+        .join(" ")
+        .toLowerCase();
   }
 }
 

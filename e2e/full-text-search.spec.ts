@@ -61,6 +61,14 @@ test.describe("parseSearchQuery — 基本", () => {
     });
   });
 
+  test("フィールド指定 language:ja は TERM with field", () => {
+    expect(parseSearchQuery("language:ja")).toEqual({
+      kind: "TERM",
+      field: "language",
+      value: "ja",
+    });
+  });
+
   test("否定 -foo は NOT", () => {
     const ast = parseSearchQuery("-foo");
     expect(ast?.kind).toBe("NOT");
@@ -162,6 +170,23 @@ test.describe("matchesAdvancedQuery — フィールド指定", () => {
 
   test("link が空でも url: 検索は安全に非一致を返す", () => {
     expect(matchesAdvancedQuery({ ...BASE, link: "" }, "url:example.com", CTX)).toBe(false);
+  });
+
+  test("language:ja は language メタデータにのみマッチする", () => {
+    const article = { ...BASE, metadata: [{ key: "language", value: "ja-JP" }] };
+    expect(matchesAdvancedQuery(article, "language:ja", CTX)).toBe(true);
+    expect(matchesAdvancedQuery(article, "language:en", CTX)).toBe(false);
+  });
+
+  test("language: は名前空間付き dc:language にもマッチする", () => {
+    const article = { ...BASE, metadata: [{ key: "dc:language", value: "EN-us" }] };
+    expect(matchesAdvancedQuery(article, "language:en-US", CTX)).toBe(true);
+  });
+
+  test("言語以外または未設定の metadata は language: にマッチしない", () => {
+    const unrelated = { ...BASE, metadata: [{ key: "source", value: "ja" }] };
+    expect(matchesAdvancedQuery(unrelated, "language:ja", CTX)).toBe(false);
+    expect(matchesAdvancedQuery({ ...BASE, metadata: undefined }, "language:ja", CTX)).toBe(false);
   });
 
   test("不明なフィールドは普通の語として扱う", () => {
