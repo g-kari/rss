@@ -145,9 +145,12 @@ export async function POST(request: Request) {
     const succeededMetas = succeeded.map((s) => s.meta);
     const succeededCandidates = succeeded.map((s) => s.candidate);
 
-    const folderNames = [
-      ...new Set(succeededCandidates.map((c) => c.entry.folder).filter((f): f is string => !!f)),
-    ];
+    const folderNameSet = new Set<string>();
+    for (const candidate of succeededCandidates) {
+      const folder = candidate.entry.folder;
+      if (typeof folder === "string" && folder) folderNameSet.add(folder);
+    }
+    const folderNames = [...folderNameSet];
     const folderToGroupId = new Map<string, string>();
 
     if (folderNames.length > 0) {
