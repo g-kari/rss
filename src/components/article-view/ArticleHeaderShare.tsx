@@ -11,10 +11,9 @@ import { devError } from "../../lib/dev-log";
 
 interface Props {
   article: Article;
-  feeds?: Feed[];
+  feed?: Feed;
   storedContent: string | null;
   onShareError: (msg: string) => void;
-  filterFeed?: Feed;
   onSaveFilter?: (feedId: string, filter: KeywordFilter | null) => Promise<void>;
   globalFilter?: KeywordFilter | null;
   onSaveGlobalFilter?: (filter: KeywordFilter | null) => void;
@@ -28,10 +27,9 @@ interface Props {
  */
 export default function ArticleHeaderShare({
   article,
-  feeds,
+  feed,
   storedContent,
   onShareError,
-  filterFeed,
   onSaveFilter,
   globalFilter,
   onSaveGlobalFilter,
@@ -64,14 +62,10 @@ export default function ArticleHeaderShare({
       )}
 
       {article.link && (
-        <ShareMenu
-          article={article}
-          feed={feeds?.find((f) => f.id === article.feedHash)}
-          contentHtml={storedContent ?? undefined}
-        />
+        <ShareMenu article={article} feed={feed} contentHtml={storedContent ?? undefined} />
       )}
-      {filterFeed && onSaveFilter && (
-        <FilterMenu article={article} feed={filterFeed} onSaveFilter={onSaveFilter} />
+      {feed && onSaveFilter && (
+        <FilterMenu article={article} feed={feed} onSaveFilter={onSaveFilter} />
       )}
       {onSaveGlobalFilter && (
         <GlobalFilterMenu

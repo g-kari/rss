@@ -176,7 +176,7 @@ export default function ArticleHeader({
     toast.info(`「${author}」の記事に絞り込みました`);
   };
 
-  const filterFeed = feeds ? feeds.find((f) => f.id === article.feedHash) : undefined;
+  const feed = feeds?.find((candidate) => candidate.id === article.feedHash);
 
   return (
     <div className="mb-5 text-[11px] text-text-muted flex flex-col gap-y-2">
@@ -191,7 +191,7 @@ export default function ArticleHeader({
         tags={tags}
         onAddTag={onAddTag}
         onRemoveTag={onRemoveTag}
-        feedName={feeds?.find((f) => f.id === article.feedHash)?.title}
+        feedName={feed?.title}
       />
 
       <div
@@ -229,10 +229,9 @@ export default function ArticleHeader({
 
         <ArticleHeaderShare
           article={article}
-          feeds={feeds}
+          feed={feed}
           storedContent={storedContent}
           onShareError={(msg) => toast.error(msg)}
-          filterFeed={filterFeed}
           onSaveFilter={onSaveFilter}
           globalFilter={globalFilter}
           onSaveGlobalFilter={onSaveGlobalFilter}
