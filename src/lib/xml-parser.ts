@@ -462,6 +462,14 @@ function getJsonFeedLanguage(itemLanguage: unknown, feedLanguage: unknown): stri
   return "";
 }
 
+function joinJsonFeedAuthorNames(authors: JsonFeedAuthor[]): string {
+  const names: string[] = [];
+  for (const author of authors) {
+    if (author.name) names.push(author.name);
+  }
+  return names.join(", ");
+}
+
 function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
   const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
   const items: ParsedItem[] = (data.items ?? []).map((item) => {
@@ -474,10 +482,7 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
       ? stripHtmlWithBreaks(item.summary).slice(0, MAX_SUMMARY_LENGTH)
       : (isHtml ? stripHtmlWithBreaks(raw) : raw).slice(0, MAX_SUMMARY_LENGTH);
     const itemAuthors = item.authors ?? (item.author ? [item.author] : feedAuthors);
-    const author = itemAuthors
-      .map((a) => a.name ?? "")
-      .filter(Boolean)
-      .join(", ");
+    const author = joinJsonFeedAuthorNames(itemAuthors);
     const language = getJsonFeedLanguage(item.language, data.language);
     return {
       guid: item.id ?? item.url ?? item.external_url ?? "",
