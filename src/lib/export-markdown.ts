@@ -5,6 +5,7 @@ import {
   buildFeedTitleMap,
   clampSummaryText,
   groupArticlesByFeed,
+  selectArticlesByIds,
 } from "@/lib/export-shared";
 
 /** Markdown のリンク構文を壊す文字をエスケープする */
@@ -29,7 +30,7 @@ export function exportArticlesToMarkdown(
   labelOverride?: string,
 ): void {
   const feedTitleMap = buildFeedTitleMap(feeds);
-  const selected = articles.filter((a) => ids.has(a.id));
+  const selected = selectArticlesByIds(articles, ids);
 
   if (selected.length === 0) return;
 
@@ -76,7 +77,7 @@ export function exportNotesToMarkdown(
 ): void {
   const noteIds = new Set(Object.keys(notes));
   const feedTitleMap = buildFeedTitleMap(feeds);
-  const selected = articles.filter((a) => noteIds.has(a.id));
+  const selected = selectArticlesByIds(articles, noteIds);
 
   if (selected.length === 0) return;
 

@@ -1,6 +1,26 @@
 import { test, expect } from "@playwright/test";
-import { buildFeedTitleMap, clampSummaryText } from "../src/lib/export-shared";
+import { buildFeedTitleMap, clampSummaryText, selectArticlesByIds } from "../src/lib/export-shared";
+import { makeArticle } from "./helpers/article";
 import { makeFeed } from "./helpers/feed";
+
+test.describe("selectArticlesByIds", () => {
+  test("ID が一致する記事だけを入力順のまま返す", () => {
+    const articles = [
+      makeArticle({ id: "a1", title: "One" }),
+      makeArticle({ id: "a2", title: "Two" }),
+      makeArticle({ id: "a3", title: "Three" }),
+    ];
+
+    expect(selectArticlesByIds(articles, new Set(["a3", "a1"]))).toEqual([
+      articles[0],
+      articles[2],
+    ]);
+  });
+
+  test("空の ID Set では空配列を返す", () => {
+    expect(selectArticlesByIds([makeArticle({ id: "a1" })], new Set())).toEqual([]);
+  });
+});
 
 test.describe("buildFeedTitleMap", () => {
   test("Feed.id → title の Map を構築する", () => {

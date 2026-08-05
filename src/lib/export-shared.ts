@@ -1,6 +1,11 @@
 import type { Article, Feed } from "@/types";
 import { stripHtml } from "@/lib/html";
 
+/** ID Set に含まれる記事だけを入力順を保って返す。 */
+export function selectArticlesByIds(articles: Article[], ids: ReadonlySet<string>): Article[] {
+  return articles.filter((article) => ids.has(article.id));
+}
+
 /**
  * feeds から `feedHash (= Feed.id)` → `title` の Map を構築する。
  * export-markdown / export-readwise / export-json の重複を集約 (helper-drift 解消)。

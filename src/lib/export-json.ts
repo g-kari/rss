@@ -1,6 +1,6 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
-import { buildFeedTitleMap, clampSummaryText } from "@/lib/export-shared";
+import { buildFeedTitleMap, clampSummaryText, selectArticlesByIds } from "@/lib/export-shared";
 import type { ThemePreset } from "@/lib/theme-preset";
 
 /** テーマプリセットJSONエクスポートのトップレベル構造。 */
@@ -126,7 +126,7 @@ export function buildArticlesJson(
 ): ArticlesJsonExport {
   const feedTitleMap = buildFeedTitleMap(feeds);
   const feedUrlMap = new Map(feeds.map((feed) => [feed.id, feed.url]));
-  const selected = articles.filter((a) => ids.has(a.id));
+  const selected = selectArticlesByIds(articles, ids);
   const label = labelOverride ?? (mode === "reading_list" ? "後で読む" : "ブックマーク");
   return {
     exportedAt: now.toISOString(),
@@ -196,7 +196,7 @@ export function buildNotesJson(
 ): NotesJsonExport {
   const noteIds = new Set(Object.keys(notes));
   const feedTitleMap = buildFeedTitleMap(feeds);
-  const selected = articles.filter((a) => noteIds.has(a.id));
+  const selected = selectArticlesByIds(articles, noteIds);
   return {
     exportedAt: now.toISOString(),
     count: selected.length,
