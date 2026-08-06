@@ -157,13 +157,14 @@ export function isValidIso8601(v: unknown): v is string {
  */
 export function extractIds(raw: unknown, max: number): string[] | null {
   const arr = Array.isArray(raw) ? raw : [];
-  const deduped = [
-    ...new Set(
-      arr.filter(
-        (v): v is string => typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH,
-      ),
-    ),
-  ];
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const value of arr) {
+    if (typeof value !== "string" || value.length === 0 || value.length > MAX_ID_LENGTH) continue;
+    if (seen.has(value)) continue;
+    seen.add(value);
+    deduped.push(value);
+  }
   if (deduped.length > max) return null;
   return deduped;
 }
