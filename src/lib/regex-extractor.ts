@@ -59,9 +59,10 @@ export function extractWithRegex(html: string, pageUrl: string): string {
     /<(\w+)[^>]+class=["'][^"']*product[^"']*description[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i,
   );
   if (shopifyDesc?.[2]) {
-    const mainImgs = [...cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)].map(
-      (m) => m[0],
-    );
+    const mainImgs: string[] = [];
+    for (const match of cleaned.matchAll(/<img\b[^>]*\bproduct-featured-media\b[^>]*>/gi)) {
+      mainImgs.push(match[0]);
+    }
     const hiddenImgs = mainImgs.length > 0 ? `<div hidden>${mainImgs.join("")}</div>` : "";
     return postProcess(hiddenImgs + shopifyDesc[2], pageUrl);
   }
