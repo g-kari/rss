@@ -113,7 +113,10 @@ export function fixExternalLinks(html: string, pageUrl = ""): string {
     const relMatch = newAttrs.match(/\brel\s*=\s*(?:(["'])([^"']*)(\1)|([^\s"'>]+))/i);
     if (relMatch) {
       const existing = relMatch[2] ?? relMatch[4] ?? "";
-      const values = new Set(existing.split(/\s+/).filter(Boolean));
+      const values = new Set<string>();
+      for (const value of existing.split(/\s+/)) {
+        if (value) values.add(value);
+      }
       values.add("noopener");
       values.add("noreferrer");
       newAttrs = newAttrs.replace(

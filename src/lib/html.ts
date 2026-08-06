@@ -297,7 +297,10 @@ function ensureAnchorNoopener(m: string, attrs: string): string {
         unquoted: string | undefined,
       ) => {
         const existing = quoted ?? unquoted ?? "";
-        const values = new Set(existing.split(/\s+/).filter(Boolean));
+        const values = new Set<string>();
+        for (const value of existing.split(/\s+/)) {
+          if (value) values.add(value);
+        }
         values.add("noopener");
         values.add("noreferrer");
         return `rel="${[...values].join(" ")}"`;
