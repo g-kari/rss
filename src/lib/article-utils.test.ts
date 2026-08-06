@@ -28,6 +28,10 @@ describe("article-utils (vitest smoke)", () => {
     expect(formatCount(Number.NEGATIVE_INFINITY)).toBe("0");
   });
 
+  it("formatCount: 正の無限大も 0 に正規化する", () => {
+    expect(formatCount(Number.POSITIVE_INFINITY)).toBe("0");
+  });
+
   it("cycleValue: 空のサイクルは明示的に失敗する", () => {
     expect(() => cycleValue([], "current")).toThrow("cycle must not be empty");
   });
