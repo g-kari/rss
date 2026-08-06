@@ -301,7 +301,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
                 )}
               </div>
             </div>
-            {onRetryTranslate && (
+            {onRetryTranslate && translateError.retryable !== false && (
               <button
                 onClick={onRetryTranslate}
                 className="self-start flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200"
