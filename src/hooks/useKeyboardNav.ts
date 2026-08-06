@@ -65,6 +65,7 @@ interface KeyboardNavOptions {
   snoozeArticle: (articleId: string, durationMs: number) => void;
   onShowSnoozeMenu: (articleId: string) => void;
   onShowFeedSwitcher: () => void;
+  onShowReadingStats: () => void;
   onArticleAnnounce?: (title: string) => void;
   /** 確認ダイアログ (`useConfirm` + `ConfirmModal` canonical)。`window.confirm` 禁止のため必須。 */
   confirm: (message: string) => Promise<boolean>;

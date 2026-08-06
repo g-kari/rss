@@ -12,6 +12,24 @@ test("ユーザー設定ショートカットは canonical 定義とヘルプ表
   expect(SHORTCUT_MAP[","]).toBe("ユーザー設定を表示");
 });
 
+test("h は読書統計モーダルを開く callback を呼ぶ", () => {
+  const stats = SHORTCUT_DEFS.find((definition) => definition.keys.includes("h"));
+  expect(stats).toMatchObject({
+    displayKey: "h",
+    description: "読書統計を表示",
+    group: "global",
+  });
+
+  let opened = 0;
+  stats!.handler!(
+    { onShowReadingStats: () => opened++ } as unknown as ShortcutContext,
+    {
+      preventDefault: () => {},
+    } as unknown as KeyboardEvent,
+  );
+  expect(opened).toBe(1);
+});
+
 test("検索ショートカットはスラッシュと Ctrl/Cmd+K を受け付ける", () => {
   const search = SHORTCUT_DEFS.find((definition) => definition.displayKey.startsWith("/"));
   expect(search?.keys).toEqual(["/", "Control+k", "Meta+k"]);

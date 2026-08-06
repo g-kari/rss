@@ -216,6 +216,7 @@ export default function AppShell({
     showSettings,
     setShowSettings,
   } = useAppModalState();
+  const [readingStatsTrigger, setReadingStatsTrigger] = useState(0);
 
   const toast = useToastState();
   const { confirm, confirmModalProps } = useConfirm();
@@ -741,6 +742,7 @@ export default function AppShell({
     snoozeArticle,
     onShowSnoozeMenu: handleShowSnoozeMenu,
     onShowFeedSwitcher: () => setShowFeedSwitcher(true),
+    onShowReadingStats: () => setReadingStatsTrigger((value) => value + 1),
     onArticleAnnounce: setArticleAnnouncement,
     confirm: confirmMessage,
     autoMode,
@@ -899,6 +901,7 @@ export default function AppShell({
                 likeCount,
                 historyCount,
                 selectedFeedId,
+                openReadingStatsTrigger: readingStatsTrigger,
                 selectedGroupId,
                 user,
                 theme,

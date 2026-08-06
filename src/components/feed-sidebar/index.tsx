@@ -90,6 +90,8 @@ interface Props {
    * `react-patterns.md` の「trigger counter で同じ依存値でも useEffect を強制再実行する」パターン。
    */
   openFeedAddTrigger?: number;
+  /** キーボードショートカットから読書統計モーダルを開く trigger counter。 */
+  openReadingStatsTrigger?: number;
 }
 
 function FeedSidebar({
@@ -131,6 +133,7 @@ function FeedSidebar({
   install,
   push,
   openFeedAddTrigger,
+  openReadingStatsTrigger,
 }: Props) {
   const {
     onSelectFeed,
@@ -206,6 +209,14 @@ function FeedSidebar({
   const [feedSearch, setFeedSearch] = useState("");
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const previousReadingStatsTriggerRef = useRef(openReadingStatsTrigger);
+  useEffect(() => {
+    if (openReadingStatsTrigger === undefined) return;
+    if (previousReadingStatsTriggerRef.current !== openReadingStatsTrigger) {
+      previousReadingStatsTriggerRef.current = openReadingStatsTrigger;
+      setShowStats(true);
+    }
+  }, [openReadingStatsTrigger]);
   const [showFeedHealth, setShowFeedHealth] = useState(false);
   const [saveUrl, setSaveUrl] = useState("");
   const [saveOpen, setSaveOpen] = useState(false);

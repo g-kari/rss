@@ -73,6 +73,7 @@ export interface ShortcutContext {
   retryFeed: (feedId: string) => Promise<void>;
   onShowSnoozeMenu: (articleId: string) => void;
   onShowFeedSwitcher: () => void;
+  onShowReadingStats: () => void;
   toggleAutoMode: () => void;
   autoMode: boolean;
   ttsSupported: boolean;
@@ -136,6 +137,16 @@ function buildFeedOrder(feeds: Feed[], pinnedFeedIds: Set<string>): (Feed | null
 }
 
 export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
+  {
+    keys: ["h"],
+    displayKey: "h",
+    description: "読書統計を表示",
+    group: "global",
+    handler: (ctx, e) => {
+      e.preventDefault();
+      ctx.onShowReadingStats();
+    },
+  },
   {
     keys: ["j", "ArrowDown", "PageDown"],
     displayKey: "j / ↓ / PgDn",
