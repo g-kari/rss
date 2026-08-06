@@ -17,11 +17,12 @@ export function buildReadingStatsSummary(input: {
   exportedAt: Date;
   scope?: string;
 }): string {
+  const scope = input.scope?.replace(/\s+/g, " ").trim();
   const lines = [
     `読書統計 (${input.exportedAt.toISOString().slice(0, 10)})`,
-    ...(input.scope ? [`対象: ${input.scope}`] : []),
+    ...(scope ? [`対象: ${scope}`] : []),
     `今週: ${input.weeklyTotal}件`,
-    `${input.scope ? "累計（全体）" : "累計"}: ${input.allTimeTotal}件`,
+    `${scope ? "累計（全体）" : "累計"}: ${input.allTimeTotal}件`,
     `連続: ${input.currentStreak}日`,
     `1年最長: ${input.longestStreak}日`,
   ];

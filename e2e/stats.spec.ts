@@ -44,6 +44,16 @@ test("buildReadingStatsSummary は主要指標を共有用テキストに整形�
       scope: "Tech Feed",
     }),
   ).toContain("累計（全体）: 345件");
+  expect(
+    buildReadingStatsSummary({
+      weeklyTotal: 1,
+      allTimeTotal: 2,
+      currentStreak: 1,
+      longestStreak: 1,
+      exportedAt: new Date("2026-08-07T12:00:00Z"),
+      scope: "  Feed\nName  ",
+    }),
+  ).toContain("対象: Feed Name\n");
 });
 
 test.describe("buildReadingHistoryCsv", () => {
