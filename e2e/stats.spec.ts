@@ -54,6 +54,16 @@ test("buildReadingStatsSummary は主要指標を共有用テキストに整形�
       scope: "  Feed\nName  ",
     }),
   ).toContain("対象: Feed Name\n");
+  expect(
+    buildReadingStatsSummary({
+      weeklyTotal: 0,
+      allTimeTotal: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      exportedAt: new Date("2026-08-07T12:00:00Z"),
+      scope: " \n ",
+    }),
+  ).not.toContain("対象:");
 });
 
 test.describe("buildReadingHistoryCsv", () => {
