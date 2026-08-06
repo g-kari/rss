@@ -63,6 +63,9 @@ function decodeCodePoint(code: number): string {
 }
 
 export function unescapeHtml(s: string): string {
+  if (!s.includes("&") && !/[\u0080-\u009F\u00AD\u200B-\u200D\u2028\u2029\uFEFF]/.test(s)) {
+    return s;
+  }
   return s
     .replace(/&(?:amp|lt|gt|quot|apos|nbsp|copy|reg|#(\d+)|#x([0-9a-fA-F]+));/gi, (m, dec, hex) => {
       if (dec !== undefined) return decodeCodePoint(Number(dec));

@@ -21,6 +21,10 @@ test("unescapeHtml — copy と reg エンティティを記号に変換する",
   expect(unescapeHtml("Brand&copy; Mark&reg;")).toBe("Brand© Mark®");
 });
 
+test("unescapeHtml — 通常のテキストはそのまま返す", () => {
+  expect(unescapeHtml("plain text")).toBe("plain text");
+});
+
 test.describe("stripHtmlWithBreaks", () => {
   test("<br> は改行に置換される", () => {
     expect(stripHtmlWithBreaks("foo<br>bar")).toBe("foo\nbar");
