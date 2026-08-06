@@ -64,8 +64,8 @@ export function exportNotesToReadwise(
   feeds: Feed[],
 ): void {
   const csv = buildReadwiseCsv(articles, notes, feeds);
-  const dataLineCount = csv.split("\n").filter((l) => l.length > 0).length - 1;
-  if (dataLineCount <= 0) return;
+  // データなしの場合はヘッダー + 改行だけになるため、行分割せず判定する。
+  if (csv.length <= READWISE_HEADER.length + 1) return;
 
   const today = new Date().toISOString().slice(0, 10);
   const blob = new Blob([csv], { type: "text/csv; charset=utf-8" });
