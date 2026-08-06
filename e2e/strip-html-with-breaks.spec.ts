@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { stripHtml, stripHtmlWithBreaks } from "../src/lib/html";
+import { stripHtml, stripHtmlWithBreaks, toPlainText } from "../src/lib/html";
 
 test("stripHtml — タグなしテキストはそのまま trim する", () => {
   expect(stripHtml("  plain text  ")).toBe("plain text");
+});
+
+test("toPlainText — タグなしテキストはエンティティだけ解決する", () => {
+  expect(toPlainText("  plain &amp; text  ")).toBe("plain & text");
 });
 
 test.describe("stripHtmlWithBreaks", () => {

@@ -10,6 +10,7 @@
 const TAG_STRIP_MAX_PASSES = 8;
 
 function stripTagsIter(html: string, repl: string): string {
+  if (!html.includes("<")) return html;
   let curr = html;
   for (let pass = 0; pass < TAG_STRIP_MAX_PASSES; pass++) {
     const prev = curr;
