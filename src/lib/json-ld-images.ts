@@ -24,13 +24,10 @@ import { isAbsoluteHttpUrl } from "./url";
  * @returns 重複除去済みの画像 URL 配列
  */
 export function extractJsonLdImages(html: string): string[] {
-  const scripts = [
-    ...html.matchAll(
-      /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi,
-    ),
-  ];
   const urls = new Set<string>();
-  for (const [, json] of scripts) {
+  for (const [, json] of html.matchAll(
+    /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi,
+  )) {
     let parsed: unknown;
     try {
       parsed = JSON.parse(json.trim());
