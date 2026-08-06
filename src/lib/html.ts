@@ -64,7 +64,7 @@ function decodeCodePoint(code: number): string {
 
 export function unescapeHtml(s: string): string {
   return s
-    .replace(/&(?:amp|lt|gt|quot|apos|nbsp|#(\d+)|#x([0-9a-fA-F]+));/gi, (m, dec, hex) => {
+    .replace(/&(?:amp|lt|gt|quot|apos|nbsp|copy|reg|#(\d+)|#x([0-9a-fA-F]+));/gi, (m, dec, hex) => {
       if (dec !== undefined) return decodeCodePoint(Number(dec));
       if (hex !== undefined) return decodeCodePoint(parseInt(hex, 16));
       switch (m.toLowerCase()) {
@@ -80,6 +80,10 @@ export function unescapeHtml(s: string): string {
           return "'";
         case "&nbsp;":
           return " ";
+        case "&copy;":
+          return "©";
+        case "&reg;":
+          return "®";
         default:
           return m;
       }

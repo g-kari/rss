@@ -17,6 +17,10 @@ test("unescapeHtml — nbsp エンティティを空白に変換する", () => {
   expect(unescapeHtml("Hello&nbsp;world")).toBe("Hello world");
 });
 
+test("unescapeHtml — copy と reg エンティティを記号に変換する", () => {
+  expect(unescapeHtml("Brand&copy; Mark&reg;")).toBe("Brand© Mark®");
+});
+
 test.describe("stripHtmlWithBreaks", () => {
   test("<br> は改行に置換される", () => {
     expect(stripHtmlWithBreaks("foo<br>bar")).toBe("foo\nbar");
