@@ -69,7 +69,9 @@ function extractThumbListImgs(html: string, pageUrl: string): string[] {
 }
 
 function countImgs(html: string): number {
-  return (html.match(/<img\b/gi) ?? []).length;
+  let count = 0;
+  for (const _match of html.matchAll(/<img\b/gi)) count++;
+  return count;
 }
 
 /**
