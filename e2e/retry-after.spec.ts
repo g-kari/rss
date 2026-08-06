@@ -90,6 +90,12 @@ test.describe("parseRetryAfter — opts.maxMs", () => {
 // ── HTTP-date 形式 ────────────────────────────────────────────
 
 test.describe("parseRetryAfter — HTTP-date 形式", () => {
+  test("opts.nowMs で基準時刻を固定できる", () => {
+    const nowMs = Date.parse("2026-08-06T12:00:00Z");
+    const header = "Thu, 06 Aug 2026 12:05:00 GMT";
+    expect(parseRetryAfter(header, { nowMs })).toBe(5 * 60_000);
+  });
+
   test("未来の HTTP-date → 残り時間のミリ秒（±2秒の誤差を許容）", () => {
     const future = new Date(Date.now() + ONE_HOUR_MS);
     const result = parseRetryAfter(future.toUTCString());
