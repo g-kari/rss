@@ -13,6 +13,7 @@ import { useEngagementEntries } from "../hooks/useEngagementEntries";
 import { useToast } from "../contexts/ToastContext";
 import {
   aggregateStatsForFeed,
+  buildReadingStatsSummary,
   buildReadingHistoryCsvFile,
   countActiveReadingDays,
   computeLongestStreak,
@@ -119,6 +120,24 @@ export default function ReadingStatsModal({
     }
   }
 
+  async function copySummary() {
+    if (!stats) return;
+    const summary = buildReadingStatsSummary({
+      weeklyTotal: displayWeeklyTotal,
+      allTimeTotal: stats.allTimeTotal,
+      currentStreak: stats.currentStreak,
+      longestStreak,
+      exportedAt: new Date(),
+    });
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast.success("読書統計をコピーしました");
+    } catch (err) {
+      devError("[ReadingStatsModal] summary copy failed", err);
+      toast.error("読書統計のコピーに失敗しました");
+    }
+  }
+
   return (
     <Modal title="読書統計" onClose={onClose} width="sm:w-[560px]">
       <div className="px-4 py-4 flex flex-col gap-5">
@@ -175,28 +194,37 @@ export default function ReadingStatsModal({
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={downloadReadingHistory}
-              className="self-end flex items-center gap-1.5 px-2 py-1 text-[11px] text-text-muted hover:text-text-strong max-md:min-h-[44px] lg:min-h-[24px] transition-colors"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            <div className="self-end flex items-center gap-2">
+              <button
+                type="button"
+                onClick={copySummary}
+                className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-text-muted hover:text-text-strong max-md:min-h-[44px] lg:min-h-[24px] transition-colors"
               >
-                <path d="M12 3v12" />
-                <path d="M7 10l5 5 5-5" />
-                <path d="M4 20h16" />
-              </svg>
-              過去 1 年を CSV で保存
-            </button>
+                統計をコピー
+              </button>
+              <button
+                type="button"
+                onClick={downloadReadingHistory}
+                className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-text-muted hover:text-text-strong max-md:min-h-[44px] lg:min-h-[24px] transition-colors"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M4 20h16" />
+                </svg>
+                過去 1 年を CSV で保存
+              </button>
+            </div>
 
             {/* サマリーカード */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -8,6 +8,23 @@ export const READ_ACTIONS: ReadonlySet<string> = new Set(["fetch_full", "open_or
 
 const READING_HISTORY_CSV_HEADER = "日付,読了数";
 
+/** 読書統計の主要指標を共有しやすいプレーンテキストへ変換する。 */
+export function buildReadingStatsSummary(input: {
+  weeklyTotal: number;
+  allTimeTotal: number;
+  currentStreak: number;
+  longestStreak: number;
+  exportedAt: Date;
+}): string {
+  return [
+    `読書統計 (${input.exportedAt.toISOString().slice(0, 10)})`,
+    `今週: ${input.weeklyTotal}件`,
+    `累計: ${input.allTimeTotal}件`,
+    `連続: ${input.currentStreak}日`,
+    `1年最長: ${input.longestStreak}日`,
+  ].join("\n");
+}
+
 /** 過去の読了件数を UTF-8 BOM + CRLF の CSV に変換する。 */
 export function buildReadingHistoryCsv(
   dailyReadCounts: readonly { date: string; count: number }[],

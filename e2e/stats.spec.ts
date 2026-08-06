@@ -8,9 +8,22 @@ import {
   countActiveReadingDays,
   findBestReadingDay,
   computeWeeklyTotal,
+  buildReadingStatsSummary,
   buildReadingHistoryCsv,
   buildReadingHistoryCsvFile,
 } from "../src/lib/stats-helpers";
+
+test("buildReadingStatsSummary は主要指標を共有用テキストに整形する", () => {
+  expect(
+    buildReadingStatsSummary({
+      weeklyTotal: 12,
+      allTimeTotal: 345,
+      currentStreak: 4,
+      longestStreak: 21,
+      exportedAt: new Date("2026-08-07T12:00:00Z"),
+    }),
+  ).toBe("読書統計 (2026-08-07)\n今週: 12件\n累計: 345件\n連続: 4日\n1年最長: 21日");
+});
 
 test.describe("buildReadingHistoryCsv", () => {
   test("UTF-8 BOM と CRLF 付きで日別読了件数を入力順に出力する", () => {
