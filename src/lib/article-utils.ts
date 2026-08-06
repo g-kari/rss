@@ -127,7 +127,9 @@ export function compareByPublishedAtDesc(
  */
 export function cycleValue<T>(cycle: readonly T[], current: T): T {
   if (cycle.length === 0) throw new Error("cycle must not be empty");
-  return cycle[(cycle.indexOf(current) + 1) % cycle.length];
+  const currentIndex = cycle.indexOf(current);
+  if (currentIndex < 0) return cycle[0];
+  return cycle[(currentIndex + 1) % cycle.length];
 }
 
 export const FONT_SIZE_CYCLE: FontSize[] = ["small", "medium", "large"];

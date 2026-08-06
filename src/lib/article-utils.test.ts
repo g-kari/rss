@@ -31,4 +31,8 @@ describe("article-utils (vitest smoke)", () => {
   it("cycleValue: 空のサイクルは明示的に失敗する", () => {
     expect(() => cycleValue([], "current")).toThrow("cycle must not be empty");
   });
+
+  it("cycleValue: 現在値が存在しなければ先頭から再開する", () => {
+    expect(cycleValue(["a", "b"], "missing")).toBe("a");
+  });
 });
