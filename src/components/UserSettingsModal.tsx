@@ -15,6 +15,10 @@ interface Props {
   feeds: Feed[];
   articles: Article[];
   setNote: (articleId: string, text: string) => void;
+  bookmarkIds: Set<string>;
+  readingListIds: Set<string>;
+  toggleBookmark: (articleId: string) => void;
+  toggleReadingList: (articleId: string) => void;
 }
 
 /**
@@ -25,7 +29,16 @@ interface Props {
  *
  * 各タブの実装は src/components/user-settings/ 配下のコンポーネントに委譲。
  */
-export default function UserSettingsModal({ onClose, feeds, articles, setNote }: Props) {
+export default function UserSettingsModal({
+  onClose,
+  feeds,
+  articles,
+  setNote,
+  bookmarkIds,
+  readingListIds,
+  toggleBookmark,
+  toggleReadingList,
+}: Props) {
   const {
     theme,
     setTheme,
@@ -202,6 +215,10 @@ export default function UserSettingsModal({ onClose, feeds, articles, setNote }:
         hidden={activeTab !== "import-export"}
         articles={articles}
         setNote={setNote}
+        bookmarkIds={bookmarkIds}
+        readingListIds={readingListIds}
+        toggleBookmark={toggleBookmark}
+        toggleReadingList={toggleReadingList}
       />
     </Modal>
   );

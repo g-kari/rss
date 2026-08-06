@@ -142,6 +142,38 @@ export interface ArticlesJsonExport {
   articles: ExportedArticleJson[];
 }
 
+/** 記事 JSON バックアップの状態種別。コレクション用 JSON は復元対象外。 */
+export type ArticleStateImportMode = "bookmark" | "reading_list";
+
+/** 記事 JSON バックアップを検証し、URL と復元対象状態を取り出す純粋関数。 */
+export function parseArticleStateJson(
+  text: string,
+): { mode: ArticleStateImportMode; urls: string[] } | null {
+  try {
+    const parsed = JSON.parse(text) as { label?: unknown; articles?: unknown };
+    const mode =
+      parsed.label === "ブックマーク"
+        ? "bookmark"
+        : parsed.label === "後で読む"
+          ? "reading_list"
+          : null;
+    if (!mode || !Array.isArray(parsed.articles)) return null;
+    const urls: string[] = [];
+    const seen = new Set<string>();
+    for (const value of parsed.articles) {
+      if (typeof value !== "object" || value === null) continue;
+      const entry = value as Record<string, unknown>;
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      urls.push(url);
+    }
+    return { mode, urls };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * ブックマーク / 後で読む記事を構造化 JSON オブジェクトに変換する純粋関数。
  *

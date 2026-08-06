@@ -3,6 +3,7 @@ import {
   buildArticlesJson,
   buildNotesJson,
   parseNotesJson,
+  parseArticleStateJson,
   buildSavedSearchesJson,
   buildSavedSearchesJsonFile,
   parseSavedSearchesJson,
@@ -325,6 +326,30 @@ test.describe("buildArticlesJson", () => {
     expect(result.articles[0]).toMatchObject({
       metadata: [{ key: "source", value: "配信元" }],
     });
+  });
+});
+
+test.describe("parseArticleStateJson", () => {
+  test("ブックマークと後で読むのラベルを状態種別へ変換する", () => {
+    expect(
+      parseArticleStateJson(
+        JSON.stringify({
+          label: "ブックマーク",
+          articles: [{ url: " https://example.com/a " }, { url: "https://example.com/a" }],
+        }),
+      ),
+    ).toEqual({ mode: "bookmark", urls: ["https://example.com/a"] });
+    expect(parseArticleStateJson(JSON.stringify({ label: "後で読む", articles: [] }))).toEqual({
+      mode: "reading_list",
+      urls: [],
+    });
+  });
+
+  test("コレクションや不正な JSON は取り込まない", () => {
+    expect(
+      parseArticleStateJson(JSON.stringify({ label: "コレクション", articles: [] })),
+    ).toBeNull();
+    expect(parseArticleStateJson("not json")).toBeNull();
   });
 });
 

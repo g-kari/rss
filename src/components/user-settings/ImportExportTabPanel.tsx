@@ -4,7 +4,11 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { useFullTextSearch } from "../../hooks/useFullTextSearch";
 import { downloadBlob } from "../../lib/download";
-import { buildSavedSearchesJsonFile, parseSavedSearchesJson } from "../../lib/export-json";
+import {
+  buildSavedSearchesJsonFile,
+  parseArticleStateJson,
+  parseSavedSearchesJson,
+} from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
 import type { Article } from "../../types";
@@ -14,21 +18,31 @@ interface ImportExportTabPanelProps {
   hidden: boolean;
   articles: Article[];
   setNote: (articleId: string, text: string) => void;
+  bookmarkIds: Set<string>;
+  readingListIds: Set<string>;
+  toggleBookmark: (articleId: string) => void;
+  toggleReadingList: (articleId: string) => void;
 }
 
 export default function ImportExportTabPanel({
   hidden,
   articles,
   setNote,
+  bookmarkIds,
+  readingListIds,
+  toggleBookmark,
+  toggleReadingList,
 }: ImportExportTabPanelProps) {
   const toast = useToast();
   const { savedSearches, importSaved } = useFullTextSearch();
   const importRef = useRef<HTMLInputElement>(null);
   const savedSearchImportRef = useRef<HTMLInputElement>(null);
   const notesImportRef = useRef<HTMLInputElement>(null);
+  const articleStateImportRef = useRef<HTMLInputElement>(null);
   const [opmlLoading, setOpmlLoading] = useState(false);
   const [savedSearchLoading, setSavedSearchLoading] = useState(false);
   const [notesLoading, setNotesLoading] = useState(false);
+  const [articleStateLoading, setArticleStateLoading] = useState(false);
   const [clipUrlCopied, setClipUrlCopied] = useState(false);
 
   const CLIP_URL = "https://rss.0g0.xyz/api/clip";
@@ -159,6 +173,44 @@ export default function ImportExportTabPanel({
       toast.error("メモのインポートに失敗しました");
     } finally {
       setNotesLoading(false);
+    }
+  };
+
+  const handleArticleStateImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("記事状態 JSON のサイズが大きすぎます（上限5MB）");
+      return;
+    }
+    setArticleStateLoading(true);
+    try {
+      const parsed = parseArticleStateJson(await file.text());
+      if (!parsed) {
+        toast.error("ブックマークまたは後で読むの JSON ではありません");
+        return;
+      }
+      const articleByUrl = new Map(articles.map((article) => [article.link, article]));
+      const currentIds = parsed.mode === "bookmark" ? bookmarkIds : readingListIds;
+      const toggle = parsed.mode === "bookmark" ? toggleBookmark : toggleReadingList;
+      let imported = 0;
+      for (const url of parsed.urls) {
+        const article = articleByUrl.get(url);
+        if (!article || currentIds.has(article.id)) continue;
+        toggle(article.id);
+        imported += 1;
+      }
+      toast.success(
+        imported > 0
+          ? `${imported}件を${parsed.mode === "bookmark" ? "ブックマーク" : "後で読む"}に取り込みました`
+          : "一致する未登録の記事はありません",
+      );
+    } catch (err) {
+      devError("[ImportExportTabPanel] article state import failed", err);
+      toast.error("記事状態のインポートに失敗しました");
+    } finally {
+      setArticleStateLoading(false);
     }
   };
 
@@ -302,6 +354,30 @@ export default function ImportExportTabPanel({
             className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             メモ JSON 取込
+          </button>
+        </div>
+
+        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+          ブックマーク / 後で読む
+        </span>
+        <div className="flex flex-col gap-2">
+          <p className="text-[12px] text-text-soft leading-relaxed">
+            記事 JSON エクスポートを読み込み、現在の記事 URL と一致する状態を復元できます。
+          </p>
+          <input
+            ref={articleStateImportRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleArticleStateImport}
+          />
+          <button
+            type="button"
+            disabled={articleStateLoading}
+            onClick={() => articleStateImportRef.current?.click()}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            記事状態 JSON 取込
           </button>
         </div>
 

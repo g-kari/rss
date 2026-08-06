@@ -25,6 +25,10 @@ interface Props {
   feeds: Feed[];
   articles: Article[];
   setNote: (articleId: string, text: string) => void;
+  bookmarkIds: Set<string>;
+  readingListIds: Set<string>;
+  toggleBookmark: (articleId: string) => void;
+  toggleReadingList: (articleId: string) => void;
   selectedFeedId: string | null;
   onSelectFeed: (id: string | null) => void;
   onFeedSwitcherClose: () => void;
@@ -45,6 +49,10 @@ export default function AppModals({
   feeds,
   articles,
   setNote,
+  bookmarkIds,
+  readingListIds,
+  toggleBookmark,
+  toggleReadingList,
   selectedFeedId,
   onSelectFeed,
   onFeedSwitcherClose,
@@ -66,6 +74,10 @@ export default function AppModals({
           feeds={feeds}
           articles={articles}
           setNote={setNote}
+          bookmarkIds={bookmarkIds}
+          readingListIds={readingListIds}
+          toggleBookmark={toggleBookmark}
+          toggleReadingList={toggleReadingList}
           onClose={onSettingsClose}
         />
       )}
