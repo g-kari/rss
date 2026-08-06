@@ -567,7 +567,7 @@
 
 ### バグ修正っ
 
-- **オートモードで本文取得が即 abort されて読み上げ起動しないバグを修正したよ〜 (#678 真因確定)** — `useArticleContent` の `useEffect[articleId]` が **子 (AutoReadController) → 親 (useArticleContent)** の effect 発火順のせいで、AutoReadController が effect(1) で起動した新しい fetch を直後に abort してしまう深刻なバグを発見!💥 ユーザーログ提供で `articleId-effect-fired` が `hadController: true` で 2 回目発火している経路が確定〜🔍 **fetchAbortControllerRef に articleId を併記** して「自身と同じ articleId 用の controller は abort しない」(= 古い articleId 用のみ abort) 設計に変更!💡 これでオートモード遷移時に新 fetch が完走 → 全文取得 → 全文 TTS 読み上げが正常動作するよ〜🚀
+- **オートモードで本文取得が即 abort されて読み上げ起動しないバグを修正したよ〜 (#678 真因確定)** — `useArticleContent` の `useEffect[articleId, articleLink]` が **子 (AutoReadController) → 親 (useArticleContent)** の effect 発火順のせいで、AutoReadController が effect(1) で起動した新しい fetch を直後に abort してしまう深刻なバグを発見!💥 ユーザーログ提供で `article-key-effect-fired` が `hadController: true` で 2 回目発火している経路が確定〜🔍 **fetchAbortControllerRef に articleId / articleLink を併記** して「自身と同じ記事・URL 用の controller」は abort しない設計に変更!💡 これでオートモード遷移時に新 fetch が完走 → 全文取得 → 全文 TTS 読み上げが正常動作するよ〜🚀
 
 ### アクセシビリティ改善っ
 
