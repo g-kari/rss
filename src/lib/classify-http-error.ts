@@ -34,6 +34,11 @@ export function classifyHttpError(status: number): HttpErrorType {
   return "unknown";
 }
 
+/** エラー種別が再試行可能かを返す（ネットワーク障害・429・5xx）。 */
+export function isRetryableHttpError(type: HttpErrorType): boolean {
+  return type === "network" || type === "rate_limit" || type === "server_error";
+}
+
 /**
  * `HttpErrorType` ごとのユーザー向けメッセージを返す。
  *
@@ -80,13 +85,13 @@ export function formatHttpErrorMessage(
  * @param res - `!res.ok` ガード済の Response オブジェクト
  * @param fallback - server からの `body.error` が無い場合に表示するデフォルトメッセージ
  * @param opts.onParseError - body の JSON parse 失敗時に呼ばれる callback (debug log 用)
- * @returns `{ message: ユーザー向けメッセージ, type: HttpErrorType }`
+ * @returns `{ message: ユーザー向けメッセージ, type: HttpErrorType, retryable: boolean }`
  */
 export async function buildFetchErrorMessage(
   res: Response,
   fallback: string,
   opts?: { onParseError?: (err: unknown) => void },
-): Promise<{ message: string; type: HttpErrorType }> {
+): Promise<{ message: string; type: HttpErrorType; retryable: boolean }> {
   const type = classifyHttpError(res.status);
   const body = (await res.json().catch((err) => {
     opts?.onParseError?.(err);
@@ -96,5 +101,5 @@ export async function buildFetchErrorMessage(
     retryAfterHeader: res.headers.get("Retry-After"),
     fallback: body.error ?? fallback,
   });
-  return { message, type };
+  return { message, type, retryable: isRetryableHttpError(type) };
 }

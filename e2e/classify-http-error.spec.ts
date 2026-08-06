@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { classifyHttpError, formatHttpErrorMessage } from "../src/lib/classify-http-error";
+import {
+  classifyHttpError,
+  formatHttpErrorMessage,
+  isRetryableHttpError,
+} from "../src/lib/classify-http-error";
 
 test.describe("classifyHttpError (#688)", () => {
   test("429 → rate_limit", () => {
@@ -115,5 +119,15 @@ test.describe("formatHttpErrorMessage (#688)", () => {
   });
 });
 
-// isRetryableHttpError は module-private (export なし)。
-// Phase 2 でリトライ自動化を実装する際に export を再追加することで再利用可能。
+test.describe("isRetryableHttpError", () => {
+  test("ネットワーク・429・5xx は再試行可能", () => {
+    expect(isRetryableHttpError("network")).toBe(true);
+    expect(isRetryableHttpError("rate_limit")).toBe(true);
+    expect(isRetryableHttpError("server_error")).toBe(true);
+  });
+
+  test("4xx と未知のエラーは再試行しない", () => {
+    expect(isRetryableHttpError("client_error")).toBe(false);
+    expect(isRetryableHttpError("unknown")).toBe(false);
+  });
+});
