@@ -11,6 +11,7 @@ interface Props {
   feedHash: string;
   fetching: boolean;
   fetchError: string;
+  fetchRetryable: boolean;
   onFetch: (onFetched?: () => void) => Promise<void>;
   onEngagement?: (
     articleId: string,
@@ -30,6 +31,7 @@ export default function FetchFullContentArea({
   feedHash,
   fetching,
   fetchError,
+  fetchRetryable,
   onFetch,
   onEngagement,
 }: Props) {
@@ -152,13 +154,15 @@ export default function FetchFullContentArea({
           <p role="alert" className="text-[11px] text-error">
             {fetchError}
           </p>
-          <button
-            onClick={handleFetchClick}
-            disabled={fetching}
-            className="text-[11px] text-text-muted hover:text-text-strong underline underline-offset-2 transition-colors duration-200 disabled:opacity-50"
-          >
-            再試行
-          </button>
+          {fetchRetryable && (
+            <button
+              onClick={handleFetchClick}
+              disabled={fetching}
+              className="text-[11px] text-text-muted hover:text-text-strong underline underline-offset-2 transition-colors duration-200 disabled:opacity-50"
+            >
+              再試行
+            </button>
+          )}
         </div>
       )}
     </div>

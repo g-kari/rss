@@ -63,6 +63,7 @@ interface ArticleContentBodyProps {
   canFetch: boolean;
   fetching: boolean;
   fetchError: string;
+  fetchRetryable: boolean;
   fetchFullContent: (onFetched?: (content: string) => void) => Promise<void>;
   galleryImages: string[];
   onRetryTranslate?: () => void;
@@ -87,6 +88,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
       canFetch,
       fetching,
       fetchError,
+      fetchRetryable,
       fetchFullContent,
       galleryImages,
       onRetryTranslate,
@@ -492,6 +494,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
             feedHash={article.feedHash}
             fetching={fetching}
             fetchError={fetchError}
+            fetchRetryable={fetchRetryable}
             onFetch={fetchFullContent}
             onEngagement={onEngagement}
           />

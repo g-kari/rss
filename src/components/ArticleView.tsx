@@ -112,6 +112,7 @@ function ArticleView({
     storedContent,
     fetching,
     fetchError,
+    fetchRetryable,
     fetchFullContent,
     resolvedOgImage,
     aiResult,
@@ -338,6 +339,7 @@ function ArticleView({
           canFetch={canFetch}
           fetching={fetching}
           fetchError={fetchError}
+          fetchRetryable={fetchRetryable}
           fetchFullContent={fetchFullContent}
           galleryImages={galleryImages}
         />

@@ -28,6 +28,8 @@ interface ArticleContentState {
   storedContent: string | null;
   fetching: boolean;
   fetchError: string;
+  /** HTTP エラーが再試行可能か（未分類エラーは再試行可能として扱う） */
+  fetchRetryable: boolean;
   /** 全文取得。成功時は onFetched コールバックを呼ぶ（AI 連携用） */
   fetchFullContent: (onFetched?: (content: string) => void) => Promise<void>;
   /** OGP 画像がない場合に /api/ogp から動的解決した URL */
@@ -81,6 +83,7 @@ export function useArticleContent(
     fetchedState !== null && fetchedState.id === articleId ? fetchedState.content : null;
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
+  const [fetchRetryable, setFetchRetryable] = useState(true);
   const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
   // fetchFullContent の進行中フェッチを中断するための ref。
   // articleId を併記して「どの article 用の controller か」を追跡する (#678 真因対策)。
@@ -193,6 +196,7 @@ export function useArticleContent(
       fetchAbortControllerRef.current = { controller, articleId };
       setFetching(true);
       setFetchError("");
+      setFetchRetryable(true);
       try {
         const res = await apiFetch(`/api/content?url=${encodeURIComponent(articleLink)}`, {
           signal: controller.signal,
@@ -207,16 +211,21 @@ export function useArticleContent(
         // onParseError callback で debug log を出す。これがないと本番で「fallback メッセージ
         // のみ表示 → 実際のレスポンス body が一切わからない」観測性ギャップが残る。
         if (!res.ok) {
-          const { message, type } = await buildFetchErrorMessage(res, "取得できませんでした", {
-            onParseError: (parseErr) =>
-              autoReadDebug("useArticleContent.fetch-json-parse-failed", {
-                articleId,
-                httpStatus: res.status,
-                parseError: String(parseErr).slice(0, 100),
-              }),
-          });
+          const { message, type, retryable } = await buildFetchErrorMessage(
+            res,
+            "取得できませんでした",
+            {
+              onParseError: (parseErr) =>
+                autoReadDebug("useArticleContent.fetch-json-parse-failed", {
+                  articleId,
+                  httpStatus: res.status,
+                  parseError: String(parseErr).slice(0, 100),
+                }),
+            },
+          );
           if (controller.signal.aborted) return;
           setFetchError(message);
+          setFetchRetryable(retryable);
           autoReadDebug("useArticleContent.fetch-http-error", {
             articleId,
             httpStatus: res.status,
@@ -236,6 +245,7 @@ export function useArticleContent(
           onFetched?.(data.content);
         } else {
           setFetchError(data.error ?? "取得できませんでした");
+          setFetchRetryable(false);
           autoReadDebug("useArticleContent.fetch-no-content", {
             articleId,
             error: data.error,
@@ -254,6 +264,7 @@ export function useArticleContent(
           return;
         }
         setFetchError(formatHttpErrorMessage("network"));
+        setFetchRetryable(true);
         autoReadDebug("useArticleContent.fetch-network-error", {
           articleId,
           err: err instanceof Error ? err.message : String(err),
@@ -270,5 +281,5 @@ export function useArticleContent(
 
   const storedContent = fetchedContent ?? cachedContent;
 
-  return { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage };
+  return { storedContent, fetching, fetchError, fetchRetryable, fetchFullContent, resolvedOgImage };
 }

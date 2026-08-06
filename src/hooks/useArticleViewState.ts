@@ -74,7 +74,7 @@ export function useArticleViewState({
   } = useReaderSettings();
   const { globalFilter, setGlobalFilter: onSaveGlobalFilter } = useArticleFilter();
 
-  const { storedContent, fetching, fetchError, fetchFullContent, resolvedOgImage } =
+  const { storedContent, fetching, fetchError, fetchRetryable, fetchFullContent, resolvedOgImage } =
     useArticleContent(article?.id, article?.link, article?.ogImage);
 
   const {
@@ -307,6 +307,7 @@ export function useArticleViewState({
     storedContent,
     fetching,
     fetchError,
+    fetchRetryable,
     fetchFullContent,
     resolvedOgImage,
     aiResult,
