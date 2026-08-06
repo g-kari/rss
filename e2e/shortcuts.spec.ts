@@ -49,6 +49,27 @@ test("F5 のフィード更新は既定の再読み込みを抑止して更新 c
   expect(refreshed).toBe(1);
 });
 
+test("0 のフィルター解除は resetAllFilters と通知を呼ぶ", () => {
+  const reset = SHORTCUT_DEFS.find((definition) => definition.keys.includes("0"));
+  expect(reset).toBeDefined();
+
+  let resetCount = 0;
+  let toastMessage = "";
+  const ctx = {
+    resetAllFilters: () => {
+      resetCount++;
+    },
+    showToast: (message: string) => {
+      toastMessage = message;
+    },
+  } as unknown as ShortcutContext;
+
+  reset!.handler!(ctx, { preventDefault: () => {} } as unknown as KeyboardEvent);
+
+  expect(resetCount).toBe(1);
+  expect(toastMessage).toBe("フィルターを解除しました");
+});
+
 /**
  * src/config/shortcuts.ts の SHORTCUT_DEFS が sibling filter (unreadOnly / bookmarkOnly /
  * readingListOnly / likeOnly / noteOnly / digestMode) すべてに対応する handler を持つことを

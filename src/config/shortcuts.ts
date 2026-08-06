@@ -63,6 +63,7 @@ export interface ShortcutContext {
   toggleReadingListOnly: () => void;
   toggleLikeOnly: () => void;
   toggleNoteOnly: () => void;
+  resetAllFilters: () => void;
   toggleDigestMode: () => void;
   toggleSortOrder: () => SortOrder;
   cycleDateRange: () => DateRange;
@@ -446,6 +447,17 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     handler: (ctx) => {
       ctx.toggleNoteOnly();
       ctx.showToast(filterToastMsg(ctx.noteOnly, "メモありフィルター"));
+    },
+  },
+  {
+    keys: ["0"],
+    displayKey: "0",
+    description: "すべてのフィルターを解除",
+    group: "filter",
+    handler: (ctx, e) => {
+      e.preventDefault();
+      ctx.resetAllFilters();
+      ctx.showToast("フィルターを解除しました");
     },
   },
   {

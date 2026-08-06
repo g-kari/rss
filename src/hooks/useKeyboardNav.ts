@@ -52,6 +52,7 @@ interface KeyboardNavOptions {
   toggleLikeOnly: () => void;
   noteOnly: boolean;
   toggleNoteOnly: () => void;
+  resetAllFilters: () => void;
   digestMode: boolean;
   toggleDigestMode: () => void;
   toggleSortOrder: () => SortOrder;
