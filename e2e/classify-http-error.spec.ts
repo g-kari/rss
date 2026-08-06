@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   classifyHttpError,
   formatHttpErrorMessage,
+  buildFetchErrorMessage,
   isRetryableHttpError,
 } from "../src/lib/classify-http-error";
 
@@ -129,5 +130,21 @@ test.describe("isRetryableHttpError", () => {
   test("4xx と未知のエラーは再試行しない", () => {
     expect(isRetryableHttpError("client_error")).toBe(false);
     expect(isRetryableHttpError("unknown")).toBe(false);
+  });
+});
+
+test.describe("buildFetchErrorMessage retryable", () => {
+  test("4xx は再試行不可、5xx は再試行可能を返す", async () => {
+    const client = await buildFetchErrorMessage(
+      new Response(JSON.stringify({ error: "invalid" }), { status: 400 }),
+      "fallback",
+    );
+    const server = await buildFetchErrorMessage(
+      new Response(JSON.stringify({ error: "temporary" }), { status: 503 }),
+      "fallback",
+    );
+
+    expect(client.retryable).toBe(false);
+    expect(server.retryable).toBe(true);
   });
 });
