@@ -309,9 +309,13 @@ export async function mergeNewArticles(
 
   // knownIds が存在する場合はそれを重複チェックに使う（全ページ横断の既知 ID）
   // 存在しない場合は latest の ID のみでチェック（後方互換）
-  const knownIdsSet = meta.knownIds?.length
-    ? new Set(meta.knownIds)
-    : new Set(latest.map((a) => a.id));
+  let knownIdsSet: Set<string>;
+  if (meta.knownIds?.length) {
+    knownIdsSet = new Set(meta.knownIds);
+  } else {
+    knownIdsSet = new Set<string>();
+    for (const article of latest) knownIdsSet.add(article.id);
+  }
 
   // 真に新規の記事（既知 ID に存在しない）
   const brandNew = fetchedArticles.filter((a) => !knownIdsSet.has(a.id));
