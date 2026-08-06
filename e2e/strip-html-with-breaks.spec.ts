@@ -13,6 +13,10 @@ test("unescapeHtml — apos エンティティをアポストロフィに変換�
   expect(unescapeHtml("Rock &apos;n&apos; Roll")).toBe("Rock 'n' Roll");
 });
 
+test("unescapeHtml — nbsp エンティティを空白に変換する", () => {
+  expect(unescapeHtml("Hello&nbsp;world")).toBe("Hello world");
+});
+
 test.describe("stripHtmlWithBreaks", () => {
   test("<br> は改行に置換される", () => {
     expect(stripHtmlWithBreaks("foo<br>bar")).toBe("foo\nbar");
