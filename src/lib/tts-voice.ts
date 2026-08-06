@@ -25,10 +25,11 @@ function languagePrefix(lang: string): string {
  *
  * 優先順位 (高→低):
  *   1. preferredUri と完全一致する voice
- *   2. document の言語タグと前方一致する voice (例: "ja" は "ja-JP" にマッチ)
- *   3. default フラグが立っている voice
- *   4. 配列の先頭
- *   5. 空配列なら null
+ *   2. document の言語タグと完全一致する voice (例: "en-US" は "en-US" を優先)
+ *   3. document の言語タグと前方一致する voice (例: "ja" は "ja-JP" にマッチ)
+ *   4. default フラグが立っている voice
+ *   5. 配列の先頭
+ *   6. 空配列なら null
  *
  * 言語マッチは前方一致 (両側を lowercase + ハイフン以前で比較) で寛容に行う:
  *   "ja-JP" と "ja" → match
@@ -49,8 +50,13 @@ export function selectTtsVoice<T extends VoiceLike>(
     if (found) return found;
   }
 
-  // 2. 言語前方一致
+  // 2. 完全な言語タグ一致（地域に合う voice を優先）
   if (documentLang) {
+    const normalizedDocumentLang = documentLang.toLowerCase();
+    const exactMatch = voices.find((v) => v.lang.toLowerCase() === normalizedDocumentLang);
+    if (exactMatch) return exactMatch;
+
+    // 3. 言語前方一致
     const docPrefix = languagePrefix(documentLang);
     const langMatch = voices.find((v) => {
       const voicePrefix = languagePrefix(v.lang);
@@ -59,11 +65,11 @@ export function selectTtsVoice<T extends VoiceLike>(
     if (langMatch) return langMatch;
   }
 
-  // 3. default フラグ
+  // 4. default フラグ
   const defaultVoice = voices.find((v) => v.default === true);
   if (defaultVoice) return defaultVoice;
 
-  // 4. 先頭
+  // 5. 先頭
   return voices[0];
 }
 

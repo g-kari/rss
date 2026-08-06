@@ -72,6 +72,15 @@ test.describe("selectTtsVoice — 優先順位", () => {
     const result = selectTtsVoice(VOICES, null, "JA-JP");
     expect(result?.lang).toBe("ja-JP");
   });
+
+  test("documentLang の完全一致を同一言語の前方一致より優先する", () => {
+    const voices: VoiceLike[] = [
+      { voiceURI: "en-GB", lang: "en-GB", name: "British" },
+      { voiceURI: "en-US", lang: "en-US", name: "American" },
+    ];
+    const result = selectTtsVoice(voices, null, "en-US");
+    expect(result?.voiceURI).toBe("en-US");
+  });
 });
 
 // ============================================================
