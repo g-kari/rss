@@ -18,4 +18,8 @@ describe("article-utils (vitest smoke)", () => {
     expect(formatCount(50)).toBe("50");
     expect(formatCount(100)).toBe("99+");
   });
+
+  it("formatCount: 負数は 0 に正規化する", () => {
+    expect(formatCount(-1)).toBe("0");
+  });
 });
