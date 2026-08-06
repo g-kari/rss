@@ -62,6 +62,8 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
   const noImageRef = useRef<Set<string>>(new Set());
   const ogpCacheRef = useSyncedRef(ogpCache);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // visible が切り替わる / hook が unmount する前に、まだ発火していない遅延 OGP fetch を止める。
+  const scheduledFetchTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const seenLinksRef = useRef<Set<string>>(new Set());
 
   // count:last-id sentinel — O(1) で記事追加/削除を検知 (全 ID を join する O(n) GC 圧を回避)
@@ -158,7 +160,8 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
       fetchingRef.current.add(link);
       const article = articleByLink.get(link);
       // リロード時の /api/ogp 一斉フェッチ burst を防ぐため、インデックスに応じて遅延する（#762）
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
+        scheduledFetchTimersRef.current.delete(timerId);
         apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
           .then((r) => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -179,12 +182,19 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
             fetchingRef.current.delete(link);
           });
       }, i * OGP_STAGGER_MS);
+      scheduledFetchTimersRef.current.add(timerId);
     });
+    return () => {
+      for (const timerId of scheduledFetchTimersRef.current) clearTimeout(timerId);
+      scheduledFetchTimersRef.current.clear();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linksKey]);
 
   useEffect(() => {
     return () => {
+      for (const timerId of scheduledFetchTimersRef.current) clearTimeout(timerId);
+      scheduledFetchTimersRef.current.clear();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
