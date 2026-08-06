@@ -285,6 +285,15 @@ test.describe("isInSilentHours", () => {
     });
   });
 
+  test.describe("24:00 終了時刻", () => {
+    test("00:00 から 24:00 までは終日サイレント", () => {
+      const config = makeConfig("00:00", "24:00", "UTC");
+      expect(isInSilentHours(config, new Date("2026-01-01T00:00:00Z"))).toBe(true);
+      expect(isInSilentHours(config, new Date("2026-01-01T12:00:00Z"))).toBe(true);
+      expect(isInSilentHours(config, new Date("2026-01-01T23:59:00Z"))).toBe(true);
+    });
+  });
+
   test.describe("start === end のエッジケース", () => {
     test("start と end が同じ時刻は常に false（範囲なし）", () => {
       const config = makeConfig("12:00", "12:00", "UTC");
