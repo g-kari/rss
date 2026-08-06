@@ -33,6 +33,7 @@ export function stripHtml(html: string): string {
  * ように見える原因。`<br>`・`<p>` は改行に変換することで自然な可読性を保つ。
  */
 export function stripHtmlWithBreaks(html: string): string {
+  if (!html.includes("<")) return html.trim();
   // 1. <br> 系（自己閉じ・属性付き含む）を \n に置換
   let curr = html.replace(/<br\b[^>]*>/gi, "\n");
   // 2. <p> / </p> も改行扱い（開始・終了どちらも段落区切り）

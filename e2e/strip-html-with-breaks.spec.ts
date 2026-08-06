@@ -39,6 +39,10 @@ test.describe("stripHtmlWithBreaks", () => {
     expect(stripHtmlWithBreaks("just text")).toBe("just text");
   });
 
+  test("text のみの前後空白は trim される", () => {
+    expect(stripHtmlWithBreaks("  just text  ")).toBe("just text");
+  });
+
   test("HTML エンティティはそのまま（unescape は呼ばない）", () => {
     expect(stripHtmlWithBreaks("foo &amp; bar")).toBe("foo &amp; bar");
   });
