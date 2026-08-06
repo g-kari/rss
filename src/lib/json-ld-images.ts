@@ -136,10 +136,14 @@ export function appendMissingJsonLdImages(
       existingPathKeys.add(urlPathKey(decoded));
     }
   }
-  const missing = jsonLdImageUrls.filter((url) => !existingPathKeys.has(urlPathKey(url)));
-  if (missing.length === 0) return extractedContent;
-  const imgs = missing.map((url) => `<img src="${escapeAttr(url)}" alt="" />`).join("");
-  return extractedContent + `<div hidden>${imgs}</div>`;
+  const imgs: string[] = [];
+  for (const url of jsonLdImageUrls) {
+    if (!existingPathKeys.has(urlPathKey(url))) {
+      imgs.push(`<img src="${escapeAttr(url)}" alt="" />`);
+    }
+  }
+  if (imgs.length === 0) return extractedContent;
+  return extractedContent + `<div hidden>${imgs.join("")}</div>`;
 }
 
 function escapeAttr(s: string): string {
