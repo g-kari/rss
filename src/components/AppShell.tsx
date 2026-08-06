@@ -376,6 +376,7 @@ export default function AppShell({
   const digestFeedOrder = useDigestFeedOrder(user);
   const {
     recommendations,
+    topics: recommendationTopics,
     loading: recommendationsLoading,
     error: recommendationsError,
     dismiss: dismissRecommendation,
@@ -903,6 +904,7 @@ export default function AppShell({
                 totalUnread,
                 activeFeedView,
                 recommendations,
+                recommendationTopics,
                 recommendationsLoading,
                 recommendationsRefreshing,
                 recommendationsError,

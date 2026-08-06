@@ -8,6 +8,7 @@ import Spinner from "./Spinner";
 
 interface Props {
   recommendations: RecommendedFeed[];
+  topics: string[];
   loading: boolean;
   error: string | null;
   refreshing: boolean;
@@ -18,6 +19,7 @@ interface Props {
 
 export default function RecommendationSection({
   recommendations,
+  topics,
   loading,
   error,
   refreshing,
@@ -65,6 +67,12 @@ export default function RecommendationSection({
           </button>
         </div>
       </div>
+
+      {topics.length > 0 && (
+        <div className="px-4 pb-1 text-[10px] text-text-faint truncate" title={topics.join("、")}>
+          関心トピック: {topics.join("・")}
+        </div>
+      )}
 
       {/* ローディング */}
       {loading && recommendations.length === 0 && (

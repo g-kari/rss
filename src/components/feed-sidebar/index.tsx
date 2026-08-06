@@ -62,6 +62,7 @@ interface Props {
   nsfwMode: boolean;
   activeFeedView: FeedView;
   recommendations?: RecommendedFeed[];
+  recommendationTopics?: string[];
   recommendationsLoading?: boolean;
   recommendationsRefreshing?: boolean;
   recommendationsError?: string | null;
@@ -114,6 +115,7 @@ function FeedSidebar({
   nsfwMode,
   activeFeedView,
   recommendations,
+  recommendationTopics,
   recommendationsLoading,
   recommendationsRefreshing,
   recommendationsError,
@@ -594,6 +596,7 @@ function FeedSidebar({
         {recommendations && onDismissRecommendation && onRefreshRecommendations && (
           <RecommendationSection
             recommendations={recommendations}
+            topics={recommendationTopics ?? []}
             loading={recommendationsLoading ?? false}
             error={recommendationsError ?? null}
             refreshing={recommendationsRefreshing ?? false}
