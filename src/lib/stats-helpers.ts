@@ -15,14 +15,17 @@ export function buildReadingStatsSummary(input: {
   currentStreak: number;
   longestStreak: number;
   exportedAt: Date;
+  scope?: string;
 }): string {
-  return [
+  const lines = [
     `読書統計 (${input.exportedAt.toISOString().slice(0, 10)})`,
+    ...(input.scope ? [`対象: ${input.scope}`] : []),
     `今週: ${input.weeklyTotal}件`,
-    `累計: ${input.allTimeTotal}件`,
+    `${input.scope ? "累計（全体）" : "累計"}: ${input.allTimeTotal}件`,
     `連続: ${input.currentStreak}日`,
     `1年最長: ${input.longestStreak}日`,
-  ].join("\n");
+  ];
+  return lines.join("\n");
 }
 
 /** 過去の読了件数を UTF-8 BOM + CRLF の CSV に変換する。 */

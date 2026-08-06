@@ -23,6 +23,27 @@ test("buildReadingStatsSummary は主要指標を共有用テキストに整形�
       exportedAt: new Date("2026-08-07T12:00:00Z"),
     }),
   ).toBe("読書統計 (2026-08-07)\n今週: 12件\n累計: 345件\n連続: 4日\n1年最長: 21日");
+
+  expect(
+    buildReadingStatsSummary({
+      weeklyTotal: 2,
+      allTimeTotal: 345,
+      currentStreak: 1,
+      longestStreak: 3,
+      exportedAt: new Date("2026-08-07T12:00:00Z"),
+      scope: "Tech Feed",
+    }),
+  ).toContain("対象: Tech Feed\n");
+  expect(
+    buildReadingStatsSummary({
+      weeklyTotal: 2,
+      allTimeTotal: 345,
+      currentStreak: 1,
+      longestStreak: 3,
+      exportedAt: new Date("2026-08-07T12:00:00Z"),
+      scope: "Tech Feed",
+    }),
+  ).toContain("累計（全体）: 345件");
 });
 
 test.describe("buildReadingHistoryCsv", () => {

@@ -128,6 +128,7 @@ export default function ReadingStatsModal({
       currentStreak: stats.currentStreak,
       longestStreak,
       exportedAt: new Date(),
+      scope: selectedFeedHash ? (feedMap.get(selectedFeedHash) ?? selectedFeedHash) : undefined,
     });
     try {
       await navigator.clipboard.writeText(summary);
