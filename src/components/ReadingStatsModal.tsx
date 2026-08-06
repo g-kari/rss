@@ -131,6 +131,7 @@ export default function ReadingStatsModal({
       scope: selectedFeedHash ? (feedMap.get(selectedFeedHash) ?? selectedFeedHash) : undefined,
     });
     try {
+      if (!navigator.clipboard) throw new Error("clipboard API unavailable");
       await navigator.clipboard.writeText(summary);
       toast.success("読書統計をコピーしました");
     } catch (err) {
