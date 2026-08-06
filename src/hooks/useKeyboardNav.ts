@@ -14,6 +14,7 @@ import type {
   ReadingTimeRange,
 } from "../types";
 import { getShortcutDef, type ShortcutContext } from "../config/shortcuts";
+import { isEditableShortcutTarget } from "../lib/keyboard-target";
 
 interface KeyboardNavOptions {
   filteredArticles: Article[];
@@ -105,13 +106,7 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
 
   function handleKeyDown(e: KeyboardEvent) {
     const target = e.target;
-    if (
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLSelectElement ||
-      (target instanceof HTMLElement && target.isContentEditable)
-    )
-      return;
+    if (isEditableShortcutTarget(target)) return;
 
     const comboKey = e.ctrlKey ? `Control+${e.key}` : e.metaKey ? `Meta+${e.key}` : e.key;
     const def = getShortcutDef(comboKey);
