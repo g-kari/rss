@@ -132,7 +132,7 @@ export function useArticleContent(
       // その loading 状態を clobber しない。
       if (isStaleController || fetchAbortControllerRef.current === null) setFetching(false);
     }
-  }, [articleId]);
+  }, [articleId, articleLink]);
 
   // 同じ ID のままリンクだけ更新された場合も、前 URL のエラー表示を持ち越さない。
   useEffect(() => {
