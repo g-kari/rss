@@ -23,6 +23,12 @@ const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf]/g;
 /** 全角文字を含む広義の CJK（日本語判定用。全角英数記号 \uff00-\uffef を含む） */
 const CJK_WIDE_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uff00-\uffef]/g;
 
+function countMatches(text: string, pattern: RegExp): number {
+  let count = 0;
+  for (const _match of text.matchAll(pattern)) count++;
+  return count;
+}
+
 /**
  * テキストが日本語（CJK 文字を一定割合以上含む）かどうかを判定する。
  * 自動翻訳のトリガー判断に使用する。
@@ -32,7 +38,7 @@ const CJK_WIDE_PATTERN = /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uff00-\uffef]
 export function isLikelyJapanese(text: string): boolean {
   const plain = stripHtml(text);
   if (plain.length < 20) return true;
-  const cjk = (plain.match(CJK_WIDE_PATTERN) ?? []).length;
+  const cjk = countMatches(plain, CJK_WIDE_PATTERN);
   return cjk / plain.length > 0.03;
 }
 
@@ -56,7 +62,7 @@ export function isStoredContentJapanese(storedContent: string | null | undefined
 export function readingTime(html: string): number {
   const text = stripHtml(html);
   if (!text) return 0;
-  const cjkChars = (text.match(CJK_PATTERN) ?? []).length;
+  const cjkChars = countMatches(text, CJK_PATTERN);
   // CJK 文字を空白に置換して英語の語数を算出（CJK が英語カウントに混入しないよう除去）
   const englishText = text.replace(CJK_PATTERN, " ").trim();
   const enWords = englishText ? englishText.split(/\s+/).length : 0;
