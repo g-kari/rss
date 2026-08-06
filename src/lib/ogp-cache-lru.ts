@@ -28,5 +28,10 @@ export function mergeWithLruEviction<V>(
   const keys = Object.keys(next);
   if (keys.length <= max) return next;
   // 上限超過 → 先頭 (最も古くアクセスされた) entry から evict して末尾 max 件を残す。
-  return Object.fromEntries(keys.slice(-max).map((k) => [k, next[k]!]));
+  const evicted: Record<string, V> = {};
+  for (let i = Math.max(0, keys.length - max); i < keys.length; i++) {
+    const k = keys[i];
+    if (k !== undefined) evicted[k] = next[k]!;
+  }
+  return evicted;
 }
