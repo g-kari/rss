@@ -16,6 +16,10 @@ export interface VoiceLike {
   default?: boolean;
 }
 
+function languagePrefix(lang: string): string {
+  return lang.toLowerCase().split("-")[0] ?? "";
+}
+
 /**
  * 利用可能な voice 配列から、優先順位に従って 1 件選択する。
  *
@@ -47,9 +51,9 @@ export function selectTtsVoice<T extends VoiceLike>(
 
   // 2. 言語前方一致
   if (documentLang) {
-    const docPrefix = documentLang.toLowerCase().split("-")[0];
+    const docPrefix = languagePrefix(documentLang);
     const langMatch = voices.find((v) => {
-      const voicePrefix = v.lang.toLowerCase().split("-")[0];
+      const voicePrefix = languagePrefix(v.lang);
       return voicePrefix === docPrefix;
     });
     if (langMatch) return langMatch;
@@ -78,7 +82,7 @@ export function groupVoicesByLang<T extends VoiceLike>(
 ): Array<{ lang: string; voices: T[] }> {
   const map = new Map<string, T[]>();
   for (const v of voices) {
-    const key = v.lang.toLowerCase().split("-")[0] || "?";
+    const key = languagePrefix(v.lang) || "?";
     const arr = map.get(key) ?? [];
     arr.push(v);
     map.set(key, arr);
@@ -89,7 +93,7 @@ export function groupVoicesByLang<T extends VoiceLike>(
   }
   // グループの順序: preferredLangPrefix を先頭 → 残りはアルファベット順
   const langs = Array.from(map.keys()).sort();
-  const preferred = preferredLangPrefix?.toLowerCase().split("-")[0];
+  const preferred = preferredLangPrefix ? languagePrefix(preferredLangPrefix) : undefined;
   if (preferred && map.has(preferred)) {
     const idx = langs.indexOf(preferred);
     langs.splice(idx, 1);
