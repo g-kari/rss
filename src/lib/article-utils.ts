@@ -258,7 +258,8 @@ export function timeAgo(iso: string | null, now = new Date()): string {
 /** 未読カウントを表示用文字列に変換する（100以上は "99+" と表示） */
 export function formatCount(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "0";
-  return n > 99 ? "99+" : String(n);
+  const count = Math.floor(n);
+  return count > 99 ? "99+" : String(count);
 }
 
 /** OGP キャッシュ → フィード画像 → YouTube URL の順でサムネイルを解決 */
