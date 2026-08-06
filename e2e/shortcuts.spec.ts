@@ -12,6 +12,12 @@ test("ユーザー設定ショートカットは canonical 定義とヘルプ表
   expect(SHORTCUT_MAP[","]).toBe("ユーザー設定を表示");
 });
 
+test("検索ショートカットはスラッシュと Ctrl/Cmd+K を受け付ける", () => {
+  const search = SHORTCUT_DEFS.find((definition) => definition.displayKey.startsWith("/"));
+  expect(search?.keys).toEqual(["/", "Control+k", "Meta+k"]);
+  expect(SHORTCUT_MAP["/ / Ctrl+K"]).toBe("記事を検索");
+});
+
 /**
  * src/config/shortcuts.ts の SHORTCUT_DEFS が sibling filter (unreadOnly / bookmarkOnly /
  * readingListOnly / likeOnly / noteOnly / digestMode) すべてに対応する handler を持つことを

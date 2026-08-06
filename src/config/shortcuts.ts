@@ -565,8 +565,8 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     },
   },
   {
-    keys: ["/"],
-    displayKey: "/",
+    keys: ["/", "Control+k", "Meta+k"],
+    displayKey: "/ / Ctrl+K",
     description: "記事を検索",
     group: "global",
     handler: (ctx, e) => {

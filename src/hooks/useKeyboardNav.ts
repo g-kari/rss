@@ -113,7 +113,8 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
     )
       return;
 
-    const def = getShortcutDef(e.key);
+    const comboKey = e.ctrlKey ? `Control+${e.key}` : e.metaKey ? `Meta+${e.key}` : e.key;
+    const def = getShortcutDef(comboKey);
     if (!def?.handler) return;
 
     def.handler(buildContext(ref.current), e);
