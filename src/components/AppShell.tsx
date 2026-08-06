@@ -852,6 +852,8 @@ export default function AppShell({
                 onSettingsClose: () => setShowSettings(false),
                 showFeedSwitcher,
                 feeds,
+                articles,
+                setNote,
                 selectedFeedId,
                 onSelectFeed: setSelectedFeedId,
                 onFeedSwitcherClose: () => setShowFeedSwitcher(false),

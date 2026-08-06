@@ -4,7 +4,7 @@ import { useState, type KeyboardEvent } from "react";
 import Modal from "./Modal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useHeaderShareTargets } from "../hooks/useHeaderShareTargets";
-import type { Feed } from "../types";
+import type { Article, Feed } from "../types";
 import DisplayTabPanel from "./user-settings/DisplayTabPanel";
 import AiNotificationTabPanel from "./user-settings/AiNotificationTabPanel";
 import FeedManagementTabPanel from "./user-settings/FeedManagementTabPanel";
@@ -13,6 +13,8 @@ import ImportExportTabPanel from "./user-settings/ImportExportTabPanel";
 interface Props {
   onClose: () => void;
   feeds: Feed[];
+  articles: Article[];
+  setNote: (articleId: string, text: string) => void;
 }
 
 /**
@@ -23,7 +25,7 @@ interface Props {
  *
  * 各タブの実装は src/components/user-settings/ 配下のコンポーネントに委譲。
  */
-export default function UserSettingsModal({ onClose, feeds }: Props) {
+export default function UserSettingsModal({ onClose, feeds, articles, setNote }: Props) {
   const {
     theme,
     setTheme,
@@ -196,7 +198,11 @@ export default function UserSettingsModal({ onClose, feeds }: Props) {
 
       <FeedManagementTabPanel hidden={activeTab !== "feeds"} feeds={feeds} />
 
-      <ImportExportTabPanel hidden={activeTab !== "import-export"} />
+      <ImportExportTabPanel
+        hidden={activeTab !== "import-export"}
+        articles={articles}
+        setNote={setNote}
+      />
     </Modal>
   );
 }

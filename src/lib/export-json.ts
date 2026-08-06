@@ -245,6 +245,33 @@ export function buildNotesJson(
   };
 }
 
+/** メモ JSON バックアップを検証・正規化して取り込む純粋関数。 */
+export function parseNotesJson(text: string): ExportedNoteJson[] {
+  try {
+    const parsed = JSON.parse(text) as { notes?: unknown };
+    if (!Array.isArray(parsed.notes)) return [];
+    const result: ExportedNoteJson[] = [];
+    const urls = new Set<string>();
+    for (const value of parsed.notes) {
+      if (typeof value !== "object" || value === null) continue;
+      const entry = value as Record<string, unknown>;
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      const note = typeof entry.note === "string" ? entry.note.trim() : "";
+      if (!url || !note || urls.has(url)) continue;
+      urls.add(url);
+      result.push({
+        title: typeof entry.title === "string" ? entry.title : "",
+        url,
+        feedTitle: typeof entry.feedTitle === "string" ? entry.feedTitle : "",
+        note,
+      });
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * メモ付き記事を JSON ファイルとしてダウンロードする。
  * 対象が 0 件のときは何もしない。

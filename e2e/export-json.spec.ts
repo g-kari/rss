@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   buildArticlesJson,
   buildNotesJson,
+  parseNotesJson,
   buildSavedSearchesJson,
   buildSavedSearchesJsonFile,
   parseSavedSearchesJson,
@@ -373,5 +374,26 @@ test.describe("buildNotesJson", () => {
     const article = makeArticle({ id: "a1" });
     const result = buildNotesJson([article], { a1: "1行目\n2行目" }, [], NOW);
     expect(result.notes[0].note).toBe("1行目\n2行目");
+  });
+});
+
+test.describe("parseNotesJson", () => {
+  test("有効なメモを取り込み、URL 重複と不正項目を除外する", () => {
+    expect(
+      parseNotesJson(
+        JSON.stringify({
+          notes: [
+            { title: "記事", url: "https://example.com/a", feedTitle: "Feed", note: "メモ" },
+            { title: "重複", url: "https://example.com/a", feedTitle: "Feed", note: "後のメモ" },
+            { title: "空", url: "https://example.com/b", feedTitle: "Feed", note: " " },
+          ],
+        }),
+      ),
+    ).toEqual([{ title: "記事", url: "https://example.com/a", feedTitle: "Feed", note: "メモ" }]);
+  });
+
+  test("不正な JSON や notes のない形式は空配列を返す", () => {
+    expect(parseNotesJson("not json")).toEqual([]);
+    expect(parseNotesJson(JSON.stringify({ notes: [] }))).toEqual([]);
   });
 });

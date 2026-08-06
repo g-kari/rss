@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { Feed } from "../types";
+import type { Article, Feed } from "../types";
 
 const KeyboardShortcutsModal = dynamic(() => import("./KeyboardShortcutsModal"), { ssr: false });
 const UserSettingsModal = dynamic(() => import("./UserSettingsModal"), { ssr: false });
@@ -23,6 +23,8 @@ interface Props {
   onSettingsClose: () => void;
   showFeedSwitcher: boolean;
   feeds: Feed[];
+  articles: Article[];
+  setNote: (articleId: string, text: string) => void;
   selectedFeedId: string | null;
   onSelectFeed: (id: string | null) => void;
   onFeedSwitcherClose: () => void;
@@ -41,6 +43,8 @@ export default function AppModals({
   onSettingsClose,
   showFeedSwitcher,
   feeds,
+  articles,
+  setNote,
   selectedFeedId,
   onSelectFeed,
   onFeedSwitcherClose,
@@ -57,7 +61,14 @@ export default function AppModals({
         />
       )}
       {showHelp && <KeyboardShortcutsModal onClose={onHelpClose} />}
-      {showSettings && <UserSettingsModal feeds={feeds} onClose={onSettingsClose} />}
+      {showSettings && (
+        <UserSettingsModal
+          feeds={feeds}
+          articles={articles}
+          setNote={setNote}
+          onClose={onSettingsClose}
+        />
+      )}
       {showFeedSwitcher && (
         <FeedQuickSwitchModal
           feeds={feeds}

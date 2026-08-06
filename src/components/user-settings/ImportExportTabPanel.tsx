@@ -7,18 +7,28 @@ import { downloadBlob } from "../../lib/download";
 import { buildSavedSearchesJsonFile, parseSavedSearchesJson } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
+import type { Article } from "../../types";
+import { parseNotesJson } from "../../lib/export-json";
 
 interface ImportExportTabPanelProps {
   hidden: boolean;
+  articles: Article[];
+  setNote: (articleId: string, text: string) => void;
 }
 
-export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelProps) {
+export default function ImportExportTabPanel({
+  hidden,
+  articles,
+  setNote,
+}: ImportExportTabPanelProps) {
   const toast = useToast();
   const { savedSearches, importSaved } = useFullTextSearch();
   const importRef = useRef<HTMLInputElement>(null);
   const savedSearchImportRef = useRef<HTMLInputElement>(null);
+  const notesImportRef = useRef<HTMLInputElement>(null);
   const [opmlLoading, setOpmlLoading] = useState(false);
   const [savedSearchLoading, setSavedSearchLoading] = useState(false);
+  const [notesLoading, setNotesLoading] = useState(false);
   const [clipUrlCopied, setClipUrlCopied] = useState(false);
 
   const CLIP_URL = "https://rss.0g0.xyz/api/clip";
@@ -117,6 +127,38 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
       toast.error("検索条件のインポートに失敗しました");
     } finally {
       setSavedSearchLoading(false);
+    }
+  };
+
+  const handleNotesImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("メモ JSON のサイズが大きすぎます（上限5MB）");
+      return;
+    }
+    setNotesLoading(true);
+    try {
+      const entries = parseNotesJson(await file.text());
+      const articleByUrl = new Map(articles.map((article) => [article.link, article]));
+      let imported = 0;
+      for (const entry of entries) {
+        const article = articleByUrl.get(entry.url);
+        if (!article) continue;
+        setNote(article.id, entry.note);
+        imported += 1;
+      }
+      if (imported === 0) {
+        toast.error("一致する記事のメモが見つかりません");
+      } else {
+        toast.success(`${imported}件のメモを取り込みました`);
+      }
+    } catch (err) {
+      devError("[ImportExportTabPanel] notes import failed", err);
+      toast.error("メモのインポートに失敗しました");
+    } finally {
+      setNotesLoading(false);
     }
   };
 
@@ -236,6 +278,30 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
             className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             検索条件を JSON 取込
+          </button>
+        </div>
+
+        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+          メモ
+        </span>
+        <div className="flex flex-col gap-2">
+          <p className="text-[12px] text-text-soft leading-relaxed">
+            記事 URL が一致するメモを JSON バックアップから復元できます。
+          </p>
+          <input
+            ref={notesImportRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleNotesImport}
+          />
+          <button
+            type="button"
+            disabled={notesLoading}
+            onClick={() => notesImportRef.current?.click()}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            メモ JSON 取込
           </button>
         </div>
 
