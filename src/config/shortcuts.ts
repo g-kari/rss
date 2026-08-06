@@ -602,7 +602,7 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     },
   },
   { keys: [], displayKey: "?", description: "このヘルプを表示", group: "global" },
-  { keys: [], displayKey: ",", description: "ユーザー設定を表示", group: "global" },
+  { keys: [","], displayKey: ",", description: "ユーザー設定を表示", group: "global" },
   {
     keys: [],
     displayKey: "\\",
