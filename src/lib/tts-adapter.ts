@@ -1,11 +1,11 @@
 /**
  * TTS (Text-to-Speech) エンジンの抽象化レイヤー (#675 Phase 1a)。
  *
- * 既存の Web Speech API (`useSpeechSynthesis`) と将来の wasm 実装 (Piper / つくよみちゃん #674)
+ * 既存の Web Speech API (`useSpeechSynthesis`) と wasm 実装 (Piper / つくよみちゃん #674)
  * を共通インターフェース `TtsAdapter` 経由で扱えるようにし、UI 層や上位 hook が engine 種別を
  * 知らなくてよい設計にする。
  *
- * Phase 1a (本ファイル): 型定義 + voice 構造的互換性ヘルパーのみ。実装の差し替えは Phase 1b 以降。
+ * 型定義 + voice 構造的互換性ヘルパー + engine 共通 adapter 契約を提供する。
  */
 
 /**

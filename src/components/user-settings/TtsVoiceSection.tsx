@@ -11,7 +11,7 @@ import { findPiperPlusVoice, PIPER_PLUS_VOICES } from "../../lib/piper-voices";
  * 記事ヘッダーから移動した voice 選択 UI + 現在の TTS engine 表示を提供する。
  * `useTtsAdapter()` で App.tsx に注入された TtsAdapter を購読するため、prop drilling 不要。
  *
- * Phase 2 (#674) で Piper wasm adapter が追加されたら、engine 切替 UI もここに増やす予定。
+ * Piper wasm adapter と engine 切替 UI (#674) まで実装済み。
  */
 export default function TtsVoiceSection() {
   const {
@@ -30,7 +30,7 @@ export default function TtsVoiceSection() {
   const voiceGroups = useMemo(() => groupVoicesByLang(voices, docLang), [voices, docLang]);
 
   // engine 切替 UI は availableEngines が 2 つ以上で setEngine が注入された場合のみ表示。
-  // Phase 2b では availableEngines = ["web-speech"] のみ (Piper は Phase 2c で復活予定)。
+  // Piper が利用できない環境では availableEngines が Web Speech のみに絞られる。
   const canSwitchEngine = setEngine !== undefined && (availableEngines?.length ?? 0) > 1;
 
   // 選択中 voice (Piper engine の場合) の credit 情報。non-Piper voice や未選択時は null。
