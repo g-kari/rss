@@ -92,7 +92,7 @@ export function useArticleContent(
   const [fetchRetryable, setFetchRetryable] = useState(true);
   const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
   // fetchFullContent の進行中フェッチを中断するための ref。
-  // articleId を併記して「どの article 用の controller か」を追跡する (#678 真因対策)。
+  // articleId と articleLink を併記して「どの URL 用の controller か」を追跡する。
   const fetchAbortControllerRef = useRef<{
     controller: AbortController;
     articleId: string | undefined;
@@ -106,9 +106,9 @@ export function useArticleContent(
   // #678: useEffect の発火順は「子 (AutoReadController) → 親 (useArticleContent) 」
   // のため、AutoReadController が effect(1) で新 fetch を起動した後に
   // この useEffect が走り、せっかく起動した新 fetch を abort してしまうバグがあった。
-  // → controller に articleId を併記して、「自身と同じ articleId 用の controller」
-  //   は abort しない (= 古い articleId 用の controller のみ abort) 設計に変更。
-  // fetchedContent は fetchedState.id との照合で自動的に null 扱いになるため個別リセット不要。
+  // → controller に articleId / articleLink を併記して、「自身と同じ記事・URL」の controller
+  //   は abort しない (= 古い記事または URL 用の controller のみ abort) 設計に変更。
+  // fetchedContent は fetchedState の id / link 照合で自動的に null 扱いになるため個別リセット不要。
   useEffect(() => {
     const ref = fetchAbortControllerRef.current;
     const articleChanged = previousArticleIdRef.current !== articleId;
