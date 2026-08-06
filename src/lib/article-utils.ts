@@ -195,9 +195,8 @@ export const DATE_RANGE_LABELS: Record<DateRange, string> = {
  * - week: 7 日前
  * - month: 1 ヶ月前
  */
-export function getDateRangeStart(range: DateRange): Date | null {
+export function getDateRangeStart(range: DateRange, now = new Date()): Date | null {
   if (range === "all") return null;
-  const now = new Date();
   if (range === "today") {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }

@@ -6,12 +6,33 @@ import {
   compareByDateDesc,
   compareByPublishedAtDesc,
   getArticleTimestamp,
+  getDateRangeStart,
 } from "../src/lib/article-utils";
 import type { Article } from "../src/types";
 import { makeArticle as makeBaseArticle } from "./helpers/article";
 
 // このファイル特有の signature (id, content) をラップ — 内部で override object に変換
 const makeArticle = (id: string, content: string) => makeBaseArticle({ id, content });
+
+test.describe("getDateRangeStart — 基準日時", () => {
+  const now = new Date("2026-08-06T12:34:56.000Z");
+
+  test("固定した基準日時から today/week/month を計算できる", () => {
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const week = new Date(now);
+    week.setDate(week.getDate() - 7);
+    const month = new Date(now);
+    month.setMonth(month.getMonth() - 1);
+    expect(getDateRangeStart("today", now)).toEqual(today);
+    expect(getDateRangeStart("week", now)).toEqual(week);
+    expect(getDateRangeStart("month", now)).toEqual(month);
+  });
+
+  test("all は基準日時に関係なく null", () => {
+    expect(getDateRangeStart("all", now)).toBeNull();
+  });
+});
 
 /**
  * readingTime の単体テスト。
