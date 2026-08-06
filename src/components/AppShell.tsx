@@ -858,6 +858,8 @@ export default function AppShell({
                 readingListIds,
                 toggleBookmark,
                 toggleReadingList,
+                collections,
+                addArticlesToCollection,
                 selectedFeedId,
                 onSelectFeed: setSelectedFeedId,
                 onFeedSwitcherClose: () => setShowFeedSwitcher(false),

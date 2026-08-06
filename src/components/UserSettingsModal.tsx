@@ -4,7 +4,7 @@ import { useState, type KeyboardEvent } from "react";
 import Modal from "./Modal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useHeaderShareTargets } from "../hooks/useHeaderShareTargets";
-import type { Article, Feed } from "../types";
+import type { Article, Collection, Feed } from "../types";
 import DisplayTabPanel from "./user-settings/DisplayTabPanel";
 import AiNotificationTabPanel from "./user-settings/AiNotificationTabPanel";
 import FeedManagementTabPanel from "./user-settings/FeedManagementTabPanel";
@@ -19,6 +19,8 @@ interface Props {
   readingListIds: Set<string>;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
+  collections: Collection[];
+  addArticlesToCollection: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
 }
 
 /**
@@ -38,6 +40,8 @@ export default function UserSettingsModal({
   readingListIds,
   toggleBookmark,
   toggleReadingList,
+  collections,
+  addArticlesToCollection,
 }: Props) {
   const {
     theme,
@@ -219,6 +223,8 @@ export default function UserSettingsModal({
         readingListIds={readingListIds}
         toggleBookmark={toggleBookmark}
         toggleReadingList={toggleReadingList}
+        collections={collections}
+        addArticlesToCollection={addArticlesToCollection}
       />
     </Modal>
   );

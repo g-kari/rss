@@ -174,6 +174,35 @@ export function parseArticleStateJson(
   }
 }
 
+/** コレクション JSON バックアップを検証し、コレクション名と記事 URL を取り出す。 */
+export function parseCollectionArticlesJson(text: string): { name: string; urls: string[] } | null {
+  try {
+    const parsed = JSON.parse(text) as { label?: unknown; articles?: unknown };
+    const name = typeof parsed.label === "string" ? parsed.label.trim() : "";
+    if (
+      !name ||
+      name === "ブックマーク" ||
+      name === "後で読む" ||
+      !Array.isArray(parsed.articles)
+    ) {
+      return null;
+    }
+    const urls: string[] = [];
+    const seen = new Set<string>();
+    for (const value of parsed.articles) {
+      if (typeof value !== "object" || value === null) continue;
+      const entry = value as Record<string, unknown>;
+      const url = typeof entry.url === "string" ? entry.url.trim() : "";
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      urls.push(url);
+    }
+    return { name, urls };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * ブックマーク / 後で読む記事を構造化 JSON オブジェクトに変換する純粋関数。
  *

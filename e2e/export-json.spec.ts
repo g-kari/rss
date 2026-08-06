@@ -4,6 +4,7 @@ import {
   buildNotesJson,
   parseNotesJson,
   parseArticleStateJson,
+  parseCollectionArticlesJson,
   buildSavedSearchesJson,
   buildSavedSearchesJsonFile,
   parseSavedSearchesJson,
@@ -350,6 +351,26 @@ test.describe("parseArticleStateJson", () => {
       parseArticleStateJson(JSON.stringify({ label: "コレクション", articles: [] })),
     ).toBeNull();
     expect(parseArticleStateJson("not json")).toBeNull();
+  });
+});
+
+test.describe("parseCollectionArticlesJson", () => {
+  test("コレクション名と重複除外済み URL を返す", () => {
+    expect(
+      parseCollectionArticlesJson(
+        JSON.stringify({
+          label: "あとで整理",
+          articles: [{ url: "https://example.com/a" }, { url: "https://example.com/a" }],
+        }),
+      ),
+    ).toEqual({ name: "あとで整理", urls: ["https://example.com/a"] });
+  });
+
+  test("ブックマーク等の状態 JSON や不正 JSON は対象外", () => {
+    expect(
+      parseCollectionArticlesJson(JSON.stringify({ label: "ブックマーク", articles: [] })),
+    ).toBeNull();
+    expect(parseCollectionArticlesJson("not json")).toBeNull();
   });
 });
 

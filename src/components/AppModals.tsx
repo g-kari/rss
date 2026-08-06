@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { Article, Feed } from "../types";
+import type { Article, Collection, Feed } from "../types";
 
 const KeyboardShortcutsModal = dynamic(() => import("./KeyboardShortcutsModal"), { ssr: false });
 const UserSettingsModal = dynamic(() => import("./UserSettingsModal"), { ssr: false });
@@ -29,6 +29,8 @@ interface Props {
   readingListIds: Set<string>;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
+  collections: Collection[];
+  addArticlesToCollection: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
   selectedFeedId: string | null;
   onSelectFeed: (id: string | null) => void;
   onFeedSwitcherClose: () => void;
@@ -53,6 +55,8 @@ export default function AppModals({
   readingListIds,
   toggleBookmark,
   toggleReadingList,
+  collections,
+  addArticlesToCollection,
   selectedFeedId,
   onSelectFeed,
   onFeedSwitcherClose,
@@ -78,6 +82,8 @@ export default function AppModals({
           readingListIds={readingListIds}
           toggleBookmark={toggleBookmark}
           toggleReadingList={toggleReadingList}
+          collections={collections}
+          addArticlesToCollection={addArticlesToCollection}
           onClose={onSettingsClose}
         />
       )}

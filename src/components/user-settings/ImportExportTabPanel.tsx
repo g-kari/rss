@@ -7,11 +7,12 @@ import { downloadBlob } from "../../lib/download";
 import {
   buildSavedSearchesJsonFile,
   parseArticleStateJson,
+  parseCollectionArticlesJson,
   parseSavedSearchesJson,
 } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
-import type { Article } from "../../types";
+import type { Article, Collection } from "../../types";
 import { parseNotesJson } from "../../lib/export-json";
 
 interface ImportExportTabPanelProps {
@@ -22,6 +23,8 @@ interface ImportExportTabPanelProps {
   readingListIds: Set<string>;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
+  collections: Collection[];
+  addArticlesToCollection: (collectionId: string, articleIds: readonly string[]) => Promise<void>;
 }
 
 export default function ImportExportTabPanel({
@@ -32,6 +35,8 @@ export default function ImportExportTabPanel({
   readingListIds,
   toggleBookmark,
   toggleReadingList,
+  collections,
+  addArticlesToCollection,
 }: ImportExportTabPanelProps) {
   const toast = useToast();
   const { savedSearches, importSaved } = useFullTextSearch();
@@ -43,6 +48,8 @@ export default function ImportExportTabPanel({
   const [savedSearchLoading, setSavedSearchLoading] = useState(false);
   const [notesLoading, setNotesLoading] = useState(false);
   const [articleStateLoading, setArticleStateLoading] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState("");
+  const collectionImportRef = useRef<HTMLInputElement>(null);
   const [clipUrlCopied, setClipUrlCopied] = useState(false);
 
   const CLIP_URL = "https://rss.0g0.xyz/api/clip";
@@ -214,6 +221,41 @@ export default function ImportExportTabPanel({
     }
   };
 
+  const handleCollectionImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (!selectedCollectionId) {
+      toast.error("取り込み先コレクションを選択してください");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("コレクション JSON のサイズが大きすぎます（上限5MB）");
+      return;
+    }
+    setArticleStateLoading(true);
+    try {
+      const parsed = parseCollectionArticlesJson(await file.text());
+      if (!parsed) {
+        toast.error("コレクションの JSON ではありません");
+        return;
+      }
+      const articleByUrl = new Map(articles.map((article) => [article.link, article]));
+      const target = collections.find((collection) => collection.id === selectedCollectionId);
+      const existing = new Set(target?.articleIds ?? []);
+      const articleIds = parsed.urls
+        .map((url) => articleByUrl.get(url)?.id)
+        .filter((id): id is string => typeof id === "string" && !existing.has(id));
+      await addArticlesToCollection(selectedCollectionId, articleIds);
+      toast.success(`${articleIds.length}件を「${target?.name ?? parsed.name}」に取り込みました`);
+    } catch (err) {
+      devError("[ImportExportTabPanel] collection import failed", err);
+      toast.error("コレクションのインポートに失敗しました");
+    } finally {
+      setArticleStateLoading(false);
+    }
+  };
+
   return (
     <div
       id="panel-import-export"
@@ -378,6 +420,44 @@ export default function ImportExportTabPanel({
             className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             記事状態 JSON 取込
+          </button>
+        </div>
+
+        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+          コレクション
+        </span>
+        <div className="flex flex-col gap-2">
+          <p className="text-[12px] text-text-soft leading-relaxed">
+            コレクション JSON を既存コレクションへ URL 照合で追加します。
+          </p>
+          <select
+            value={selectedCollectionId}
+            onChange={(event) => setSelectedCollectionId(event.target.value)}
+            disabled={collections.length === 0 || articleStateLoading}
+            aria-label="コレクション JSON の取り込み先"
+            className="self-start px-2 py-1 text-[12px] rounded-md border border-border-default bg-surface-elevated text-text-default disabled:opacity-50"
+          >
+            <option value="">取り込み先を選択...</option>
+            {collections.map((collection) => (
+              <option key={collection.id} value={collection.id}>
+                {collection.name}
+              </option>
+            ))}
+          </select>
+          <input
+            ref={collectionImportRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleCollectionImport}
+          />
+          <button
+            type="button"
+            disabled={collections.length === 0 || articleStateLoading}
+            onClick={() => collectionImportRef.current?.click()}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            コレクション JSON 取込
           </button>
         </div>
 
