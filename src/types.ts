@@ -211,7 +211,7 @@ export interface RecommendationCache {
   dismissedIds: string[];
   topics: string[];
 }
-export type DateRange = "all" | "today" | "week" | "month";
+export type DateRange = "all" | "today" | "week" | "month" | "year";
 
 export interface UserProfile {
   id: string; // 0g0 内部ユーザーID

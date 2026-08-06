@@ -172,7 +172,7 @@ export const SORT_ORDER_LABELS: Record<SortOrder, string> = {
   readingTimeAsc: "読了時間順",
 };
 
-export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month"];
+export const DATE_RANGE_CYCLE: DateRange[] = ["all", "today", "week", "month", "year"];
 
 export const READING_TIME_RANGE_CYCLE: ReadingTimeRange[] = ["all", "short", "medium", "long"];
 export const READING_TIME_RANGE_LABELS: Record<ReadingTimeRange, string> = {
@@ -187,6 +187,7 @@ export const DATE_RANGE_LABELS: Record<DateRange, string> = {
   today: "今日",
   week: "今週",
   month: "今月",
+  year: "過去1年",
 };
 
 /**
@@ -194,6 +195,7 @@ export const DATE_RANGE_LABELS: Record<DateRange, string> = {
  * - today: 今日の 00:00:00
  * - week: 7 日前
  * - month: 1 ヶ月前
+ * - year: 1 年前
  */
 export function getDateRangeStart(range: DateRange, now = new Date()): Date | null {
   if (range === "all") return null;
@@ -205,9 +207,14 @@ export function getDateRangeStart(range: DateRange, now = new Date()): Date | nu
     d.setDate(d.getDate() - 7);
     return d;
   }
-  // month
+  if (range === "month") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - 1);
+    return d;
+  }
+  // year
   const d = new Date(now);
-  d.setMonth(d.getMonth() - 1);
+  d.setFullYear(d.getFullYear() - 1);
   return d;
 }
 

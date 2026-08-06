@@ -344,10 +344,12 @@ test.describe("日付範囲フィルター", () => {
   const todayIso = now.toISOString();
   const lastWeekIso = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
   const lastMonthIso = new Date(now.getTime() - 32 * 24 * 60 * 60 * 1000).toISOString();
+  const lastYearIso = new Date(now.getTime() - 366 * 24 * 60 * 60 * 1000).toISOString();
 
   const recent = makeArticle("recent", "feed1", { publishedAt: todayIso });
   const week = makeArticle("week", "feed1", { publishedAt: lastWeekIso });
   const month = makeArticle("month", "feed1", { publishedAt: lastMonthIso });
+  const year = makeArticle("year", "feed1", { publishedAt: lastYearIso });
 
   test("dateRange=all のとき全期間の記事を返す", () => {
     const result = run([recent, week, month], { dateRange: "all" });
@@ -373,6 +375,13 @@ test.describe("日付範囲フィルター", () => {
     expect(ids(result)).toContain("recent");
     expect(ids(result)).toContain("week");
     expect(ids(result)).not.toContain("month"); // 32日前は除外
+  });
+
+  test("dateRange=year のとき1年以内の記事だけを返す", () => {
+    const result = run([recent, month, year], { dateRange: "year" });
+    expect(ids(result)).toContain("recent");
+    expect(ids(result)).toContain("month");
+    expect(ids(result)).not.toContain("year"); // 366日前は除外
   });
 
   test("publishedAt が null の記事は日付フィルターで除外される", () => {

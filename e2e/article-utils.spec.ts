@@ -24,9 +24,12 @@ test.describe("getDateRangeStart — 基準日時", () => {
     week.setDate(week.getDate() - 7);
     const month = new Date(now);
     month.setMonth(month.getMonth() - 1);
+    const year = new Date(now);
+    year.setFullYear(year.getFullYear() - 1);
     expect(getDateRangeStart("today", now)).toEqual(today);
     expect(getDateRangeStart("week", now)).toEqual(week);
     expect(getDateRangeStart("month", now)).toEqual(month);
+    expect(getDateRangeStart("year", now)).toEqual(year);
   });
 
   test("all は基準日時に関係なく null", () => {
