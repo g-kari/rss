@@ -61,8 +61,9 @@ function walkJsonLd(node: unknown, urls: Set<string>): void {
   const obj = node as Record<string, unknown>;
   // @type 一致 (article 系) なら image を採用
   const typeRaw = obj["@type"];
-  const types = Array.isArray(typeRaw) ? typeRaw : [typeRaw];
-  const isArticle = types.some((t) => typeof t === "string" && ARTICLE_TYPES.has(t.toLowerCase()));
+  const isArticle = Array.isArray(typeRaw)
+    ? typeRaw.some((t) => typeof t === "string" && ARTICLE_TYPES.has(t.toLowerCase()))
+    : typeof typeRaw === "string" && ARTICLE_TYPES.has(typeRaw.toLowerCase());
   if (isArticle && "image" in obj) {
     collectImageUrls(obj.image, urls);
   }
