@@ -7,7 +7,7 @@
  * Phase B 以降で React component test を追加するときの動作確認基盤として残す。
  */
 import { describe, it, expect } from "vitest";
-import { cycleValue, readingTime, formatCount } from "./article-utils";
+import { cycleValue, readingTime, formatCount, resolveThumbnail } from "./article-utils";
 
 describe("article-utils (vitest smoke)", () => {
   it("readingTime: 空 HTML は 0 を返す", () => {
@@ -34,5 +34,19 @@ describe("article-utils (vitest smoke)", () => {
 
   it("cycleValue: 現在値が存在しなければ先頭から再開する", () => {
     expect(cycleValue(["a", "b"], "missing")).toBe("a");
+  });
+
+  it("resolveThumbnail: YouTube embed URL からサムネイルを解決する", () => {
+    const article = {
+      id: "id",
+      feedHash: "feed",
+      guid: "guid",
+      title: "title",
+      link: "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+      summary: "summary",
+      publishedAt: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(resolveThumbnail(article, {})).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg");
   });
 });

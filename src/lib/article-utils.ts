@@ -269,7 +269,7 @@ export function resolveThumbnail(
   if (article.link && ogpCache[article.link]) return ogpCache[article.link];
   if (article.ogImage) return article.ogImage;
   const yt = article.link?.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtube-nocookie\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   );
   if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
   return undefined;
