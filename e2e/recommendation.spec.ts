@@ -4,6 +4,8 @@ import {
   isCacheValid,
   selectInterestArticleTitles,
   extractExternalArticleLinks,
+  parseTopicArray,
+  refineUserTopics,
 } from "../src/lib/recommendation";
 import type { Article, EngagementEntry, RecommendationCache } from "../src/types";
 
@@ -113,6 +115,37 @@ test.describe("extractExternalArticleLinks", () => {
         new Set(["https://sub.example/feed"]),
       ),
     ).toEqual(["https://other.example/a"]);
+  });
+});
+
+test.describe("recommendation topic refinement", () => {
+  test("トピック配列を重複除去して最大10件に制限する", () => {
+    expect(parseTopicArray('["TypeScript", " TypeScript ", 42, "Rust"]')).toEqual([
+      "TypeScript",
+      "Rust",
+    ]);
+  });
+
+  test("第2 AIラウンドの結果を採用する", async () => {
+    const ai = {
+      run: async () => ({ response: '["TypeScript", "Rust"]' }),
+    } as never;
+    await expect(refineUserTopics(["TypeScript", "JavaScript"], ai)).resolves.toEqual([
+      "TypeScript",
+      "Rust",
+    ]);
+  });
+
+  test("第2 AIラウンド失敗時は元のトピックを維持する", async () => {
+    const ai = {
+      run: async () => {
+        throw new Error("AI unavailable");
+      },
+    } as never;
+    await expect(refineUserTopics(["TypeScript", "Rust"], ai)).resolves.toEqual([
+      "TypeScript",
+      "Rust",
+    ]);
   });
 });
 

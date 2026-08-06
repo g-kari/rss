@@ -241,26 +241,63 @@ export async function extractUserTopics(
         },
       ],
     })) as { response?: string };
-    const text = response.response ?? "";
-    const match = text.match(/\[[\s\S]*?\]/);
-    if (match) {
-      const parsed = JSON.parse(match[0]) as unknown;
-      if (Array.isArray(parsed)) {
-        const topics: string[] = [];
-        for (const value of parsed) {
-          if (typeof value !== "string") continue;
-          topics.push(value);
-          if (topics.length === 10) break;
-        }
-        return topics;
-      }
-    }
+    const topics = parseTopicArray(response.response ?? "");
+    if (topics.length > 0) return topics;
   } catch (err) {
     // AI 失敗時は空配列（Brave Search は topics なしでも動作しない）
     console.warn("[recommendation] extractUserTopics AI failed:", err);
   }
 
   return [];
+}
+
+/** LLM 応答から最大 10 件のトピック配列を安全に取り出す。 */
+export function parseTopicArray(text: string): string[] {
+  const match = text.match(/\[[\s\S]*?\]/);
+  if (!match) return [];
+  try {
+    const parsed = JSON.parse(match[0]) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const topics: string[] = [];
+    const seen = new Set<string>();
+    for (const value of parsed) {
+      if (typeof value !== "string") continue;
+      const topic = value.trim();
+      if (!topic || seen.has(topic)) continue;
+      seen.add(topic);
+      topics.push(topic);
+      if (topics.length === 10) break;
+    }
+    return topics;
+  } catch {
+    return [];
+  }
+}
+
+/** 抽出済みトピックを第 2 AI ラウンドで統合し、検索向けに多様化する。 */
+export async function refineUserTopics(topics: string[], ai: Ai): Promise<string[]> {
+  if (topics.length < 2) return topics;
+  const input = topics.map((topic) => sanitizeForPrompt(topic, 80)).filter(Boolean);
+  if (input.length < 2) return topics;
+  try {
+    const response = (await ai.run(MODEL, {
+      messages: [
+        {
+          role: "system",
+          content:
+            "You refine RSS interest topics for search. Merge near-duplicates, " +
+            "keep concrete names, and preserve diversity across domains. " +
+            'Return a JSON array only, with 3-10 concise topics. Example: ["TypeScript", "Rust"]',
+        },
+        { role: "user", content: `Candidate topics:\n${input.join("\n")}` },
+      ],
+    })) as { response?: string };
+    const refined = parseTopicArray(response.response ?? "");
+    return refined.length > 0 ? refined : topics;
+  } catch (err) {
+    console.warn("[recommendation] refineUserTopics AI failed:", err);
+    return topics;
+  }
 }
 
 // ── Web 検索フィード提案 ─────────────────────────────────────────
@@ -563,7 +600,8 @@ export async function generateRecommendations(params: {
   }
 
   // トピック抽出（Gemma AI）
-  const topics = await extractUserTopics(bucket, subscriptions, engagement, ai);
+  const extractedTopics = await extractUserTopics(bucket, subscriptions, engagement, ai);
+  const topics = await refineUserTopics(extractedTopics, ai);
 
   // Web 検索・人気フィード・リンク発見を並列実行
   const [webResults, popularResults, linkResults] = (
