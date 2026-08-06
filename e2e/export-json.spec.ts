@@ -7,6 +7,7 @@ import {
   parseSavedSearchesJson,
   buildThemePresetsJson,
   buildThemePresetsJsonFile,
+  parseThemePresetsJson,
 } from "../src/lib/export-json";
 import type { ThemePreset } from "../src/lib/theme-preset";
 import { makeArticle } from "./helpers/article";
@@ -59,6 +60,31 @@ test.describe("buildThemePresetsJson", () => {
 
     expect(result.filename).toBe("theme-presets_2026-06-08.json");
     expect(result.content).toBe(JSON.stringify(buildThemePresetsJson(presets, NOW), null, 2));
+  });
+});
+
+test.describe("parseThemePresetsJson", () => {
+  test("バックアップ形式から有効なプリセットだけを取り込む", () => {
+    const preset: ThemePreset = {
+      id: "preset-1",
+      name: "読書モード",
+      theme: "dark",
+      fontSize: "large",
+      fontFamily: "serif",
+      lineHeight: "relaxed",
+      contentWidth: "medium",
+      createdAt: 1_700_000_000_000,
+    };
+    expect(
+      parseThemePresetsJson(
+        JSON.stringify({ exportedAt: NOW.toISOString(), presets: [preset, { id: "bad" }] }),
+      ),
+    ).toEqual([preset]);
+  });
+
+  test("不正な JSON や配列のない形式は空配列を返す", () => {
+    expect(parseThemePresetsJson("not json")).toEqual([]);
+    expect(parseThemePresetsJson(JSON.stringify({ presets: [] }))).toEqual([]);
   });
 });
 

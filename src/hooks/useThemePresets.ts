@@ -20,6 +20,7 @@ import {
 interface UseThemePresetsResult {
   presets: ThemePreset[];
   savePreset: (name: string, snapshot: Omit<ThemePreset, "id" | "name" | "createdAt">) => void;
+  importPresets: (entries: readonly ThemePreset[]) => void;
   deletePreset: (id: string) => void;
 }
 
@@ -76,5 +77,15 @@ export function useThemePresets(): UseThemePresetsResult {
     });
   }, []);
 
-  return { presets, savePreset, deletePreset };
+  const importPresets = useCallback((entries: readonly ThemePreset[]) => {
+    setPresets((prev) => {
+      const byId = new Map<string, ThemePreset>();
+      for (const preset of [...prev, ...entries]) byId.set(preset.id, preset);
+      const next = capPresetsByRecent([...byId.values()]) as ThemePreset[];
+      persistPresets(next);
+      return next;
+    });
+  }, []);
+
+  return { presets, savePreset, importPresets, deletePreset };
 }

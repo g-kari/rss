@@ -20,11 +20,11 @@ import ImageDlSection from "./ImageDlSection";
 import { useThemePresets } from "../../hooks/useThemePresets";
 import { THEME_PRESET_NAME_MAX_LENGTH, THEME_PRESET_NAME_MIN_LENGTH } from "../../lib/theme-preset";
 import type { Theme } from "../../hooks/useThemePreference";
-import { useState } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
 import { useTextInputModal } from "../../hooks/useTextInputModal";
 import TextInputModal from "../TextInputModal";
 import { useToast } from "../../contexts/ToastContext";
-import { buildThemePresetsJsonFile } from "../../lib/export-json";
+import { buildThemePresetsJsonFile, parseThemePresetsJson } from "../../lib/export-json";
 import { downloadBlob } from "../../lib/download";
 import { devError } from "../../lib/dev-log";
 
@@ -123,8 +123,9 @@ export default function DisplayTabPanel({
   setHeaderShareTargetIds,
 }: DisplayTabPanelProps) {
   const toast = useToast();
-  const { presets, savePreset, deletePreset } = useThemePresets();
+  const { presets, savePreset, importPresets, deletePreset } = useThemePresets();
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const presetImportRef = useRef<HTMLInputElement>(null);
   const { requestTextInput, textInputModalProps } = useTextInputModal();
 
   const handleApplyPreset = () => {
@@ -163,6 +164,28 @@ export default function DisplayTabPanel({
     } catch (err) {
       devError("[DisplayTabPanel] theme presets export failed", err);
       toast.error("テーマプリセットのバックアップに失敗しました");
+    }
+  };
+
+  const handlePresetsImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error("テーマプリセットのファイルが大きすぎます");
+      return;
+    }
+    try {
+      const imported = parseThemePresetsJson(await file.text());
+      if (imported.length === 0) {
+        toast.error("有効なテーマプリセットが見つかりません");
+        return;
+      }
+      importPresets(imported);
+      toast.success(`${imported.length}件のテーマプリセットを取り込みました`);
+    } catch (err) {
+      devError("[DisplayTabPanel] theme presets import failed", err);
+      toast.error("テーマプリセットの取り込みに失敗しました");
     }
   };
 
@@ -223,6 +246,21 @@ export default function DisplayTabPanel({
                 className="px-2.5 py-1 max-md:min-h-[44px] text-[11px] rounded-md border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 JSON保存
+              </button>
+              <input
+                ref={presetImportRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handlePresetsImport}
+                className="hidden"
+                aria-label="テーマプリセットJSONを読み込む"
+              />
+              <button
+                type="button"
+                onClick={() => presetImportRef.current?.click()}
+                className="px-2.5 py-1 max-md:min-h-[44px] text-[11px] rounded-md border border-border-default text-text-default hover:bg-surface-hover transition-colors"
+              >
+                JSON読込
               </button>
             </div>
             {presets.length > 0 && (

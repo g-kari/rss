@@ -1,7 +1,7 @@
 import type { Article, Feed } from "@/types";
 import { downloadBlob } from "@/lib/download";
 import { buildFeedTitleMap, clampSummaryText, selectArticlesByIds } from "@/lib/export-shared";
-import type { ThemePreset } from "@/lib/theme-preset";
+import { parseThemePresets, type ThemePreset } from "@/lib/theme-preset";
 
 /** テーマプリセットJSONエクスポートのトップレベル構造。 */
 export interface ThemePresetsJsonExport {
@@ -43,6 +43,17 @@ export function buildThemePresetsJsonFile(
     content: JSON.stringify(data, null, 2),
     filename: `theme-presets_${data.exportedAt.slice(0, 10)}.json`,
   };
+}
+
+/** テーマプリセットの JSON バックアップを検証・正規化して取り込む純粋関数。 */
+export function parseThemePresetsJson(text: string): ThemePreset[] {
+  try {
+    const parsed = JSON.parse(text) as { presets?: unknown };
+    if (!Array.isArray(parsed.presets)) return [];
+    return parseThemePresets(JSON.stringify(parsed.presets));
+  } catch {
+    return [];
+  }
 }
 
 /** 保存済み検索条件 JSON エクスポートの 1 エントリ */
