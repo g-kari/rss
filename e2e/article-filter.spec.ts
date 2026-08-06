@@ -194,6 +194,14 @@ test.describe("NSFW フィルター", () => {
     });
     expect(ids(result)).toContain("nsfw1");
   });
+
+  test("NSFW 対象フィードが空なら全記事をそのまま表示", () => {
+    const result = run([nsfwArticle, normalArticle], {
+      nsfwMode: false,
+      nsfwFeedIds: new Set(),
+    });
+    expect(ids(result)).toEqual(["nsfw1", "normal1"]);
+  });
 });
 
 // ==========================================================================

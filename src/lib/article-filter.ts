@@ -218,7 +218,8 @@ function buildSnoozePredicate(
 /** NSFW 述語（activeIds 外の記事にのみ適用） */
 function buildNsfwPredicate(opts: ArticleFilterOptions): ((a: Article) => boolean) | null {
   const { nsfwMode, nsfwFeedIds } = opts;
-  if (nsfwMode) return null;
+  // NSFW 対象がない場合は記事ごとの Set.has 判定自体を省略する。
+  if (nsfwMode || nsfwFeedIds.size === 0) return null;
   return (a) => !nsfwFeedIds.has(a.feedHash);
 }
 
