@@ -162,7 +162,7 @@ export default function ArticleAiPanel({
               )}
             </div>
           </div>
-          {onRetry && (
+          {onRetry && aiError.retryable !== false && (
             <button
               onClick={onRetry}
               className="self-start flex items-center gap-1.5 px-3 py-1.5 text-[11px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200"

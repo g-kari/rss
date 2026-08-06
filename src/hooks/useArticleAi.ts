@@ -29,6 +29,7 @@ export type AiErrorType = HttpErrorType;
 export interface AiError {
   type: AiErrorType;
   message: string;
+  retryable?: boolean;
 }
 
 /** 翻訳・要約結果は plain text または HTML のどちらも取り得るため区別する */
@@ -165,9 +166,9 @@ export function useAiOperation(
         if (controller.signal.aborted) return;
         if (!res.ok) {
           // #869: useArticleContent と同じ pattern に統合。body.error が来れば優先 fallback。
-          const { message, type } = await buildFetchErrorMessage(res, errorMessage);
+          const { message, type, retryable } = await buildFetchErrorMessage(res, errorMessage);
           if (controller.signal.aborted) return;
-          setError({ type, message });
+          setError({ type, message, retryable });
           return;
         }
         const data = (await res.json()) as { result?: string; error?: string };
