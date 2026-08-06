@@ -1,9 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { extractEmbedThumbnailUrl, extractEmbedInfo } from "../src/lib/embed-utils";
+import { extractYouTubeVideoId } from "../src/lib/youtube";
 
 // ── extractEmbedThumbnailUrl ──────────────────────────────────
 
 test.describe("extractEmbedThumbnailUrl — YouTube", () => {
+  test("モバイル YouTube URL から動画 ID を抽出する", () => {
+    expect(extractYouTubeVideoId("https://m.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+  });
+
+  test("プロトコル相対の短縮 URL から動画 ID を抽出する", () => {
+    expect(extractYouTubeVideoId("//youtu.be/dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+  });
+
   test("通常の YouTube watch URL からサムネイルを返す", () => {
     const url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
     const result = extractEmbedThumbnailUrl(url);
