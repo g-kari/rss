@@ -1,5 +1,6 @@
 import { transformXTweetEmbeds } from "./html-post-processor";
 import { sanitizeHtml } from "./html";
+import { extractYouTubeVideoId } from "./youtube";
 
 /** 埋め込みメディアの情報 */
 export interface EmbedInfo {
@@ -16,12 +17,10 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
   const ALLOW_AUDIO = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
 
   // YouTube
-  const yt = url.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-  );
-  if (yt)
+  const videoId = extractYouTubeVideoId(url);
+  if (videoId)
     return {
-      embedUrl: `https://www.youtube-nocookie.com/embed/${yt[1]}?origin=https://rss.0g0.xyz`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?origin=https://rss.0g0.xyz`,
       type: "video",
       allow: ALLOW_VIDEO,
     };
@@ -190,10 +189,8 @@ export function stripIframes(html: string): string {
  * 動画カテゴリのギャラリーサムネ拡張で、iframe 埋込みを画像として代替表示するために使う。
  */
 export function extractEmbedThumbnailUrl(iframeSrc: string): string | null {
-  const yt = iframeSrc.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-  );
-  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
+  const videoId = extractYouTubeVideoId(iframeSrc);
+  if (videoId) return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
   return null;
 }
 

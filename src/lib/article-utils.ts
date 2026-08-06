@@ -8,6 +8,7 @@ import type {
   SortOrder,
 } from "../types";
 import { stripHtml, toPlainText } from "./html";
+import { extractYouTubeVideoId } from "./youtube";
 
 /**
  * `isStoredContentJapanese` で参照する HTML 本文先頭の sample char 数。
@@ -268,10 +269,8 @@ export function resolveThumbnail(
   // OGP 画像を優先（実際のページメタデータから取得した画像）
   if (article.link && ogpCache[article.link]) return ogpCache[article.link];
   if (article.ogImage) return article.ogImage;
-  const yt = article.link?.match(
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtube-nocookie\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-  );
-  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg`;
+  const videoId = article.link ? extractYouTubeVideoId(article.link) : null;
+  if (videoId) return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
   return undefined;
 }
 
