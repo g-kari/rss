@@ -2,6 +2,16 @@ import { test, expect } from "@playwright/test";
 import { SHORTCUT_DEFS, SHORTCUT_MAP } from "../src/config/shortcuts";
 import type { ShortcutContext } from "../src/config/shortcuts";
 
+test("ユーザー設定ショートカットは canonical 定義とヘルプ表示に含まれる", () => {
+  const settings = SHORTCUT_DEFS.find((definition) => definition.displayKey === ",");
+  expect(settings).toMatchObject({
+    keys: [","],
+    description: "ユーザー設定を表示",
+    group: "global",
+  });
+  expect(SHORTCUT_MAP[","]).toBe("ユーザー設定を表示");
+});
+
 /**
  * src/config/shortcuts.ts の SHORTCUT_DEFS が sibling filter (unreadOnly / bookmarkOnly /
  * readingListOnly / likeOnly / noteOnly / digestMode) すべてに対応する handler を持つことを
