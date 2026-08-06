@@ -165,7 +165,8 @@ export function removeNoise(html: string): string {
     ["ul", "div"],
     /class="[^"]*(?:product__media|media-gallery|product-gallery|thumbnail[s]?(?:-list|-wrapper)?|image-gallery|photo-gallery|product-images)[^"]*"/i,
     (inner) => {
-      const imgs = [...inner.matchAll(/<img\b[^>]*>/gi)].map((m) => m[0]);
+      const imgs: string[] = [];
+      for (const match of inner.matchAll(/<img\b[^>]*>/gi)) imgs.push(match[0]);
       return imgs.length > 0 ? `<div hidden>${imgs.join("")}</div>` : "";
     },
   );
