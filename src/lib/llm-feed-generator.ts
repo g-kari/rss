@@ -39,6 +39,14 @@ const MAX_TEXT = 80;
 const ANCESTOR_DEPTH = 5;
 const FETCH_TIMEOUT_MS = 8_000;
 
+function splitClassNames(className: string): string[] {
+  const names: string[] = [];
+  for (const name of className.split(/\s+/)) {
+    if (name) names.push(name);
+  }
+  return names;
+}
+
 // ── リンク構造抽出 ────────────────────────────────────────────────────
 
 /**
@@ -93,12 +101,12 @@ export function extractLinkStructure(html: string, baseUrl: string): LinkNode[] 
     const text = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
     if (text.length < 5) continue; // アイコン・ボタン類を除外
 
-    const c: string[] = el.className.split(/\s+/).filter(Boolean);
+    const c = splitClassNames(el.className);
 
     const p: Array<[string, string[]]> = [];
     let parent = el.parentElement;
     while (parent && parent.tagName !== "BODY" && p.length < ANCESTOR_DEPTH) {
-      p.push([parent.tagName.toLowerCase(), parent.className.split(/\s+/).filter(Boolean)]);
+      p.push([parent.tagName.toLowerCase(), splitClassNames(parent.className)]);
       parent = parent.parentElement;
     }
 
