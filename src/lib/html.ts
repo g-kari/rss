@@ -21,6 +21,7 @@ function stripTagsIter(html: string, repl: string): string {
 
 /** HTML タグを除去してプレーンテキストを返す */
 export function stripHtml(html: string): string {
+  if (!html.includes("<")) return html.trim();
   return stripTagsIter(html, "").trim();
 }
 
