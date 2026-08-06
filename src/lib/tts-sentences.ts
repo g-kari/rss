@@ -9,7 +9,8 @@
  *   - boundary が直近 (例: 500ms 以内) に来ていれば boundary の charIndex を信頼
  *   - 来ていなければ、推定 charIndex (経過時間 × WPM × rate) を採用
  *
- * DOM 統合 (sentence span ラップ・scrollIntoView・ハイライトクラス) は Phase 2 で実装予定。
+ * DOM 統合 (sentence span ラップ・scrollIntoView・ハイライトクラス) は
+ * `tts-dom.ts` / `ArticleContentBody` / `useTtsHighlight` で実装済み。
  */
 
 /** 1 センテンス。`text` は分割後の文字列、`start`/`end` は元テキスト内の文字オフセット (end は exclusive) */

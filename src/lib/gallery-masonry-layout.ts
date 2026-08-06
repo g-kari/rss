@@ -14,8 +14,8 @@
  * - 完全な layout 計算 (`computeMasonryLayout` → positions Map + columnHeights)
  * - scroll anchor 補正アルゴリズム (`computeScrollAnchorDelta` → 本 Issue 完全解決の核)
  *
- * Phase 2 (次サイクル以降):
- * - `GalleryMasonry.tsx` 置換 + `useMasonryLayout.ts` hook
+ * Phase 2+ (実装済み):
+ * - `GalleryMasonrySelf.tsx` + `useMasonryLayout.ts` hook で自前 layout を描画
  */
 
 /**
@@ -147,7 +147,7 @@ export function assignItemToShortestColumn(columnHeights: ReadonlyArray<number>)
  *
  * 最短列配置ロジックの正規実装。positions Map と columnHeights の両方を返す。
  * `computeColumnHeights` はこの関数の thin wrapper として columnHeights のみを返す。
- * Phase 2 で `<GalleryMasonry>` がこの結果を使って
+ * `GalleryMasonrySelf` がこの結果を使って
  * `<div style={{ position: absolute, left: col * columnWidth, top }}>` で配置する。
  *
  * @param items 配置対象 item 配列 (配置順序通り)
