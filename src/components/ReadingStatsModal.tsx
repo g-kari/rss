@@ -21,6 +21,7 @@ import {
 } from "../lib/stats-helpers";
 import { downloadBlob } from "../lib/download";
 import { devError } from "../lib/dev-log";
+import { isAbortError } from "../lib/fetch";
 import type { Article, Feed } from "../types";
 
 interface Props {
@@ -131,10 +132,18 @@ export default function ReadingStatsModal({
       scope: selectedFeedHash ? (feedMap.get(selectedFeedHash) ?? selectedFeedHash) : undefined,
     });
     try {
-      if (!navigator.clipboard) throw new Error("clipboard API unavailable");
-      await navigator.clipboard.writeText(summary);
-      toast.success("読書統計をコピーしました");
+      let shared = false;
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(summary);
+      } else if (navigator.share) {
+        await navigator.share({ title: "読書統計", text: summary });
+        shared = true;
+      } else {
+        throw new Error("clipboard and share APIs unavailable");
+      }
+      toast.success(shared ? "読書統計を共有しました" : "読書統計をコピーしました");
     } catch (err) {
+      if (isAbortError(err)) return;
       devError("[ReadingStatsModal] summary copy failed", err);
       toast.error("読書統計のコピーに失敗しました");
     }
