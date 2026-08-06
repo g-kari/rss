@@ -76,11 +76,17 @@ export function useArticleContent(
     () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
     [articleId],
   );
-  // { id, content } でタグ付けすることで、前の記事の fetchedContent が
-  // 記事切り替え直後の render に漏れ込むのを防ぐ（stale content リーク対策）
-  const [fetchedState, setFetchedState] = useState<{ id: string; content: string } | null>(null);
+  // { id, link, content } でタグ付けすることで、記事 ID が再利用された場合も
+  // 前 URL の fetchedContent が新しい記事へ漏れ込むのを防ぐ。
+  const [fetchedState, setFetchedState] = useState<{
+    id: string;
+    link: string;
+    content: string;
+  } | null>(null);
   const fetchedContent =
-    fetchedState !== null && fetchedState.id === articleId ? fetchedState.content : null;
+    fetchedState !== null && fetchedState.id === articleId && fetchedState.link === articleLink
+      ? fetchedState.content
+      : null;
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [fetchRetryable, setFetchRetryable] = useState(true);
@@ -255,7 +261,7 @@ export function useArticleContent(
         if (controller.signal.aborted) return;
         if (data.content) {
           if (articleId) contentLruCache.set(articleId, data.content);
-          setFetchedState({ id: articleId ?? "", content: data.content });
+          setFetchedState({ id: articleId ?? "", link: articleLink, content: data.content });
           autoReadDebug("useArticleContent.fetch-success", {
             articleId,
             contentLength: data.content.length,
