@@ -115,7 +115,7 @@ export function useArticleContent(
     previousArticleIdRef.current = articleId;
     const isStaleController =
       ref !== null && (ref.articleId !== articleId || ref.articleLink !== articleLink);
-    autoReadDebug("useArticleContent.articleId-effect-fired", {
+    autoReadDebug("useArticleContent.article-key-effect-fired", {
       articleId,
       hadController: ref !== null,
       isStaleController,
