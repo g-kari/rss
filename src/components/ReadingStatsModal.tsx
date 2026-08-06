@@ -101,9 +101,14 @@ export default function ReadingStatsModal({
     if (!stats) return;
 
     try {
-      const { content, filename } = buildReadingHistoryCsvFile(stats.yearlyHeatmap, new Date());
+      const exportHeatmap = drillStats?.yearlyHeatmap ?? stats.yearlyHeatmap;
+      const { content, filename } = buildReadingHistoryCsvFile(exportHeatmap, new Date());
       downloadBlob(new Blob([content], { type: "text/csv; charset=utf-8" }), filename);
-      toast.success("読書履歴 CSV を保存しました");
+      toast.success(
+        selectedFeedHash
+          ? "選択中フィードの読書履歴 CSV を保存しました"
+          : "読書履歴 CSV を保存しました",
+      );
     } catch (err) {
       devError("[ReadingStatsModal] CSV download failed", err);
       toast.error("読書履歴 CSV の保存に失敗しました");
