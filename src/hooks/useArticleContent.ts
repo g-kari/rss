@@ -96,6 +96,7 @@ export function useArticleContent(
   const fetchAbortControllerRef = useRef<{
     controller: AbortController;
     articleId: string | undefined;
+    articleLink: string | undefined;
   } | null>(null);
   const previousArticleIdRef = useRef(articleId);
   const previousArticleLinkRef = useRef(articleLink);
@@ -112,7 +113,8 @@ export function useArticleContent(
     const ref = fetchAbortControllerRef.current;
     const articleChanged = previousArticleIdRef.current !== articleId;
     previousArticleIdRef.current = articleId;
-    const isStaleController = ref !== null && ref.articleId !== articleId;
+    const isStaleController =
+      ref !== null && (ref.articleId !== articleId || ref.articleLink !== articleLink);
     autoReadDebug("useArticleContent.articleId-effect-fired", {
       articleId,
       hadController: ref !== null,
@@ -217,7 +219,7 @@ export function useArticleContent(
       // 前の全文フェッチが進行中なら中断
       fetchAbortControllerRef.current?.controller.abort();
       const controller = new AbortController();
-      fetchAbortControllerRef.current = { controller, articleId };
+      fetchAbortControllerRef.current = { controller, articleId, articleLink };
       setFetching(true);
       setFetchError("");
       setFetchRetryable(true);
