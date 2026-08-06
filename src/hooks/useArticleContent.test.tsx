@@ -217,6 +217,29 @@ describe("useArticleContent — OGP cache resolution (#836)", () => {
 });
 
 describe("useArticleContent — 記事切替後の fetchError leak 防止 (#abort-guard sibling, #1115 と同型)", () => {
+  it("再試行不能エラー後の記事切替で再試行状態を初期化する", async () => {
+    mockApiFetch.mockResolvedValue(
+      new Response(JSON.stringify({ error: "記事が見つかりません" }), { status: 404 }),
+    );
+    const { store } = makeStore();
+    const wrapper = wrapWith(store);
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => useArticleContent(id, "https://a.example.com/article", ""),
+      { initialProps: { id: "article-A" }, wrapper },
+    );
+
+    await act(async () => {
+      await result.current.fetchFullContent();
+    });
+    expect(result.current.fetchRetryable).toBe(false);
+
+    act(() => {
+      rerender({ id: "article-B" });
+    });
+    expect(result.current.fetchRetryable).toBe(true);
+  });
+
   it("記事切替 (abort) 後に旧記事の fetch error が新記事に leak しない", async () => {
     // apiFetch を手動 resolve できる deferred promise にする
     let resolveFetch: ((res: Response) => void) | null = null;

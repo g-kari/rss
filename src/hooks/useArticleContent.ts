@@ -91,6 +91,7 @@ export function useArticleContent(
     controller: AbortController;
     articleId: string | undefined;
   } | null>(null);
+  const previousArticleIdRef = useRef(articleId);
 
   // 記事が変わったらフェッチ状態をリセット（進行中のフェッチも中断）。
   //
@@ -102,6 +103,8 @@ export function useArticleContent(
   // fetchedContent は fetchedState.id との照合で自動的に null 扱いになるため個別リセット不要。
   useEffect(() => {
     const ref = fetchAbortControllerRef.current;
+    const articleChanged = previousArticleIdRef.current !== articleId;
+    previousArticleIdRef.current = articleId;
     const isStaleController = ref !== null && ref.articleId !== articleId;
     autoReadDebug("useArticleContent.articleId-effect-fired", {
       articleId,
@@ -111,8 +114,14 @@ export function useArticleContent(
     if (isStaleController) {
       ref.controller.abort();
       fetchAbortControllerRef.current = null;
-      setFetchError("");
       setFetching(false);
+    }
+    if (articleChanged) {
+      setFetchError("");
+      setFetchRetryable(true);
+      // 子の AutoReadController が同じ effect flush 内で新しい fetch を開始した場合は
+      // その loading 状態を clobber しない。
+      if (isStaleController || fetchAbortControllerRef.current === null) setFetching(false);
     }
   }, [articleId]);
 
