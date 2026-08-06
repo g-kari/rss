@@ -92,8 +92,10 @@ export function transformXTweetEmbeds(html: string, theme: "light" | "dark" = "l
     /<blockquote\b[^>]*\bclass\s*=\s*["'][^"']*\btwitter-tweet\b[^"']*["'][^>]*>([\s\S]*?)<\/blockquote>/gi,
     (_match, inner: string) => {
       // blockquote 内の最後のリンクがツイートのパーマリンク
-      const links = [...inner.matchAll(/<a\b[^>]+href\s*=\s*["']([^"']+)["'][^>]*>/gi)];
-      const tweetUrl = links.at(-1)?.[1] ?? "";
+      let tweetUrl = "";
+      for (const link of inner.matchAll(/<a\b[^>]+href\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
+        tweetUrl = link[1] ?? "";
+      }
       const idMatch = tweetUrl.match(/(?:twitter|x)\.com\/[^/?#]+\/status\/(\d+)/);
       if (!idMatch) return _match; // パターン不一致なら元のブロッククォートを保持
       const tweetId = idMatch[1];
