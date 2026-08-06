@@ -9,14 +9,16 @@ export const READ_ACTIONS: ReadonlySet<string> = new Set(["fetch_full", "open_or
 const READING_HISTORY_CSV_HEADER = "日付,読了数";
 
 /** 読書統計の主要指標を共有しやすいプレーンテキストへ変換する。 */
-export function buildReadingStatsSummary(input: {
+export interface ReadingStatsSummaryInput {
   weeklyTotal: number;
   allTimeTotal: number;
   currentStreak: number;
   longestStreak: number;
   exportedAt: Date;
   scope?: string;
-}): string {
+}
+
+export function buildReadingStatsSummary(input: ReadingStatsSummaryInput): string {
   const scope = input.scope?.replace(/\s+/g, " ").trim();
   const lines = [
     `読書統計 (${input.exportedAt.toISOString().slice(0, 10)})`,
