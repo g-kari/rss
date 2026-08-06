@@ -31,7 +31,13 @@ export function useAppModalState(): AppModalState {
   useEventListener(
     "keydown",
     (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable)
+      )
+        return;
       if (e.key === "?") setShowHelp((v) => !v);
       if (e.key === ",") setShowSettings((v) => !v);
       if (e.key === "Escape") {
