@@ -7,7 +7,7 @@
  * Phase B 以降で React component test を追加するときの動作確認基盤として残す。
  */
 import { describe, it, expect } from "vitest";
-import { readingTime, formatCount } from "./article-utils";
+import { cycleValue, readingTime, formatCount } from "./article-utils";
 
 describe("article-utils (vitest smoke)", () => {
   it("readingTime: 空 HTML は 0 を返す", () => {
@@ -26,5 +26,9 @@ describe("article-utils (vitest smoke)", () => {
   it("formatCount: NaN と負の無限大は 0 に正規化する", () => {
     expect(formatCount(Number.NaN)).toBe("0");
     expect(formatCount(Number.NEGATIVE_INFINITY)).toBe("0");
+  });
+
+  it("cycleValue: 空のサイクルは明示的に失敗する", () => {
+    expect(() => cycleValue([], "current")).toThrow("cycle must not be empty");
   });
 });

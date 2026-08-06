@@ -126,6 +126,7 @@ export function compareByPublishedAtDesc(
  * 末尾の次は先頭に戻る（ループ）。
  */
 export function cycleValue<T>(cycle: readonly T[], current: T): T {
+  if (cycle.length === 0) throw new Error("cycle must not be empty");
   return cycle[(cycle.indexOf(current) + 1) % cycle.length];
 }
 
