@@ -170,6 +170,11 @@ test.describe("readingTime — HTML タグ除去の正確さ", () => {
  */
 
 test.describe("timeAgo — 特殊入力", () => {
+  test("基準日時を指定して相対時間を決定論的に計算できる", () => {
+    const now = new Date("2026-08-06T12:00:00.000Z");
+    expect(timeAgo("2026-08-06T11:55:00.000Z", now)).toBe("5分前");
+  });
+
   test("null は空文字列を返す", () => {
     expect(timeAgo(null)).toBe("");
   });

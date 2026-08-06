@@ -228,13 +228,13 @@ export function getDateRangeStart(range: DateRange, now = new Date()): Date | nu
  * - 同一年: 「M月D日」形式
  * - 異なる年: 「YYYY年M月D日」形式（年が明確になるよう年を付与）
  */
-export function timeAgo(iso: string | null): string {
+export function timeAgo(iso: string | null, now = new Date()): string {
   if (!iso) return "";
   // 不正 date (corrupt R2 lastErrorAt 等) は toLocaleDateString が "Invalid Date" を
   // 表示してしまうため、空文字で返す (#811/#812 の unknown 受け defensive と同方針)。
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return "";
-  const diff = Date.now() - t;
+  const diff = now.getTime() - t;
   if (diff < 60_000) return "たった今";
   const mins = Math.floor(diff / 60_000);
   if (mins < 60) return `${mins}分前`;
@@ -243,7 +243,7 @@ export function timeAgo(iso: string | null): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}日前`;
   const d = new Date(iso);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
+  const sameYear = d.getFullYear() === now.getFullYear();
   return d.toLocaleDateString("ja-JP", {
     ...(sameYear ? {} : { year: "numeric" }),
     month: "short",
