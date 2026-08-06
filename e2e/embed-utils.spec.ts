@@ -92,6 +92,10 @@ test.describe("extractEmbedThumbnailUrl — YouTube 以外は null", () => {
     expect(extractEmbedThumbnailUrl("https://example.com/video")).toBeNull();
   });
 
+  test("YouTube に似た別ホストは null を返す", () => {
+    expect(extractEmbedThumbnailUrl("https://evilyoutube.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+  });
+
   test("空文字は null を返す", () => {
     expect(extractEmbedThumbnailUrl("")).toBeNull();
   });
