@@ -311,14 +311,14 @@ export const SHORTCUT_DEFS: readonly ShortcutDef[] = [
     },
   },
   {
-    // #776: 衝突回避 — Shift+R (TTS rate cycle) は keys:["R"] (大文字、shifted)、
-    // フィード更新は keys:["r"] (小文字、unshifted) に分離。
-    // displayKey は視認性のため "R" (大文字) のまま維持。
-    keys: ["r"],
-    displayKey: "R",
+    // ブラウザの再読み込みキーをアプリ内のフィード更新に割り当てる。
+    // 既読切替の `r` と衝突させないため、フィード更新は F5 に固定する。
+    keys: ["F5"],
+    displayKey: "F5",
     description: "フィードを更新",
     group: "global",
-    handler: (ctx) => {
+    handler: (ctx, e) => {
+      e.preventDefault();
       const isSpecial =
         ctx.selectedFeedId !== null &&
         Object.values<string>(SPECIAL_FEED_IDS).includes(ctx.selectedFeedId);

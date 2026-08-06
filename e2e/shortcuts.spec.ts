@@ -18,6 +18,11 @@ test("検索ショートカットはスラッシュと Ctrl/Cmd+K を受け付�
   expect(SHORTCUT_MAP["/ / Ctrl+K"]).toBe("記事を検索");
 });
 
+test("実行可能なショートカットキーは重複しない", () => {
+  const keys = SHORTCUT_DEFS.flatMap((definition) => definition.keys);
+  expect(new Set(keys).size).toBe(keys.length);
+});
+
 /**
  * src/config/shortcuts.ts の SHORTCUT_DEFS が sibling filter (unreadOnly / bookmarkOnly /
  * readingListOnly / likeOnly / noteOnly / digestMode) すべてに対応する handler を持つことを
