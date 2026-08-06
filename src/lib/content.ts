@@ -78,7 +78,14 @@ function countImgs(html: string): number {
  * 連番記事 ID (/post/123) のようなカテゴリ + 連番パターンを除外するために使用する。
  */
 function lastPathSegmentLooksLikeSlug(pathname: string): boolean {
-  const segment = pathname.split("/").filter(Boolean).pop() ?? "";
+  const segments = pathname.split("/");
+  let segment = "";
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (segments[i]) {
+      segment = segments[i];
+      break;
+    }
+  }
   if (!segment) return false;
   // 純数字セグメント (/2025, /01 等) は日付アーカイブや連番 ID の可能性が高いため除外
   if (/^\d+$/.test(segment)) return false;
