@@ -5,6 +5,7 @@ import type { Article } from "../types";
 import type { AiOperationResult } from "./useArticleAi";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
+import { isEditableShortcutTarget } from "../lib/keyboard-target";
 import { isStoredContentJapanese } from "../lib/article-utils";
 import { shouldSkipAutoAi } from "../lib/auto-ai-fallback";
 
@@ -79,7 +80,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
   useEventListener(
     "keydown",
     (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isEditableShortcutTarget(e.target)) return;
       const s = shortcutRef.current;
       if (e.key === "v" && s.articleLink && !s.storedContent && !s.fetching) {
         void s.fetchFullContent();

@@ -7,6 +7,7 @@ import { formatTtsErrorMessage } from "../lib/tts-adapter";
 import { useTtsAdapter } from "../contexts/TtsAdapterContext";
 import { useToast } from "../contexts/ToastContext";
 import { useEventListener } from "./useEventListener";
+import { isEditableShortcutTarget } from "../lib/keyboard-target";
 
 interface ArticleViewTtsResult {
   ttsSupported: boolean;
@@ -123,7 +124,7 @@ export function useArticleViewTts(
     "keydown",
     (e: KeyboardEvent) => {
       if (!ttsSupported) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isEditableShortcutTarget(e.target)) return;
       if (e.key !== "P") return;
       handleTtsToggle();
     },

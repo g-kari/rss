@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useEventListener } from "./useEventListener";
+import { isEditableShortcutTarget } from "../lib/keyboard-target";
 import { useSyncedRef } from "./useSyncedRef";
 
 /**
@@ -55,7 +56,7 @@ export function useFocusMode(): {
   useEventListener(
     "keydown",
     (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isEditableShortcutTarget(e.target)) return;
       if (e.key === "\\") {
         if (e.shiftKey) {
           if (listFocusModeRef.current) {
