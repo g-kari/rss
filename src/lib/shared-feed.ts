@@ -501,7 +501,9 @@ async function listPrefixedIds(bucket: R2Bucket, prefix: string): Promise<string
   let cursor: string | undefined;
   do {
     const listed = await bucket.list({ prefix, delimiter: "/", cursor });
-    ids.push(...listed.delimitedPrefixes.map((p: string) => p.slice(prefix.length, -1)));
+    for (const p of listed.delimitedPrefixes) {
+      ids.push(p.slice(prefix.length, -1));
+    }
     cursor = listed.truncated ? listed.cursor : undefined;
   } while (cursor);
   return ids;
