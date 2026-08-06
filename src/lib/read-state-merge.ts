@@ -112,11 +112,13 @@ function mergeTags(
     merged[k] = v;
   }
   const keys = Object.keys(merged);
+  let finalSize = keys.length;
   if (keys.length > MAX_TAGGED_ARTICLES_STORED) {
     const toDrop = keys.length - MAX_TAGGED_ARTICLES_STORED;
     for (let i = 0; i < toDrop; i++) delete merged[keys[i]!];
+    finalSize -= toDrop;
   }
-  return Object.keys(merged).length > 0 ? merged : null;
+  return finalSize > 0 ? merged : null;
 }
 
 /**
