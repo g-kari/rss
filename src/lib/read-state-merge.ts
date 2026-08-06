@@ -73,15 +73,18 @@ function mergeNotes(
   // note が次 sync で復活していた)。
   const removedSet = new Set(removedKeys ?? []);
   const merged: Record<string, string> = {};
+  let size = 0;
   for (const [k, v] of Object.entries(existing ?? {})) {
     if (removedSet.has(k)) continue;
     merged[k] = v;
+    size++;
   }
   for (const [k, v] of Object.entries(incoming ?? {})) {
     if (removedSet.has(k)) continue;
+    if (!Object.hasOwn(merged, k)) size++;
     merged[k] = v;
   }
-  return Object.keys(merged).length > 0 ? merged : null;
+  return size > 0 ? merged : null;
 }
 
 /** マージ結果に保持する記事タグのハードリミット（R2 レコード肥大化防止） */
