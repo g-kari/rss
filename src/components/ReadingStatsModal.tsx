@@ -134,7 +134,13 @@ export default function ReadingStatsModal({
     try {
       let shared = false;
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(summary);
+        try {
+          await navigator.clipboard.writeText(summary);
+        } catch (clipboardError) {
+          if (!navigator.share) throw clipboardError;
+          await navigator.share({ title: "読書統計", text: summary });
+          shared = true;
+        }
       } else if (navigator.share) {
         await navigator.share({ title: "読書統計", text: summary });
         shared = true;
