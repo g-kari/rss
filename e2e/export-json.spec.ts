@@ -4,6 +4,7 @@ import {
   buildNotesJson,
   buildSavedSearchesJson,
   buildSavedSearchesJsonFile,
+  parseSavedSearchesJson,
   buildThemePresetsJson,
   buildThemePresetsJsonFile,
 } from "../src/lib/export-json";
@@ -99,6 +100,26 @@ test.describe("buildSavedSearchesJson", () => {
 
     expect(result.filename).toBe("saved-searches_2026-06-08.json");
     expect(result.content).toBe(JSON.stringify(buildSavedSearchesJson(searches, NOW), null, 2));
+  });
+});
+
+test.describe("parseSavedSearchesJson", () => {
+  test("有効な検索条件を取り込み、同名と不正項目を除外する", () => {
+    expect(
+      parseSavedSearchesJson(
+        JSON.stringify({
+          searches: [
+            { id: "1", name: "AI", query: "title:AI", createdAt: "2026-01-01" },
+            { id: "2", name: "AI", query: "duplicate", createdAt: "2026-01-02" },
+            { id: "3", name: " ", query: "invalid", createdAt: "2026-01-03" },
+          ],
+        }),
+      ),
+    ).toEqual([{ id: "1", name: "AI", query: "title:AI", createdAt: "2026-01-01" }]);
+  });
+
+  test("不正な JSON は空配列を返す", () => {
+    expect(parseSavedSearchesJson("not json")).toEqual([]);
   });
 });
 

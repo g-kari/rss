@@ -60,5 +60,14 @@ export function useLocalStorageHistory<T>(
     });
   }, [storageKey]);
 
-  return { items, prepend, remove, clear };
+  const replace = useCallback(
+    (nextItems: T[]) => {
+      const next = nextItems.slice(0, maxSize);
+      saveJson(storageKey, next);
+      setItems(next);
+    },
+    [storageKey, maxSize],
+  );
+
+  return { items, prepend, remove, clear, replace };
 }

@@ -4,7 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { useFullTextSearch } from "../../hooks/useFullTextSearch";
 import { downloadBlob } from "../../lib/download";
-import { buildSavedSearchesJsonFile } from "../../lib/export-json";
+import { buildSavedSearchesJsonFile, parseSavedSearchesJson } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
 
@@ -14,9 +14,11 @@ interface ImportExportTabPanelProps {
 
 export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelProps) {
   const toast = useToast();
-  const { savedSearches } = useFullTextSearch();
+  const { savedSearches, importSaved } = useFullTextSearch();
   const importRef = useRef<HTMLInputElement>(null);
+  const savedSearchImportRef = useRef<HTMLInputElement>(null);
   const [opmlLoading, setOpmlLoading] = useState(false);
+  const [savedSearchLoading, setSavedSearchLoading] = useState(false);
   const [clipUrlCopied, setClipUrlCopied] = useState(false);
 
   const CLIP_URL = "https://rss.0g0.xyz/api/clip";
@@ -90,6 +92,31 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
     } catch (err) {
       devError("[ImportExportTabPanel] saved searches export failed", err);
       toast.error("保存済み検索条件のバックアップに失敗しました");
+    }
+  };
+
+  const handleSavedSearchesImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (file.size > 1024 * 1024) {
+      toast.error("検索条件 JSON のサイズが大きすぎます（上限1MB）");
+      return;
+    }
+    setSavedSearchLoading(true);
+    try {
+      const entries = parseSavedSearchesJson(await file.text());
+      if (entries.length === 0) {
+        toast.error("有効な検索条件が見つかりません");
+        return;
+      }
+      importSaved(entries);
+      toast.success(`${entries.length}件の検索条件を取り込みました`);
+    } catch (err) {
+      devError("[ImportExportTabPanel] saved searches import failed", err);
+      toast.error("検索条件のインポートに失敗しました");
+    } finally {
+      setSavedSearchLoading(false);
     }
   };
 
@@ -194,6 +221,21 @@ export default function ImportExportTabPanel({ hidden }: ImportExportTabPanelPro
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
             検索条件を JSON 保存 ({savedSearches.length}件)
+          </button>
+          <input
+            ref={savedSearchImportRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleSavedSearchesImport}
+          />
+          <button
+            type="button"
+            disabled={savedSearchLoading}
+            onClick={() => savedSearchImportRef.current?.click()}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            検索条件を JSON 取込
           </button>
         </div>
 

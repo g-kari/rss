@@ -88,7 +88,7 @@ LLM にフィード URL を提案させ、`discoverFeedUrl()` で実在確認す
 | 変更 | `src/lib/engagement-score.ts` | 記事単位の行動スコアランキングを共通化           |
 | 変更 | `src/lib/recommendation.ts`   | 行動対象タイトル優先 + 最新記事 fallback (2a)    |
 | 変更 | `e2e/recommendation.spec.ts`  | 選択順・時間減衰・重複除外・fallback テスト (2a) |
-| 変更 | `src/lib/recommendation.ts`   | 第2 AI ラウンドによるトピック統合・多様化 (2b)     |
+| 変更 | `src/lib/recommendation.ts`   | 第2 AI ラウンドによるトピック統合・多様化 (2b)   |
 
 ### Phase 3
 
@@ -98,8 +98,8 @@ LLM にフィード URL を提案させ、`discoverFeedUrl()` で実在確認す
 
 ### Phase 4
 
-| 操作 | ファイル                    | 内容                           |
-| ---- | --------------------------- | ------------------------------ |
+| 操作 | ファイル                    | 内容                                                |
+| ---- | --------------------------- | --------------------------------------------------- |
 | 変更 | `src/lib/recommendation.ts` | `generateLinkDiscoveryFeeds()` と相対リンク対応追加 |
 
 ## 4. API 設計

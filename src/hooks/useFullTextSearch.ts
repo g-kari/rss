@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { STORAGE_KEYS } from "../lib/storage";
 import { useLocalStorageHistory } from "./useLocalStorageHistory";
+import type { SavedSearchJsonEntry } from "../lib/export-json";
 
 const MAX_SAVED = 20;
 
@@ -30,6 +31,7 @@ export function useFullTextSearch() {
     prepend,
     remove,
     clear,
+    replace,
   } = useLocalStorageHistory<SavedSearch>(
     STORAGE_KEYS.SAVED_SEARCHES,
     MAX_SAVED,
@@ -70,5 +72,18 @@ export function useFullTextSearch() {
     [remove],
   );
 
-  return { savedSearches, save, removeSaved, clearSaved: clear };
+  const importSaved = useCallback(
+    (entries: readonly SavedSearchJsonEntry[]) => {
+      const names = new Set<string>();
+      const merged = [...entries, ...savedSearches].filter((entry) => {
+        if (names.has(entry.name)) return false;
+        names.add(entry.name);
+        return true;
+      });
+      replace(merged);
+    },
+    [replace, savedSearches],
+  );
+
+  return { savedSearches, save, removeSaved, importSaved, clearSaved: clear };
 }

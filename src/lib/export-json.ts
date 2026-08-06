@@ -84,6 +84,30 @@ export function buildSavedSearchesJsonFile(
   };
 }
 
+/** 保存済み検索条件 JSON を検証・正規化して取り込む純粋関数。 */
+export function parseSavedSearchesJson(text: string): SavedSearchJsonEntry[] {
+  try {
+    const parsed = JSON.parse(text) as { searches?: unknown };
+    if (!Array.isArray(parsed.searches)) return [];
+    const result: SavedSearchJsonEntry[] = [];
+    const names = new Set<string>();
+    for (const value of parsed.searches) {
+      if (typeof value !== "object" || value === null) continue;
+      const entry = value as Record<string, unknown>;
+      const name = typeof entry.name === "string" ? entry.name.trim() : "";
+      const query = typeof entry.query === "string" ? entry.query.trim() : "";
+      const id = typeof entry.id === "string" ? entry.id : "";
+      const createdAt = typeof entry.createdAt === "string" ? entry.createdAt : "";
+      if (!name || !query || !id || !createdAt || names.has(name)) continue;
+      names.add(name);
+      result.push({ id, name, query, createdAt });
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
 /** JSON エクスポートの 1 記事エントリ */
 export interface ExportedArticleJson {
   title: string;
