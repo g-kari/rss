@@ -128,4 +128,24 @@ describe("useAiOperation 記事切替後の stale 結果防止 (#abort-guard)", 
     await waitFor(() => expect(result.current.result?.text).toBe("通常の要約"));
     expect(result.current.loading).toBe(false);
   });
+
+  it("2xx の論理エラーは再試行不能として返す", async () => {
+    mockApiFetch.mockResolvedValue(
+      new Response(JSON.stringify({ error: "対象記事を処理できません" }), { status: 200 }),
+    );
+
+    const { result } = renderHook(() =>
+      useAiOperation("/api/ai/summarize", makeCache(), "AI 失敗"),
+    );
+
+    await act(async () => {
+      await result.current.run("https://a.example.com", "article-A");
+    });
+
+    expect(result.current.error).toMatchObject({
+      type: "unknown",
+      message: "対象記事を処理できません",
+      retryable: false,
+    });
+  });
 });

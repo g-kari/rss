@@ -182,9 +182,11 @@ export function useAiOperation(
           if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(entry));
           setResult(entry);
         } else if (data.error) {
-          setError({ type: "unknown", message: data.error });
+          // 2xx でも API が明示的に処理失敗を返した場合は、同じ入力での再試行で
+          // 改善しない論理エラーとして扱い、無意味な再試行ボタンを表示しない。
+          setError({ type: "unknown", message: data.error, retryable: false });
         } else {
-          setError({ type: "unknown", message: errorMessage });
+          setError({ type: "unknown", message: errorMessage, retryable: false });
         }
       } catch (err) {
         if (isAbortError(err)) return;
