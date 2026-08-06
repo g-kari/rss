@@ -292,6 +292,12 @@ test.describe("isInSilentHours", () => {
       expect(isInSilentHours(config, new Date("2026-01-01T12:00:00Z"))).toBe(true);
       expect(isInSilentHours(config, new Date("2026-01-01T23:59:00Z"))).toBe(true);
     });
+
+    test("開始時刻の 24:00 は 00:00 として扱う", () => {
+      const config = makeConfig("24:00", "02:00", "UTC");
+      expect(isInSilentHours(config, new Date("2026-01-01T00:30:00Z"))).toBe(true);
+      expect(isInSilentHours(config, new Date("2026-01-01T02:00:00Z"))).toBe(false);
+    });
   });
 
   test.describe("start === end のエッジケース", () => {
