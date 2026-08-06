@@ -49,21 +49,21 @@
 アプローチ3を動かすには「検索するトピック」が必要なため、アプローチ1のトピック抽出部分を先に実装。
 LLM にフィード URL を提案させ、`discoverFeedUrl()` で実在確認する方式。
 
-### Phase 2: AI 興味推定フィード提案の強化 (アプローチ 1) — Phase 2a 実装済み
+### Phase 2: AI 興味推定フィード提案の強化 (アプローチ 1) — 実装済み
 
 - **Phase 2a ✅**: いいね・ブックマーク・全文取得など、実際に行動した記事タイトルを
   アクション重み × 7 日半減期で優先し、不足分だけ最新記事で補完する。既存 1 回の
   Workers AI 呼び出しを維持するため追加コストなし。
-- **Phase 2b（保留）**: 複数ラウンドの LLM 呼び出しによる精度向上。推論回数・レイテンシ・
-  利用コストが増えるため、Phase 2a の効果を確認してから判断する。
+- **Phase 2b ✅**: 抽出したトピックを第 2 AI ラウンドで統合・多様化してから検索する。
+  AI 失敗時は第 1 ラウンドの結果へフォールバックする。
 
 ### Phase 3: SharedFeedMeta 人気フィード (アプローチ 2) ✅ 実装済み
 
 `listAllFeedHashes()` と `buildFeedUserMap()` は既存。未購読フィルタとランキングを追加。
 
-### Phase 4: 記事内リンク深度探索 (アプローチ 4) — 未着手
+### Phase 4: 記事内リンク深度探索 (アプローチ 4) — 実装済み
 
-外部フェッチが最も多いため最後に。ブックマーク記事本文からリンク先ドメインを抽出して `discoverFeedUrl()`。
+ブックマーク記事本文から相対 URL を含むリンク先ドメインを抽出し、`discoverFeedUrl()` でフィードを検出する。
 
 ## 3. 各 Phase のファイル一覧
 
@@ -88,7 +88,7 @@ LLM にフィード URL を提案させ、`discoverFeedUrl()` で実在確認す
 | 変更 | `src/lib/engagement-score.ts` | 記事単位の行動スコアランキングを共通化           |
 | 変更 | `src/lib/recommendation.ts`   | 行動対象タイトル優先 + 最新記事 fallback (2a)    |
 | 変更 | `e2e/recommendation.spec.ts`  | 選択順・時間減衰・重複除外・fallback テスト (2a) |
-| 保留 | `src/lib/recommendation.ts`   | 複数ラウンド推論による追加精度向上 (2b)          |
+| 変更 | `src/lib/recommendation.ts`   | 第2 AI ラウンドによるトピック統合・多様化 (2b)     |
 
 ### Phase 3
 
@@ -100,7 +100,7 @@ LLM にフィード URL を提案させ、`discoverFeedUrl()` で実在確認す
 
 | 操作 | ファイル                    | 内容                           |
 | ---- | --------------------------- | ------------------------------ |
-| 変更 | `src/lib/recommendation.ts` | `generateLinkDiscovery()` 追加 |
+| 変更 | `src/lib/recommendation.ts` | `generateLinkDiscoveryFeeds()` と相対リンク対応追加 |
 
 ## 4. API 設計
 
