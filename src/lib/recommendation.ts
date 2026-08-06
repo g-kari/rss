@@ -396,6 +396,39 @@ async function generatePopularFeeds(
 
 const HIGH_SIGNAL_ACTIONS = new Set(["bookmark", "like", "fetch_full"]);
 
+/** 記事本文から同一サイト以外の HTTP(S) リンクを抽出する（相対 URL 対応）。 */
+export function extractExternalArticleLinks(
+  html: string,
+  articleUrl: string,
+  subscribedUrls: ReadonlySet<string>,
+  max = 8,
+): string[] {
+  if (max <= 0) return [];
+  let articleHostname: string;
+  try {
+    articleHostname = new URL(articleUrl).hostname;
+  } catch {
+    return [];
+  }
+
+  const seenHostnames = new Set<string>();
+  const links: string[] = [];
+  for (const match of html.matchAll(/<a\b[^>]+href\s*=\s*["']([^"'#?][^"']*?)["'][^>]*>/gi)) {
+    try {
+      const url = new URL(match[1], articleUrl);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      if (url.hostname === articleHostname) continue;
+      if (subscribedUrls.has(url.href) || seenHostnames.has(url.hostname)) continue;
+      seenHostnames.add(url.hostname);
+      links.push(url.href);
+      if (links.length >= max) break;
+    } catch {
+      // URL パース失敗はスキップ
+    }
+  }
+  return links;
+}
+
 /**
  * ブックマーク・いいね・全文取得した記事の Cloudflare Cache キャッシュを読み、
  * 記事本文内のリンクから RSS フィードを発見する。
@@ -449,7 +482,6 @@ async function generateLinkDiscoveryFeeds(
   if (articleLinks.length === 0) return [];
 
   // Cache API から全文 HTML を取得してリンク抽出
-  const seenHostnames = new Set<string>();
   const candidates: Array<{ url: string; articleTitle: string }> = [];
 
   for (const { link, title } of articleLinks) {
@@ -461,22 +493,13 @@ async function generateLinkDiscoveryFeeds(
       const data = (await cached.json()) as { content: string };
       const html = data.content;
 
-      // <a href="..."> を抽出
-      const articleHostname = new URL(link).hostname;
-      for (const m of html.matchAll(/<a\b[^>]+href\s*=\s*["']([^"'#?][^"']*?)["'][^>]*>/gi)) {
-        const href = m[1];
-        if (!href.startsWith("http")) continue;
-        try {
-          const u = new URL(href);
-          if (u.hostname === articleHostname) continue;
-          if (subscribedUrls.has(href)) continue;
-          if (seenHostnames.has(u.hostname)) continue;
-          seenHostnames.add(u.hostname);
-          candidates.push({ url: href, articleTitle: title });
-          if (candidates.length >= 8) break;
-        } catch {
-          // URL パース失敗はスキップ
-        }
+      for (const url of extractExternalArticleLinks(
+        html,
+        link,
+        subscribedUrls,
+        8 - candidates.length,
+      )) {
+        candidates.push({ url, articleTitle: title });
       }
       if (candidates.length >= 8) break;
     } catch (err) {

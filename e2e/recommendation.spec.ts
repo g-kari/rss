@@ -3,6 +3,7 @@ import {
   sanitizeForPrompt,
   isCacheValid,
   selectInterestArticleTitles,
+  extractExternalArticleLinks,
 } from "../src/lib/recommendation";
 import type { Article, EngagementEntry, RecommendationCache } from "../src/types";
 
@@ -90,6 +91,28 @@ test.describe("sanitizeForPrompt", () => {
   test("NFKC 正規化を行う", () => {
     // 全角スペースを半角スペースに
     expect(sanitizeForPrompt("a　b")).toBe("a b");
+  });
+});
+
+test.describe("extractExternalArticleLinks", () => {
+  test("相対 URL を記事 URL 基準で絶対 URL に解決する", () => {
+    expect(
+      extractExternalArticleLinks(
+        '<a href="/author">author</a><a href="https://external.example/feed">feed</a>',
+        "https://example.com/articles/1",
+        new Set(),
+      ),
+    ).toEqual(["https://external.example/feed"]);
+  });
+
+  test("同一ホスト・購読済み・重複ホストを除外する", () => {
+    expect(
+      extractExternalArticleLinks(
+        '<a href="/local">local</a><a href="https://other.example/a">a</a><a href="https://other.example/b">b</a><a href="https://sub.example/feed">sub</a>',
+        "https://example.com/articles/1",
+        new Set(["https://sub.example/feed"]),
+      ),
+    ).toEqual(["https://other.example/a"]);
   });
 });
 
