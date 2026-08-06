@@ -24,10 +24,16 @@ export function buildReadingHistoryCsv(
 export function buildReadingHistoryCsvFile(
   dailyReadCounts: readonly { date: string; count: number }[],
   exportedAt: Date,
+  scope?: string,
 ): { content: string; filename: string } {
+  const safeScope = scope
+    ?.trim()
+    .replace(/[\\/:*?"<>|\s]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const suffix = safeScope ? `_${safeScope.slice(0, 48)}` : "";
   return {
     content: buildReadingHistoryCsv(dailyReadCounts),
-    filename: `reading-history_${exportedAt.toISOString().slice(0, 10)}.csv`,
+    filename: `reading-history${suffix}_${exportedAt.toISOString().slice(0, 10)}.csv`,
   };
 }
 

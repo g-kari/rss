@@ -102,7 +102,11 @@ export default function ReadingStatsModal({
 
     try {
       const exportHeatmap = drillStats?.yearlyHeatmap ?? stats.yearlyHeatmap;
-      const { content, filename } = buildReadingHistoryCsvFile(exportHeatmap, new Date());
+      const { content, filename } = buildReadingHistoryCsvFile(
+        exportHeatmap,
+        new Date(),
+        selectedFeedHash ?? undefined,
+      );
       downloadBlob(new Blob([content], { type: "text/csv; charset=utf-8" }), filename);
       toast.success(
         selectedFeedHash

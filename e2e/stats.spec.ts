@@ -36,6 +36,16 @@ test.describe("buildReadingHistoryCsv", () => {
     expect(result.filename).toBe("reading-history_2026-08-05.csv");
     expect(result.content).toContain("2026-08-05,1");
   });
+
+  test("フィードスコープを指定すると安全化した名前をファイル名に含める", () => {
+    const result = buildReadingHistoryCsvFile(
+      [{ date: "2026-08-05", count: 1 }],
+      new Date("2026-08-05T03:00:00Z"),
+      "feed/example title",
+    );
+
+    expect(result.filename).toBe("reading-history_feed_example_title_2026-08-05.csv");
+  });
 });
 
 test.describe("toDateStr", () => {
