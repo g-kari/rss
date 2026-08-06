@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { stripHtml, stripHtmlWithBreaks, toPlainText } from "../src/lib/html";
+import { stripHtml, stripHtmlWithBreaks, toPlainText, unescapeHtml } from "../src/lib/html";
 
 test("stripHtml — タグなしテキストはそのまま trim する", () => {
   expect(stripHtml("  plain text  ")).toBe("plain text");
@@ -7,6 +7,10 @@ test("stripHtml — タグなしテキストはそのまま trim する", () => 
 
 test("toPlainText — タグなしテキストはエンティティだけ解決する", () => {
   expect(toPlainText("  plain &amp; text  ")).toBe("plain & text");
+});
+
+test("unescapeHtml — apos エンティティをアポストロフィに変換する", () => {
+  expect(unescapeHtml("Rock &apos;n&apos; Roll")).toBe("Rock 'n' Roll");
 });
 
 test.describe("stripHtmlWithBreaks", () => {
