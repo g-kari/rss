@@ -20,25 +20,29 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m;
 }
 
-export function isInSilentHours(config: PushConfig, now?: Date): boolean {
-  const { silentStart, silentEnd, timezone } = config;
-  if (!silentStart || !silentEnd || !timezone) return false;
-  if (!isValidTimeHHMM(silentStart) || !isValidTimeHHMM(silentEnd)) return false;
-
-  let currentMins: number;
+function getCurrentMinutes(timezone: string, now: Date): number | null {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    }).formatToParts(now ?? new Date());
+    }).formatToParts(now);
     const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
     const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
-    currentMins = hour * 60 + minute;
+    return hour * 60 + minute;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function isInSilentHours(config: PushConfig, now?: Date): boolean {
+  const { silentStart, silentEnd, timezone } = config;
+  if (!silentStart || !silentEnd || !timezone) return false;
+  if (!isValidTimeHHMM(silentStart) || !isValidTimeHHMM(silentEnd)) return false;
+
+  const currentMins = getCurrentMinutes(timezone, now ?? new Date());
+  if (currentMins === null) return false;
 
   const startMins = toMinutes(silentStart);
   const endMins = toMinutes(silentEnd);
