@@ -22,4 +22,9 @@ describe("article-utils (vitest smoke)", () => {
   it("formatCount: 負数は 0 に正規化する", () => {
     expect(formatCount(-1)).toBe("0");
   });
+
+  it("formatCount: NaN と負の無限大は 0 に正規化する", () => {
+    expect(formatCount(Number.NaN)).toBe("0");
+    expect(formatCount(Number.NEGATIVE_INFINITY)).toBe("0");
+  });
 });
