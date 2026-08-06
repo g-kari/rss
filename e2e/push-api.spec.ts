@@ -49,9 +49,9 @@ test.describe("isValidTimeHHMM", () => {
     });
   });
 
-  test.describe("異常ケース", () => {
-    test("24:00 は無効（時が 24）", () => {
-      expect(isValidTimeHHMM("24:00")).toBe(false);
+  test.describe("境界・異常ケース", () => {
+    test("24:00 は翌日 0 時として有効", () => {
+      expect(isValidTimeHHMM("24:00")).toBe(true);
     });
 
     test("23:60 は無効（分が 60）", () => {

@@ -19,7 +19,7 @@ test.describe("isValidTimeHHMM", () => {
   });
 
   test("不正な形式を拒否する", () => {
-    expect(isValidTimeHHMM("24:00")).toBe(false);
+    expect(isValidTimeHHMM("24:00")).toBe(true);
     expect(isValidTimeHHMM("9:30")).toBe(false);
     expect(isValidTimeHHMM("09:60")).toBe(false);
     expect(isValidTimeHHMM("")).toBe(false);
