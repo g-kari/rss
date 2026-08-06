@@ -145,6 +145,22 @@ export interface ArticlesJsonExport {
 /** 記事 JSON バックアップの状態種別。コレクション用 JSON は復元対象外。 */
 export type ArticleStateImportMode = "bookmark" | "reading_list";
 
+/** エクスポート記事配列から URL を trim・重複除外して抽出する共通検証。 */
+function parseExportedArticleUrls(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    if (typeof value !== "object" || value === null) continue;
+    const entry = value as Record<string, unknown>;
+    const url = typeof entry.url === "string" ? entry.url.trim() : "";
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    urls.push(url);
+  }
+  return urls;
+}
+
 /** 記事 JSON バックアップを検証し、URL と復元対象状態を取り出す純粋関数。 */
 export function parseArticleStateJson(
   text: string,
@@ -158,17 +174,7 @@ export function parseArticleStateJson(
           ? "reading_list"
           : null;
     if (!mode || !Array.isArray(parsed.articles)) return null;
-    const urls: string[] = [];
-    const seen = new Set<string>();
-    for (const value of parsed.articles) {
-      if (typeof value !== "object" || value === null) continue;
-      const entry = value as Record<string, unknown>;
-      const url = typeof entry.url === "string" ? entry.url.trim() : "";
-      if (!url || seen.has(url)) continue;
-      seen.add(url);
-      urls.push(url);
-    }
-    return { mode, urls };
+    return { mode, urls: parseExportedArticleUrls(parsed.articles) };
   } catch {
     return null;
   }
@@ -187,17 +193,7 @@ export function parseCollectionArticlesJson(text: string): { name: string; urls:
     ) {
       return null;
     }
-    const urls: string[] = [];
-    const seen = new Set<string>();
-    for (const value of parsed.articles) {
-      if (typeof value !== "object" || value === null) continue;
-      const entry = value as Record<string, unknown>;
-      const url = typeof entry.url === "string" ? entry.url.trim() : "";
-      if (!url || seen.has(url)) continue;
-      seen.add(url);
-      urls.push(url);
-    }
-    return { name, urls };
+    return { name, urls: parseExportedArticleUrls(parsed.articles) };
   } catch {
     return null;
   }
