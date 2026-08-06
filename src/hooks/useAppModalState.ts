@@ -16,6 +16,7 @@ interface AppModalState {
  * App.tsx のグローバルモーダル開閉 state とキーボードショートカットを集約する hook (#650 Step 1d)。
  *
  * - `?` キーでヘルプモーダルをトグル
+ * - `,` キーでユーザー設定モーダルをトグル
  * - `Escape` キーでヘルプとフィード切替モーダルを閉じる
  *   (Settings は ESC で閉じない設計 — モーダル内部の操作と衝突するため)
  *
@@ -32,6 +33,7 @@ export function useAppModalState(): AppModalState {
     (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "?") setShowHelp((v) => !v);
+      if (e.key === ",") setShowSettings((v) => !v);
       if (e.key === "Escape") {
         setShowHelp(false);
         setShowFeedSwitcher(false);
