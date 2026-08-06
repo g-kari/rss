@@ -92,6 +92,7 @@ export function useArticleContent(
     articleId: string | undefined;
   } | null>(null);
   const previousArticleIdRef = useRef(articleId);
+  const previousArticleLinkRef = useRef(articleLink);
 
   // 記事が変わったらフェッチ状態をリセット（進行中のフェッチも中断）。
   //
@@ -124,6 +125,14 @@ export function useArticleContent(
       if (isStaleController || fetchAbortControllerRef.current === null) setFetching(false);
     }
   }, [articleId]);
+
+  // 同じ ID のままリンクだけ更新された場合も、前 URL のエラー表示を持ち越さない。
+  useEffect(() => {
+    if (previousArticleLinkRef.current === articleLink) return;
+    previousArticleLinkRef.current = articleLink;
+    setFetchError("");
+    setFetchRetryable(true);
+  }, [articleLink]);
 
   // OGP 画像の動的解決
   // AbortController で記事切り替え時に前の記事のフェッチを中断し、

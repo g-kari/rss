@@ -240,6 +240,29 @@ describe("useArticleContent — 記事切替後の fetchError leak 防止 (#abor
     expect(result.current.fetchRetryable).toBe(true);
   });
 
+  it("記事 ID が同じでも URL 更新時に前 URL のエラー状態を初期化する", async () => {
+    mockApiFetch.mockResolvedValue(
+      new Response(JSON.stringify({ error: "記事が見つかりません" }), { status: 404 }),
+    );
+    const { store } = makeStore();
+    const wrapper = wrapWith(store);
+
+    const { result, rerender } = renderHook(
+      ({ link }: { link: string }) => useArticleContent("article-A", link, ""),
+      { initialProps: { link: "https://a.example.com/article" }, wrapper },
+    );
+    await act(async () => {
+      await result.current.fetchFullContent();
+    });
+    expect(result.current.fetchRetryable).toBe(false);
+
+    act(() => {
+      rerender({ link: "https://b.example.com/article" });
+    });
+    expect(result.current.fetchError).toBe("");
+    expect(result.current.fetchRetryable).toBe(true);
+  });
+
   it("記事切替 (abort) 後に旧記事の fetch error が新記事に leak しない", async () => {
     // apiFetch を手動 resolve できる deferred promise にする
     let resolveFetch: ((res: Response) => void) | null = null;
