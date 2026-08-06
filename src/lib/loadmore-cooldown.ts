@@ -74,6 +74,8 @@ export function cooldownRemainingMs(
   lastLoadAt: number,
   cooldownMs: number = DEFAULT_LOADMORE_COOLDOWN_MS,
 ): number {
+  // 永続化値や時計 API の破損で NaN / Infinity が入っても loadMore を永久抑止しない。
+  if (!Number.isFinite(now) || !Number.isFinite(lastLoadAt)) return 0;
   if (lastLoadAt === 0) return 0;
   if (now < lastLoadAt) return 0;
   const elapsed = now - lastLoadAt;

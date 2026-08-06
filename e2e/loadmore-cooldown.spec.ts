@@ -62,6 +62,12 @@ test.describe("shouldLoadMore", () => {
     // 時計戻りは fail-open のため Infinity でも true
     expect(shouldLoadMore(500, 1000, Infinity)).toBe(true);
   });
+
+  test("不正な時刻値は fail-open で true", () => {
+    expect(shouldLoadMore(Number.NaN, 1000, 1000)).toBe(true);
+    expect(shouldLoadMore(1000, Number.NaN, 1000)).toBe(true);
+    expect(shouldLoadMore(Infinity, 1000, 1000)).toBe(true);
+  });
 });
 
 /**
@@ -96,6 +102,12 @@ test.describe("cooldownRemainingMs", () => {
   test("cooldownMs=0 (cooldown 無効) は常に 0", () => {
     expect(cooldownRemainingMs(1000, 1000, 0)).toBe(0);
     expect(cooldownRemainingMs(1001, 1000, 0)).toBe(0);
+  });
+
+  test("不正な時刻値は 0 (即許可)", () => {
+    expect(cooldownRemainingMs(Number.NaN, 1000, 1000)).toBe(0);
+    expect(cooldownRemainingMs(1000, Number.NaN, 1000)).toBe(0);
+    expect(cooldownRemainingMs(Infinity, 1000, 1000)).toBe(0);
   });
 
   test("デフォルト cooldownMs は DEFAULT_LOADMORE_COOLDOWN_MS (1000ms)", () => {
