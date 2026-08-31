@@ -55,8 +55,8 @@ importers:
         specifier: ^1.27.0
         version: 1.27.0
       piper-plus:
-        specifier: ^0.6.0
-        version: 0.6.0(patch_hash=c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de)(onnxruntime-web@1.27.0)
+        specifier: ^0.7.0
+        version: 0.7.0(patch_hash=c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de)(onnxruntime-web@1.27.0)
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -1488,8 +1488,8 @@ packages:
     resolution: {integrity: sha512-S0uyoxakDINJ4DPgqxGlEEvrdSMeQb7Z2lKVjxoY2gwsbZbfg2Xr8Klfeo5ZeraHmmdBCELFUHkSe6KEmBpMvg==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@piper-plus/g2p@0.4.0':
-    resolution: {integrity: sha512-/cswJRqioXto6T7pABDJkc/6aZ2GsbturdyewGQbjfvF/yvQ3xYJ4LJg3XkMJv5xnUqJXiWJhOT/hgVBLZukZA==}
+  '@piper-plus/g2p@0.4.2':
+    resolution: {integrity: sha512-iEuynnOXOmZw88dUfyLrolRO0U3gIviIAqJR0N8SbFvoKq/dFtmZkBFtgpThk8Lk+r+rcfW0se+PkJqMPJgE4g==}
     engines: {node: '>=24.0.0'}
 
   '@playwright/test@1.62.1':
@@ -3416,9 +3416,10 @@ packages:
     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
 
-  piper-plus@0.6.0:
-    resolution: {integrity: sha512-hly52rRUKrQLFwLC0tPCd4o9raZTGoYC0KZ5AfZoVpouiiLQ3C7+GcdlhepqXA5Y5YSq4h44HCmgdeWIa0UNUw==}
+  piper-plus@0.7.0:
+    resolution: {integrity: sha512-d5JuvtaYjlPC4XATlWhAk1VcromMHHf1sJjwZ7Tklxg+Rh8HEQ6L6caobxy2oA4Mv+2GpOZpDZ4aqBe9W8dH4A==}
     engines: {node: '>=24.0.0'}
+    hasBin: true
     peerDependencies:
       onnxruntime-web: '>=1.21.0'
 
@@ -5233,7 +5234,7 @@ snapshots:
 
   '@oxlint/plugins@1.79.0': {}
 
-  '@piper-plus/g2p@0.4.0': {}
+  '@piper-plus/g2p@0.4.2': {}
 
   '@playwright/test@1.62.1':
     dependencies:
@@ -7012,9 +7013,9 @@ snapshots:
 
   picomatch@4.0.5: {}
 
-  piper-plus@0.6.0(patch_hash=c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de)(onnxruntime-web@1.27.0):
+  piper-plus@0.7.0(patch_hash=c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de)(onnxruntime-web@1.27.0):
     dependencies:
-      '@piper-plus/g2p': 0.4.0
+      '@piper-plus/g2p': 0.4.2
       onnxruntime-web: 1.27.0
 
   platform@1.3.6: {}
