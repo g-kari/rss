@@ -20,7 +20,7 @@ overrides:
 
 patchedDependencies:
   piper-plus:
-    hash: c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de
+    hash: 978a6620f984d19875b445c8add9a81f62530b2b8255348b9712ebefb6561e5f
     path: patches/piper-plus.patch
 
 importers:
@@ -56,7 +56,7 @@ importers:
         version: 1.29.0
       piper-plus:
         specifier: ^0.7.0
-        version: 0.7.0(patch_hash=c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de)(onnxruntime-web@1.29.0)
+        version: 0.7.0(patch_hash=978a6620f984d19875b445c8add9a81f62530b2b8255348b9712ebefb6561e5f)(onnxruntime-web@1.29.0)
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -7013,7 +7013,7 @@ snapshots:
 
   picomatch@4.0.5: {}
 
-  piper-plus@0.7.0(patch_hash=c1d23fcb19b966db70042ae9fd53eb4f264bc0144f9d0d1ee72d9dc76b8614de)(onnxruntime-web@1.29.0):
+  piper-plus@0.7.0(patch_hash=978a6620f984d19875b445c8add9a81f62530b2b8255348b9712ebefb6561e5f)(onnxruntime-web@1.29.0):
     dependencies:
       '@piper-plus/g2p': 0.4.2
       onnxruntime-web: 1.29.0

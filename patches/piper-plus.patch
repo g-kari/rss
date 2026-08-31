@@ -1,45 +1,55 @@
 diff --git a/src/index.js b/src/index.js
-index 885d291d4881396ae70d5d8c3b43d3081ad12122..f73d7f90a7fb368b9abdd0432c3bb21a60e2090e 100644
+index 2c91582..4921f15 100644
 --- a/src/index.js
 +++ b/src/index.js
-@@ -657,6 +657,11 @@ export class PiperPlus {
-             {
-               wasmUrl: options.wasmG2pUrl || '../../dist/rust-wasm/piper_plus_wasm.js',
-               wasmLoader: options.wasmLoader,
-+              // PATCHED (rss-reader #761): upstream の forward 漏れ修正。
-+              // PiperPlus.initialize({ zhDictBaseUrl }) で渡しても rust-wasm-adapter に
-+              // 伝わっていないため、default の `new URL('../../assets/', import.meta.url)` が
-+              // build 時の `file:///ROOT/...` 絶対 path に解決されて CSP 違反になっていた。
-+              zhDictBaseUrl: options.zhDictBaseUrl,
-             },
-           );
+@@ -947,6 +947,7 @@ export class PiperPlus {
+           wasmAdapter = await RustWasmAdapter.create(JSON.stringify(this._config), {
+             wasmUrl: options.wasmG2pUrl || "../../dist/rust-wasm/piper_plus_wasm.js",
+             wasmLoader: options.wasmLoader,
++            zhDictBaseUrl: options.zhDictBaseUrl,
+           });
            // Route all languages through WASM
-@@ -850,7 +855,11 @@ export class PiperPlus {
-       feeds.speaker_embedding_mask = new ort.Tensor(
-         'int64',
-         new BigInt64Array([1n]),
--        [1]
-+        // PATCHED (rss-reader #761): upstream の speaker_embedding_mask は rank 1 (shape `[1]`) で
-+        // 作成されるが、tsukuyomi-chan などの WavLM Prosody base 派生 model は rank 2 (shape `[1, 1]`)
-+        // を期待する。runtime error: "Invalid rank for input: speaker_embedding_mask Got: 1 Expected: 2"
-+        // を解消するため shape を [1, 1] に変更。
-+        [1, 1]
-       );
+           const wasmLangs = wasmAdapter.supportedLanguages;
+@@ -1133,7 +1134,7 @@ export class PiperPlus {
+           speakerEmbedding.length,
+         ]);
+         if (hasSpeakerEmbeddingMask) {
+-          feeds.speaker_embedding_mask = new ort.Tensor("int64", new BigInt64Array([1n]), [1]);
++          feeds.speaker_embedding_mask = new ort.Tensor("int64", new BigInt64Array([1n]), [1, 1]);
+         }
+       } else {
+         console.warn(
+@@ -1141,7 +1142,7 @@ export class PiperPlus {
+         );
+         feeds.speaker_embedding = new ort.Tensor("float32", new Float32Array(192), [1, 192]);
+         if (hasSpeakerEmbeddingMask) {
+-          feeds.speaker_embedding_mask = new ort.Tensor("int64", new BigInt64Array([0n]), [1]);
++          feeds.speaker_embedding_mask = new ort.Tensor("int64", new BigInt64Array([0n]), [1, 1]);
+         }
+       }
+     } else if (speakerEmbedding && speakerEmbedding.length > 0) {
+@@ -1153,7 +1154,7 @@ export class PiperPlus {
+         speakerEmbedding.length,
+       ]);
+       if (hasSpeakerEmbeddingMask) {
+-        feeds.speaker_embedding_mask = new ort.Tensor("int64", new BigInt64Array([1n]), [1]);
++        feeds.speaker_embedding_mask = new ort.Tensor("int64", new BigInt64Array([1n]), [1, 1]);
+       }
      }
 
 diff --git a/src/phonemizer/rust-wasm-adapter.js b/src/phonemizer/rust-wasm-adapter.js
-index 33bcff9b1543dc8d54d9d7e7021c8e28ab84de31..cf01c57690a7318d94cb0efd69141f9c62284c87 100644
+index 8b56a75..ab9f4ad 100644
 --- a/src/phonemizer/rust-wasm-adapter.js
 +++ b/src/phonemizer/rust-wasm-adapter.js
-@@ -41,7 +41,11 @@ export class RustWasmAdapter {
-     } else {
-       const url = options.wasmUrl;
-       if (!url) throw new Error('Either wasmUrl or wasmLoader must be provided');
+@@ -69,7 +69,11 @@ export class RustWasmAdapter {
+       if (!url) {
+         throw new Error("Either wasmUrl or wasmLoader must be provided");
+       }
 -      wasmModule = await import(url);
-+      // PATCHED (rss-reader #761): Next.js 16 Turbopack の static analyzer は
-+      // `await import(url)` (runtime URL) を解決できず `Module not found: Can't resolve <dynamic>`
-+      // を吐く。`new Function` 経由の eval なら Turbopack はソース解析できないので bypass 可能。
-+      const importFn = new Function('u', 'return import(u)');
++      // PATCHED: Next.js 16 Turbopack cannot statically resolve a runtime URL and
++      // fails the production build with `Can't resolve <dynamic>`. Keep the
++      // upstream runtime import semantics while hiding it from static analysis.
++      const importFn = new Function("url", "return import(url)");
 +      wasmModule = await importFn(url);
        await wasmModule.default(); // init() — load WASM binary
      }
