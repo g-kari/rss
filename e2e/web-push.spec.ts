@@ -227,6 +227,26 @@ test.describe("sendPush — fetch レスポンス別の戻り値", () => {
     expect(result).toEqual({ ok: false, gone: false });
   });
 
+  test("fetch 失敗ログに capability URL の token を出さない", async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    global.fetch = async () => {
+      throw new Error("Network error");
+    };
+
+    try {
+      await sendPush(sub, TEST_PAYLOAD);
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    const serialized = JSON.stringify(warnings);
+    expect(serialized).toContain("https://fcm.googleapis.com");
+    expect(serialized).not.toContain("test-token");
+    expect(serialized).not.toContain(sub.endpoint);
+  });
+
   test("fetch が AbortError を throw → { ok: false, gone: false }", async () => {
     global.fetch = async () => {
       const err = new DOMException("aborted", "AbortError");

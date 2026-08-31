@@ -248,7 +248,9 @@ export async function sendPush(
       signal: controller.signal,
     });
   } catch (err) {
-    console.warn("[web-push] sendPush failed:", subscription.endpoint, err);
+    // Push endpoint の path/query は受信権限を持つ capability URL なのでログへ出さない。
+    // 診断には provider の origin だけで十分であり、購読 token の漏えいを防ぐ。
+    console.warn("[web-push] sendPush failed:", { origin: audience, err });
     return { ok: false, gone: false };
   } finally {
     clearTimeout(timeoutId);
