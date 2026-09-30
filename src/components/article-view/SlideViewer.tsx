@@ -31,7 +31,14 @@ function Viewer({ slide, title }: { slide: SlideEmbed; title: string }) {
   const titleId = useId();
   usePopupLock(expanded);
   useEffect(() => {
-    if (expanded) closeRef.current?.focus();
+    const dialog = dialogRef.current;
+    if (!expanded || !dialog) return;
+    // Next hydrates document itself, so React's delegated keydown handler shares
+    // a node with native article shortcuts. Stop bubbling at the dialog instead.
+    const keepKeysInDialog = (event: KeyboardEvent) => event.stopPropagation();
+    dialog.addEventListener("keydown", keepKeysInDialog);
+    closeRef.current?.focus();
+    return () => dialog.removeEventListener("keydown", keepKeysInDialog);
   }, [expanded]);
   const close = () => {
     dialogRef.current?.close();
@@ -70,11 +77,6 @@ function Viewer({ slide, title }: { slide: SlideEmbed; title: string }) {
         aria-modal={expanded || undefined}
         aria-label={expanded ? undefined : `${title} — スライドプレイヤー`}
         aria-labelledby={expanded ? titleId : undefined}
-        onKeyDown={(event) => {
-          // Top-layer inertness does not stop document shortcuts. Keep keys in the modal
-          // without cancelling native Tab, Escape, button activation, or iframe controls.
-          if (expanded) event.stopPropagation();
-        }}
         onCancel={(event) => {
           event.preventDefault();
           close();
