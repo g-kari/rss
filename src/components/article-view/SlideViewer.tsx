@@ -70,6 +70,11 @@ function Viewer({ slide, title }: { slide: SlideEmbed; title: string }) {
         aria-modal={expanded || undefined}
         aria-label={expanded ? undefined : `${title} — スライドプレイヤー`}
         aria-labelledby={expanded ? titleId : undefined}
+        onKeyDown={(event) => {
+          // Top-layer inertness does not stop document shortcuts. Keep keys in the modal
+          // without cancelling native Tab, Escape, button activation, or iframe controls.
+          if (expanded) event.stopPropagation();
+        }}
         onCancel={(event) => {
           event.preventDefault();
           close();
