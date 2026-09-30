@@ -21,6 +21,8 @@ export const SPECIAL_FEED_IDS = {
 
 export const STORAGE_KEYS = {
   READ_IDS: "rss-read",
+  /** Article-only recommendation feedback, scoped by user ID; never synced. */
+  ARTICLE_RECOMMENDATION_DISMISSALS: "rss-article-recommendation-dismissals",
   BOOKMARK_IDS: "rss-bookmarks",
   READING_LIST_IDS: "rss-reading-list",
   LIKE_IDS: "rss-likes",

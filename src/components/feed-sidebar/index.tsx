@@ -333,6 +333,11 @@ function FeedSidebar({
   });
 
   const totalUnread = totalUnreadProp ?? totalUnreadCalc;
+  const isAllSelected =
+    selectedFeedId === null &&
+    selectedGroupId === null &&
+    selectedTag === null &&
+    selectedCollectionId === null;
 
   // #1076 同様: memo(CategorySection) / memo(FeedGroupsSection) を無効化しないため
   // renderFeed を useCallback で stable 化する (feedSearch / inputOpen 等の無関係な
@@ -477,15 +482,15 @@ function FeedSidebar({
             sibling として並置する (canonical: FeedGroupsSection / SpecialViewButton)。 */}
         <div
           className={`group flex items-center justify-between gap-2 px-4 min-h-[44px] w-full transition-all duration-200 ${
-            selectedFeedId === null
-              ? "text-text-strong bg-surface-subtle"
+            isAllSelected
+              ? "selection-current text-selection-accent"
               : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
           }`}
         >
           <button
             type="button"
             onClick={() => onSelectFeed(null)}
-            aria-current={selectedFeedId === null ? "page" : undefined}
+            aria-current={isAllSelected ? "page" : undefined}
             className="flex-1 min-w-0 text-left text-[13px] tracking-[0.02em] truncate cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset"
           >
             すべて

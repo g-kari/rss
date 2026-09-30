@@ -15,7 +15,7 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
             ├─ /api/feeds/*           — フィード CRUD + refresh (R2)
             ├─ /api/feed-groups/*     — フィードグループ CRUD + 並べ替え (R2)
             ├─ /api/collections/*    — コレクション CRUD (R2)
-            ├─ /api/articles          — 記事一覧・保存 (R2)
+            ├─ /api/articles          — 記事一覧・保存 (R2)、全文検索 (既定は互換R2検索、明示有効化後はD1派生索引 + R2選択取得)
             ├─ /api/ai/*              — Workers AI (要約・翻訳)
             ├─ /api/content           — フルテキスト取得プロキシ
             ├─ /api/engagement        — エンゲージメント記録 (R2)
@@ -42,6 +42,7 @@ Cloudflare Workers (@opennextjs/cloudflare)
 Cloudflare Bindings
   ├─ RSS_DATA (R2)              — users/{userId}/* + feeds/{feedHash}/* (共有フィード)
   ├─ NEXT_INC_CACHE_R2_BUCKET (R2) — Next.js Incremental Cache (opennextjs 管理)
+  ├─ ARTICLE_SEARCH (D1)        — #1378 の派生検索索引（bindingだけでは無効。RSS_ARTICLE_SEARCH_INDEX=trueで有効化）
   ├─ RATE_LIMIT (KV)            — レートリミット・クールダウン管理
   ├─ AI                         — Workers AI モデル
   ├─ IMAGES                     — Cloudflare Images binding (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部利用の可能性あり、削除前要検証 / 次回 OpenNext メジャー更新時に削除可否を再評価)
@@ -167,6 +168,7 @@ src/
     ThreePaneLayout.tsx      # 3ペイン CSS Grid レイアウトコンテナ（sidebarWidth / listWidth / listFocusMode props）
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
+    ArticleRecommendations.tsx # フィルター済み未読記事の理由付き推薦・取り消し・調整 UI（ブラウザ内）
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
     SnoozeModal.tsx          # 記事スヌーズ設定モーダル（1時間後・明日の朝・来週など）
@@ -281,6 +283,7 @@ src/
     useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
     useEngagement.ts         # エンゲージメント記録 (/api/engagement)
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
+    useRecommendationDismissals.ts # ユーザー別の記事推薦非表示（localStorage、30日・最大200件、取り消し可能）
     useOgpCache.ts           # /api/ogp fetch (OGP 画像キャッシュ)
     useImageDownload.ts      # 記事画像一括ダウンロード
     usePushNotifications.ts  # Web Push サブスクリプション管理
@@ -419,7 +422,12 @@ src/
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
+    article-recommendations.ts # 既存記事・保存/いいね/閲覧から未読3件を理由付きで選ぶローカル順位付け
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
+    shared-feed-storage.ts   # 追記型記事保存・CAS commit・論理ページ・明示的な旧形式移行
+    shared-feed-constants.ts # 記事ページと既知IDの共有上限
+    article-search-index.ts # D1派生検索索引・厳密な検索・再開可能な索引構築
+    feed-write-maintenance.ts # cronとフィード変更操作の可逆な一時停止ガード
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
     collections.ts           # コレクション R2 読み書き（readCollections / writeCollections）
     concurrency.ts           # 並行度制限付き非同期マッピング（pMap / pMapSettled）
@@ -522,10 +530,10 @@ src/
 1. Cloudflare Cron Trigger が 30 分毎に `scheduled` ハンドラーを起動
 2. `buildFeedUserMap(env)` が全ユーザーの `subscriptions.json` を走査して `feedHash → userId[]` マップを構築
 3. 各 feedHash に対して RSS を 1 度だけ fetch（共有フィード）
-4. `fast-xml-parser` で RSS 2.0 / Atom をパース
-5. `mergeNewArticles` で `guid` ベースの dedup → `feeds/{feedHash}/articles/latest.json` を更新（500件超えは `p{N}.json` にカスケード）
-6. `feeds/{feedHash}/meta.json` の `lastFetchedAt` / `articleCount` を更新
-7. 購読中の各ユーザーに Web Push 通知を送信
+4. RSS/XML と selector HTML は実測 10 MiB 上限。ネットワーク 20 並列に対し本文読込・解析・保存は 2 並列
+5. `mergeNewArticlesWithChanges` が immutable segment を先に保存し、最新 500 件と参照一覧を持つ v2 head を ETag CAS で commit（履歴カスケードなし）
+6. R2 成功後に `ARTICLE_SEARCH` の変更 object を同期。索引失敗は R2 を壊さず、200 記事単位の再開可能な rebuild で修復。D1 は実行全体で 800 query 上限（Paid 向け）
+7. `meta.json` を更新。記事配列や knownIds をバッチ結果に残さず、件数・タイトルだけで Web Push 通知を集計
 
 ### フィードグループ操作
 
@@ -572,13 +580,14 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 
 ```
 feeds/{feedHash}/meta.json               # SharedFeedMeta（feedHash・url・title・siteUrl・lastFetchedAt・fetchError・consecutiveErrors・lastErrorAt・rateLimitedUntil・lastModified・etag・cacheControl・nextFetchEarliestAt・articleCount・pageCount・knownIds・cssSelectors・failedSelectors・oversizeAlert）
-feeds/{feedHash}/articles/latest.json   # Article[]（最新 PAGE_SIZE=500 件、publishedAt 降順）
-feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜）
+feeds/{feedHash}/articles/latest.json   # v2 head（最新 500 件・immutable segment 参照・bounded ID locator・revision）。旧 Article[] も読取可能
+feeds/{feedHash}/articles/segments/{revision}-{N}.json # immutable Article[]（通常 500 件以下）
+feeds/{feedHash}/articles/p{N}.json     # 旧 Article[]（移行後も参照・バックアップ用に保持）
 ```
 
 `feedHash` = `sha256(feedUrl).slice(0, 16)`（`computeFeedHash` で計算）。
 フィード記事データはユーザー間で共有され、複数ユーザーが同じフィードを購読しても記事フェッチは 1 度だけ行われる。
-詳細は `src/lib/shared-feed.ts` の `mergeNewArticles` / `cascadeOverflow` を参照。
+保存・論理 page=N の読み取りは `src/lib/shared-feed-storage.ts` を参照。移行・rollback は `docs/migrations/shared-feed-segments.md`、D1 の準備と再開可能な backfill は `docs/article-search-index.md` を参照。v2 head への移行後に旧 Worker へ単純 revert してはならない。
 
 ### サーバーサイドセッション（認証）
 
@@ -1159,6 +1168,14 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 
 `scripts/` 配下は `package.json` の `pre*` hook / `gen:*` / `upload:*` / `deploy` で呼ばれる Node.js script 群 (.mjs)。各 script の役割:
 
+- **`rebuild-article-search.mjs`** — R2を読み、D1派生索引を200記事単位で再開可能に構築する。既定はローカルのみ。
+- **`migrate-feed.mjs`** — 明示的な棚卸し/バックアップ/適用コマンド。適用時は検証・索引サイズ確認・schema migration・R2変換/再開・D1索引構築を順に実行する。
+- **`migrate-search-schema.mjs`** — 検索専用migrationのフォルダ/設定を検証し、SQL適用後のversion・column・FTS構造を確認する。通常buildや起動からは呼ばない。
+- **`check-feed-indexability.mjs`** — 検証済みバックアップに対応する1フィードを読み取り、D1と同じUTF-8行サイズ判定で変換前に超大記事を検出する。
+- **`migrate-feed-storage.mjs`** — 1フィードの容量制限付き棚卸し・private backup・checksum/ETag照合・明示的v2変換。バックアップと停止確認を必須にし、R2削除はしない。
+- **`lib/search-maintenance-options.mjs`** — Wrangler CLIと保守スクリプトのローカルstate保存先を統一し、明示的remote binding設定を検証する。
+- **`lib/feed-storage-maintenance.mjs`** — 既存記事のバックアップ検証・限定したCAS更新・変換後の内容照合・記録済みrevisionからの安全な再開を行うNode専用処理。
+- **`rebuild-article-search.test.mjs`** — 実際のローカルD1/R2でmigration・CLI・検索意味論・永続化を検証する独立smoke test。
 - **`sync-release-notes.mjs`** — `RELEASE_NOTES.md` → `src/lib/release-notes-data.ts` 自動生成。`predev` / `prebuild` / `pretypecheck` / `precheck` / `precheck:fix` の 5 hook で実行、`release-notes-data.ts` は `.gitignore` 対象 (auto-generated)。
 - **`generate-test-coverage-map.mjs`** — e2e spec ファイルから `architecture.md` の `<!-- TEST_COVERAGE_MAP_AUTO_GEN START / END -->` マーカー間にテストカバレッジマップを差し込む。`gen:coverage-map` script、現状 Phase 1 (markers + script 配置済、データ整備は Phase 2 で運用切替予定、`rule-maintenance.md § 10 派生「自動化 infrastructure markers」` 参照)。
 - **`remove-bundled-wasm.mjs`** — `build:cf` post-step。`.open-next/assets/_next/static/media/` 配下の wasm (`onnxruntime-web` の `ort-wasm-simd-threaded.jsep.wasm` 25 MiB 等) を削除して Cloudflare Workers asset 上限 (25 MiB / 件) 抵触を回避、wasm は R2 (`piper-wasm/<file>`) セルフホスト (#674 Phase 2c / closes #753)。
@@ -1205,3 +1222,7 @@ git commit -m "compat: AGENTS.md → CLAUDE.md symlink で Codex 対応"
 2. 存在しなければ `ln -s CLAUDE.md AGENTS.md`
 3. `git add AGENTS.md && git commit` — symlink はバイナリ追加でなく参照として commit される
 4. `CLAUDE.md` の内容を維持し続けるだけでよい (メンテナンス負荷ゼロ)
+
+## 記事保存・検索の段階的切り替え
+
+`src/lib/feed-rollout.ts` が明示的な有効化を判定する。`RSS_ARTICLE_STORAGE_V2` が未設定/false/不正なら取り込みは `shared-feed-legacy.ts` の旧形式writerを使用する。すでにv2のheadは常にv2 writerで扱い、形式を戻さない。`RSS_ARTICLE_SEARCH_INDEX` が未設定/false/不正なら `legacy-article-search.ts` による従来の全文検索を使用し、D1同期もしない。両フラグは独立し、`RSS_FEED_WRITES_PAUSED` による保守停止が優先される。通常のCloudflare build/deployではSQL・データ移行をしない。

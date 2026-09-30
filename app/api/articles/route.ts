@@ -5,15 +5,14 @@ import { r2Get, savedArticlesKey, feedLastFetchedKey } from "@/lib/r2";
 import {
   getUserLatestArticles,
   MAX_PAGES,
-  MAX_USER_ARTICLES,
-  R2_CONCURRENCY,
   readArticlePage,
-  readFeedMeta,
   readLatestArticles,
   readUserSubscriptions,
 } from "@/lib/shared-feed";
-import { compileSearchQuery, type SearchContext } from "@/lib/full-text-search";
-import { pMap } from "@/lib/concurrency";
+import { compileSearchQuery } from "@/lib/full-text-search";
+import { searchIndexedArticles } from "@/lib/article-search-index";
+import { searchLegacyArticles } from "@/lib/legacy-article-search";
+import { isArticleSearchIndexEnabled } from "@/lib/feed-rollout";
 import {
   applyKeywordFilter,
   applyKeywordFilterMap,
@@ -80,50 +79,46 @@ export async function GET(request: NextRequest) {
       return apiError("Invalid since", 400, { code: "INVALID_SINCE" });
     }
 
-    // #908 案 A: q 指定時はサーバーサイド全文検索。全購読フィードの全ページ (latest + p2..pageCount)
-    // を R2 走査してクエリ評価し、マッチした記事を返す。クライアントのページ内検索 (useFullTextSearch)
-    // と異なりロード済みに限定されず全ページ横断で検索できる。全ページ走査のためレスポンスは遅め
-    // (R2 アクセスコスト + latency、ユーザー承認済)。クエリ構文は client と同じ full-text-search.ts を共有。
+    // Keep compatible R2 search until the operator explicitly enables the ready D1 index.
+    // Once enabled, index errors fail closed and never fall back to a corpus scan.
+    // Empty/unparseable queries still return [] without requiring index readiness.
     if (q !== null) {
-      const matcher = compileSearchQuery(q);
-      // 空クエリ / パース不能は 0 件 (述語なし扱いで全件返すと検索 UX に反するため)
-      if (!matcher) return NextResponse.json([]);
+      if (!compileSearchQuery(q)) return NextResponse.json([]);
       const [subs, savedArticles, readState] = await Promise.all([
         readUserSubscriptions(env.RSS_DATA, session.userId),
         r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
         readNormalizedReadState(env.RSS_DATA, session.userId),
       ]);
-      const feedTitleByHash = new Map<string, string>();
-      const perFeedArticles = await pMap(
-        subs,
-        async (sub) => {
-          const meta = await readFeedMeta(env.RSS_DATA, sub.feedHash);
-          feedTitleByHash.set(sub.feedHash, sub.customTitle || meta?.title || "");
-          const pageCount = Math.min(meta?.pageCount ?? 1, MAX_PAGES);
-          const reads: Promise<Article[]>[] = [readLatestArticles(env.RSS_DATA, sub.feedHash)];
-          for (let p = 2; p <= pageCount; p++) {
-            reads.push(readArticlePage(env.RSS_DATA, sub.feedHash, p));
-          }
-          return (await Promise.all(reads)).flat();
-        },
-        R2_CONCURRENCY,
-      );
-      const searchCtx: SearchContext = {
-        feedTitleByHash,
-        tagsByArticleId: readState.tagIds ?? undefined,
-      };
-      // savedArticles も検索対象に含める。id ベース dedup でページ重複を除去しつつクエリ評価。
-      const seen = new Set<string>();
-      const matched: Article[] = [];
-      for (const a of [...savedArticles, ...perFeedArticles.flat()]) {
-        if (seen.has(a.id)) continue;
-        seen.add(a.id);
-        if (matcher(a, searchCtx)) matched.push(a);
+      if (!isArticleSearchIndexEnabled(env)) {
+        const matched = await searchLegacyArticles({
+          bucket: env.RSS_DATA,
+          query: q,
+          subscriptions: subs,
+          savedArticles,
+          readState,
+        });
+        return NextResponse.json(matched, {
+          headers: { "Cache-Control": "private, max-age=30" },
+        });
       }
-      matched.sort(compareByDateDesc);
-      return NextResponse.json(matched.slice(0, MAX_USER_ARTICLES), {
-        headers: { "Cache-Control": "private, max-age=30" },
-      });
+      try {
+        const matched = await searchIndexedArticles({
+          db: env.ARTICLE_SEARCH,
+          bucket: env.RSS_DATA,
+          query: q,
+          subscriptions: subs,
+          savedArticles,
+          readState,
+        });
+        return NextResponse.json(matched, {
+          headers: { "Cache-Control": "private, max-age=30" },
+        });
+      } catch (error) {
+        console.error("[articles-search] Search index unavailable:", error);
+        return apiError("Search index is not ready. Please retry later.", 503, {
+          code: "SEARCH_INDEX_UNAVAILABLE",
+        });
+      }
     }
 
     if (feedHash) {

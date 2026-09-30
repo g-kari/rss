@@ -51,6 +51,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
   return (
     <div
       role="article"
+      aria-current={isSelected ? "true" : undefined}
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
@@ -64,8 +65,8 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
-          ? "border-text-strong bg-surface-elevated"
-          : "border-border-default hover:border-text-muted bg-surface-elevated"
+          ? "selection-current border-selection-accent"
+          : "border-border-default hover:border-text-muted bg-surface-elevated hover:bg-surface-hover"
       }`}
     >
       <span id={`article-hint-${article.id}`} className="sr-only">
@@ -85,8 +86,8 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
         )}
         <h3
           id={`article-title-${article.id}`}
-          className={`text-[14px] leading-snug font-medium mt-0.5 mb-1.5 ${
-            isRead ? "text-text-muted" : "text-text-strong"
+          className={`text-[14px] leading-snug mt-0.5 mb-1.5 ${
+            isRead ? "text-text-muted font-normal" : "text-text-strong font-medium"
           }`}
         >
           {highlightText(article.title || "(タイトルなし)", query)}

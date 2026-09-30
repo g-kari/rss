@@ -1,5 +1,8 @@
 name = "rss-reader"
 main = "./worker.ts"
+# Preserve operator-managed variables (including maintenance pause) across deployments.
+# Explicit config/CLI values still override retained values; verify each effective deployment.
+keep_vars = true
 compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 
@@ -21,6 +24,12 @@ service = "findme-rss"
 binding = "IMAGES"
 
 [vars]
+# RSS_FEED_WRITES_PAUSED is intentionally NOT defaulted here. Unset/"false" = running;
+# "true" = paused; malformed configured values fail closed. Never add a hardcoded false
+# during a paused rollout. See docs/migrations/feed-writer-maintenance.md.
+# RSS_ARTICLE_STORAGE_V2 and RSS_ARTICLE_SEARCH_INDEX are opt-in rollout gates.
+# Leave unset until backups, writer drain, D1 schema and feed indexes are verified.
+# Unset/false/invalid keeps legacy storage and search; an existing v2 head is never downgraded.
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字・未設定 = 制限なし（全員許可）
@@ -34,6 +43,16 @@ VAPID_SUBJECT = "mailto:admin@0g0.xyz"
 [[r2_buckets]]
 binding = "RSS_DATA"
 bucket_name = "rss-reader-data"
+
+# #1378: derived article search index. Enable only after creating a database and
+# applying migrations/article-search (see docs/article-search-index.md). The real database
+# ID must be supplied at rollout; do not use the local test configuration ID.
+# [[d1_databases]]
+# binding = "ARTICLE_SEARCH"
+# database_name = "rss-reader-search"
+# database_id = "<provisioned-database-id>"
+# migrations_dir = "migrations/article-search"
+# Binding alone does not activate D1 reads/writes: RSS_ARTICLE_SEARCH_INDEX=true is required.
 
 # レートリミット用 KV namespace
 # ⚠️ デプロイ前に以下を実行して id を取得・設定すること:

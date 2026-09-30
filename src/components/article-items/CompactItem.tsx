@@ -46,6 +46,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
   return (
     <div
       role="article"
+      aria-current={isSelected ? "true" : undefined}
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
@@ -58,9 +59,7 @@ export const CompactArticleItem = memo(function CompactArticleItem({
       className={`group relative flex items-center gap-2 px-4 py-1.5 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
-        isSelected
-          ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
-          : "hover:bg-surface-hover"
+        isSelected ? "selection-current" : "hover:bg-surface-hover"
       }`}
       style={isNew ? { animationDelay: `${Math.min(index, 20) * 15}ms` } : undefined}
     >

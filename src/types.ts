@@ -39,9 +39,11 @@ export interface SharedFeedMeta {
   cacheControl?: string | null;
   /** Cache-Control max-age から算出した次回フェッチ可能時刻（ISO 8601）。cron 時のスキップ判定に使用 */
   nextFetchEarliestAt?: string | null;
-  /** 記事の総件数（近似値） */
+  /** 記事の総件数（legacy は近似値、v2 は committed head から集計） */
   articleCount: number;
-  /** latest.json 以外のページファイル数 (p2, p3, ...) */
+  /** Committed article-head revision. D1 is a derived index of this revision. */
+  articleRevision?: string;
+  /** latest 以外の論理ページ数（legacy では p2, p3, ... のファイル数） */
   pageCount: number;
   /** 全ページを通じて既知の記事 ID 一覧（重複チェック用、最大 10,000 件） */
   knownIds?: string[];
@@ -51,6 +53,46 @@ export interface SharedFeedMeta {
   failedSelectors?: string[];
   /** MAX_PAGES を超えた overflow を末尾ページに追記した際に true になる監視フラグ */
   oversizeAlert?: boolean;
+}
+
+/** Immutable article object referenced by the versioned latest.json head. */
+export interface FeedArticleSegment {
+  objectKey: string;
+  count: number;
+  priority: number;
+  newest: { publishedAt: string | null; createdAt: string; id: string };
+  oldest: { publishedAt: string | null; createdAt: string; id: string };
+}
+
+export interface FeedArticleBatch {
+  objectKey: string;
+  priority: number;
+  articles: Article[];
+}
+
+export interface FeedArticleCommit {
+  revision: string;
+  previousRevision: string;
+  changedObjects: FeedArticleBatch[];
+  /** No longer referenced. Physical deletion requires a separate retention-aware GC. */
+  removedObjectKeys: string[];
+  requiresRebuild: boolean;
+}
+
+export interface FeedArticleSnapshot {
+  revision: string;
+  latest: Article[];
+  segments: FeedArticleSegment[];
+  articleCount: number;
+  pageCount: number;
+  nextSegmentId: number;
+  /** Bounded recency window, preserving the existing knownIds retention contract. */
+  knownIds: string[];
+  /** Archived retained IDs -> stable immutable segment priority (latest IDs are implicit). */
+  articleLocations: Record<string, number>;
+  etag?: string;
+  exists: boolean;
+  legacy: boolean;
 }
 
 /** フィードごとのキーワードフィルター */
@@ -105,7 +147,7 @@ export interface Feed {
   consecutiveErrors?: number;
   lastErrorAt?: string | null;
   rateLimitedUntil?: string | null;
-  /** p2.json 以降のページ数（0 = latest.json のみ、1 以上なら過去記事あり） */
+  /** page 2 以降の論理ページ数（0 = latest のみ、1 以上なら過去記事あり） */
   pageCount?: number;
   filter?: KeywordFilter;
   /** NSFW フラグ — true のとき NSFW モードでのみ記事を表示 */

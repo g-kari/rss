@@ -5,6 +5,7 @@ import {
   computePrivateFeedHash,
   assembleClientFeed,
   mergeNewArticles,
+  readLatestArticles,
   readUserIndex,
   addUserToIndex,
   removeUserFromIndex,
@@ -455,7 +456,7 @@ test.describe("mergeNewArticles", () => {
   });
 
   test("新規記事を latest.json に書き込む", async () => {
-    const { bucket, store } = makeR2Mock();
+    const { bucket } = makeR2Mock();
     const meta = makeMeta({ feedHash: "feed1" });
 
     const articles = [
@@ -466,7 +467,7 @@ test.describe("mergeNewArticles", () => {
     const brandNew = await mergeNewArticles(bucket, meta, articles, []);
 
     expect(brandNew).toHaveLength(2);
-    const stored = JSON.parse(store.get("feeds/feed1/articles/latest.json")!) as Article[];
+    const stored = await readLatestArticles(bucket, "feed1");
     expect(stored).toHaveLength(2);
     // 日付降順でソートされる
     expect(stored[0].id).toBe("a1");
@@ -485,7 +486,7 @@ test.describe("mergeNewArticles", () => {
 
     expect(brandNew).toHaveLength(1);
     expect(brandNew[0].id).toBe("new1");
-    const stored = JSON.parse(store.get("feeds/feed1/articles/latest.json")!) as Article[];
+    const stored = await readLatestArticles(bucket, "feed1");
     expect(stored).toHaveLength(2);
     expect(stored[0].id).toBe("new1");
     expect(stored[1].id).toBe("old1");
@@ -516,7 +517,7 @@ test.describe("mergeNewArticles", () => {
     const brandNew = await mergeNewArticles(bucket, meta, articles, existing);
 
     expect(brandNew).toEqual([]);
-    const stored = JSON.parse(store.get("feeds/feed1/articles/latest.json")!) as Article[];
+    const stored = await readLatestArticles(bucket, "feed1");
     expect(stored[0].title).toBe("New Title");
   });
 
@@ -540,13 +541,17 @@ test.describe("mergeNewArticles", () => {
     ];
     await mergeNewArticles(bucket, meta, articles, existing);
 
-    const stored = JSON.parse(store.get("feeds/feed1/articles/latest.json")!) as Article[];
+    const stored = await readLatestArticles(bucket, "feed1");
     expect(stored[0].createdAt).toBe("2025-12-01T00:00:00Z");
   });
 
   test("articleCount が新規記事の分だけ増える", async () => {
-    const { bucket } = makeR2Mock();
+    const { bucket, store } = makeR2Mock();
     const meta = makeMeta({ feedHash: "feed1", articleCount: 5 });
+    const existing = Array.from({ length: 5 }, (_, i) =>
+      makeArticle(`old-${i}`, "2025-12-01T00:00:00Z"),
+    );
+    store.set("feeds/feed1/articles/latest.json", JSON.stringify(existing));
 
     const articles = [
       makeArticle("new1", "2026-01-02T00:00:00Z"),
@@ -614,11 +619,13 @@ test.describe("mergeNewArticles", () => {
     expect(putCalled).toBe(false);
   });
 
-  test("existingLatest を渡せば R2 GET をスキップする", async () => {
-    const { bucket } = makeR2Mock();
+  test("CAS 用の最新 snapshot を取得して stale existingLatest の上書きを防ぐ", async () => {
+    const { bucket, store } = makeR2Mock();
     const meta = makeMeta({ feedHash: "feed1" });
 
     const existingLatest = [makeArticle("old1", "2026-01-01T00:00:00Z")];
+    const current = [...existingLatest, makeArticle("concurrent", "2026-01-02T00:00:00Z")];
+    store.set("feeds/feed1/articles/latest.json", JSON.stringify(current));
     const articles = [makeArticle("new1", "2026-01-02T00:00:00Z")];
 
     let getCalled = false;
@@ -630,7 +637,8 @@ test.describe("mergeNewArticles", () => {
 
     const brandNew = await mergeNewArticles(bucket, meta, articles, existingLatest);
     expect(brandNew).toHaveLength(1);
-    expect(getCalled).toBe(false);
+    expect(getCalled).toBe(true);
+    expect((await readLatestArticles(bucket, "feed1")).map((a) => a.id)).toContain("concurrent");
   });
 
   test("knownIds がない場合は latest の ID で重複チェックする（後方互換）", async () => {

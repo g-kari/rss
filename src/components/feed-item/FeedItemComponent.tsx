@@ -353,7 +353,7 @@ function FeedItem({
       }
       className={`group relative flex items-center justify-between px-4 py-1.5 cursor-pointer transition-all duration-200 ${
         isSelected
-          ? "text-text-strong bg-surface-subtle"
+          ? "selection-current text-selection-accent"
           : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
       } ${isDragging ? "opacity-40" : ""}`}
       style={{ animationDelay: `${animationIndex * 40}ms` }}

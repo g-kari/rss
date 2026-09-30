@@ -35,6 +35,7 @@ import { useArticleListItemProps } from "../hooks/useArticleListItemProps";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { resolveThumbnail } from "../lib/article-utils";
 import ArticleListHeader from "./ArticleListHeader";
+import ArticleRecommendations from "./ArticleRecommendations";
 import GalleryContextMenu, { type GalleryContextMenuTarget } from "./GalleryContextMenu";
 import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleContextMenu";
 import LoadMoreButton from "./LoadMoreButton";
@@ -54,6 +55,12 @@ import {
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
 
 interface Props {
+  recommendationContext?: {
+    userId: string;
+    readBeforeTimestamp: string | null;
+    likeIds: Set<string>;
+    historyIds: Set<string>;
+  };
   feeds: Feed[];
   readIds: Set<string>;
   readBeforeTimestamp?: string | null;
@@ -132,6 +139,7 @@ const getArticleId = (a: Article) => a.id;
 // ── メインコンポーネント ───────────────────────────────────────────────
 
 function ArticleList({
+  recommendationContext,
   feeds,
   readIds,
   readBeforeTimestamp = null,
@@ -167,6 +175,7 @@ function ArticleList({
 }: Props) {
   const {
     filtered,
+    recommendationSources,
     visible,
     hasMore,
     query,
@@ -176,6 +185,12 @@ function ArticleList({
     readingListOnly,
     likeOnly,
     noteOnly,
+    rawQuery,
+    dateRange,
+    readingTimeRange,
+    authorFilter,
+    categoryFilter,
+    digestMode,
   } = useArticleFilter();
   const {
     galleryColumns,
@@ -707,6 +722,37 @@ function ArticleList({
           selectedFeedId={selectedFeedId}
           feeds={feeds}
         />
+
+        {recommendationContext && (
+          <ArticleRecommendations
+            {...recommendationContext}
+            candidates={filtered}
+            articles={recommendationSources ?? filtered}
+            feeds={feeds}
+            readIds={readIds}
+            readBeforeTimestamp={recommendationContext.readBeforeTimestamp}
+            bookmarkIds={bookmarkIds}
+            readingListIds={readingListIds ?? EMPTY_STRING_SET}
+            onSelectArticle={onSelectArticle}
+            enabled={
+              !loading &&
+              !fetchError &&
+              selectedFeedId === null &&
+              (!activeFeedView || activeFeedView === "articles") &&
+              !rawQuery.trim() &&
+              !query.trim() &&
+              !bookmarkOnly &&
+              !readingListOnly &&
+              !likeOnly &&
+              !noteOnly &&
+              !digestMode &&
+              dateRange === "all" &&
+              readingTimeRange === "all" &&
+              !authorFilter &&
+              !categoryFilter
+            }
+          />
+        )}
 
         <SelectedArticleCtx.Provider value={selectedArticleId ?? null}>
           <div

@@ -1,0 +1,8 @@
+{
+  // Template only: read-only by default; no entrypoint, never deploy this file.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "rss-reader-feed-maintenance",
+  "account_id": "REPLACE_WITH_VERIFIED_ACCOUNT_ID",
+  "compatibility_date": "2026-05-01",
+  "r2_buckets": [{ "binding": "RSS_DATA", "bucket_name": "rss-reader-data", "remote": true }],
+}

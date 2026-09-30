@@ -217,7 +217,11 @@ export function parseSearchQuery(query: string): SearchNode | null {
 /*                                  Evaluator                                 */
 /* -------------------------------------------------------------------------- */
 
-function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: SearchContext): string {
+export function fieldHaystack(
+  article: SearchableArticle,
+  field: SearchField,
+  ctx: SearchContext,
+): string {
   switch (field) {
     case "title":
       return article.title.toLowerCase();
@@ -261,7 +265,7 @@ function fieldHaystack(article: SearchableArticle, field: SearchField, ctx: Sear
   }
 }
 
-function defaultHaystack(article: SearchableArticle, ctx: SearchContext): string {
+export function defaultHaystack(article: SearchableArticle, ctx: SearchContext): string {
   if (ctx.haystackCache) {
     const cached = ctx.haystackCache.get(article.id);
     if (cached !== undefined) return cached;

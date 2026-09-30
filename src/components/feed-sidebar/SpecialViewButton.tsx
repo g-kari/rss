@@ -21,7 +21,7 @@ export default function SpecialViewButton({
       aria-current={selectedFeedId === id ? "page" : undefined}
       className={`w-full flex items-center justify-between gap-2 px-4 min-h-[44px] text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset ${
         selectedFeedId === id
-          ? "text-text-strong bg-surface-subtle"
+          ? "selection-current text-selection-accent"
           : "text-text-muted hover:text-text-strong hover:bg-surface-hover"
       }`}
     >

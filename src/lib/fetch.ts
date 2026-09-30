@@ -3,6 +3,16 @@ import { isValidFeedUrl } from "@/lib/url";
 /** 外部 HTTP フェッチのデフォルトタイムアウト（ミリ秒）*/
 export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
+/** RSS/XML と CSS セレクタ用 HTML の最大レスポンスサイズ（10 MiB）。 */
+export const FEED_MAX_BYTES = 10 * 1024 * 1024;
+
+export class BodyTooLargeError extends Error {
+  constructor(public readonly maxBytes: number) {
+    super(`Response body exceeds maximum size of ${maxBytes} bytes`);
+    this.name = "BodyTooLargeError";
+  }
+}
+
 /**
  * 外部 RSS / HTML fetch 用の User-Agent。
  *
@@ -92,6 +102,62 @@ export async function readBodyBytesPartial(
 }
 
 /**
+ * レスポンスをバイト数で制限しながら UTF-8 デコードする。超過時は部分成功にしない。
+ * Content-Length は早期拒否にのみ使い、欠落・過少申告・圧縮に備えて実測も必ず制限する。
+ * 生バイトの全チャンク保持 + 結合コピーを避け、本文待ちにもタイムアウトを適用する。
+ */
+export async function readResponseText(
+  response: Response,
+  maxBytes: number,
+  timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
+): Promise<string> {
+  const contentLength = response.headers.get("Content-Length");
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
+    void response.body?.cancel().catch(() => {});
+    throw new BodyTooLargeError(maxBytes);
+  }
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  return withTimeout(timeoutMs, async (signal) => {
+    const cancel = () => {
+      void reader.cancel().catch(() => {});
+    };
+    signal.addEventListener("abort", cancel, { once: true });
+    const decoder = new TextDecoder();
+    const parts: string[] = [];
+    let pending: string[] = [];
+    let pendingChars = 0;
+    let totalBytes = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        signal.throwIfAborted();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > maxBytes) throw new BodyTooLargeError(maxBytes);
+        const text = decoder.decode(value, { stream: true });
+        if (!text) continue;
+        pending.push(text);
+        pendingChars += text.length;
+        // 極小チャンクが大量に来ても文字列配列の要素数を上限内に保つ。
+        if (pendingChars >= 64 * 1024) {
+          parts.push(pending.join(""));
+          pending = [];
+          pendingChars = 0;
+        }
+      }
+      pending.push(decoder.decode());
+      parts.push(pending.join(""));
+      return parts.join("");
+    } finally {
+      signal.removeEventListener("abort", cancel);
+      cancel();
+      reader.releaseLock();
+    }
+  });
+}
+
+/**
  * タイムアウト付き AbortSignal で非同期処理を実行する内部ヘルパー。
  * タイムアウト時は AbortError をスローする。
  */
@@ -156,6 +222,8 @@ export function fetchFollowSafeRedirects(
         res.status === 307 ||
         res.status === 308
       ) {
+        // 読まない redirect body を解放して接続とバッファを次 hop へ持ち越さない。
+        void res.body?.cancel().catch(() => {});
         const location = res.headers.get("location");
         if (!location) throw new Error("Redirect without Location header");
         const nextUrl = new URL(location, currentUrl).href;

@@ -49,6 +49,7 @@ export const ListArticleItem = memo(function ListArticleItem({
   return (
     <div
       role="article"
+      aria-current={isSelected ? "true" : undefined}
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
@@ -61,9 +62,7 @@ export const ListArticleItem = memo(function ListArticleItem({
       className={`group relative flex items-start gap-2.5 px-4 py-3 cursor-pointer border-b border-border-subtle transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ink ${
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
-        isSelected
-          ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
-          : "hover:bg-surface-hover"
+        isSelected ? "selection-current" : "hover:bg-surface-hover"
       }`}
       style={isNew ? { animationDelay: `${Math.min(index, 20) * 25}ms` } : undefined}
     >

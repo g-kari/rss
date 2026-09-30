@@ -189,7 +189,7 @@ JSON データは全て camelCase。
 
 ## 禁止事項
 
-- D1 / DO の追加 (シンプルさを保つ。KV は `RATE_LIMIT` で導入済み)
+- DO / 新規用途の D1 の無断追加（#1378 で承認済みの `ARTICLE_SEARCH` 派生索引のみ例外。R2 を Source of Truth とし、検索索引から主データを書き戻さない。KV は `RATE_LIMIT` で導入済み）
 - 外部 CSS ライブラリ (Tailwind のみ)
 - 外部アイコンライブラリ (インライン SVG のみ)
 - 16進数カラーのハードコード

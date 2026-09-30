@@ -2,20 +2,34 @@
 import { default as handler } from "./.open-next/worker.js";
 import { fetchAllFeeds } from "./src/cron/fetch";
 import { runCronPrefetch } from "./src/lib/cron-prefetch";
+import { feedWriteMaintenanceResponse, isFeedWritesPaused } from "./src/lib/feed-write-maintenance";
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+const openNextFetch = handler.fetch as NonNullable<ExportedHandler<CloudflareEnv>["fetch"]>;
 
 export default {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  fetch: handler.fetch as ExportedHandler<CloudflareEnv>["fetch"],
+  fetch(...[request, env, ctx]: Parameters<typeof openNextFetch>) {
+    const maintenance = feedWriteMaintenanceResponse(request, env.RSS_FEED_WRITES_PAUSED);
+    if (maintenance) return maintenance;
+    // Preserve the original handler arguments and Worker receiver.
+    return openNextFetch.call(this, request, env, ctx);
+  },
 
   async scheduled(
     _controller: ScheduledController,
     env: CloudflareEnv,
     ctx: ExecutionContext,
   ): Promise<void> {
+    // This prevents new work; already-running invocations must be drained at rollout.
+    if (isFeedWritesPaused(env.RSS_FEED_WRITES_PAUSED)) return;
     await fetchAllFeeds({
       RSS_DATA: env.RSS_DATA,
       FINDME_RSS: env.FINDME_RSS,
       RATE_LIMIT: env.RATE_LIMIT,
+      ARTICLE_SEARCH: env.ARTICLE_SEARCH,
+      RSS_FEED_WRITES_PAUSED: env.RSS_FEED_WRITES_PAUSED,
+      RSS_ARTICLE_STORAGE_V2: env.RSS_ARTICLE_STORAGE_V2,
+      RSS_ARTICLE_SEARCH_INDEX: env.RSS_ARTICLE_SEARCH_INDEX,
     });
     // #803 Phase 2: RSS 取得後に top-N feed の最新記事 content/OGP を prefetch
     // (subrequest 上限 1000 件を考慮して topN=50 / maxArticlesPerFeed=3 で約 300 件 / 実行)

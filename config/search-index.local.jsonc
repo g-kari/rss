@@ -1,0 +1,15 @@
+{
+  // Local D1 migration/type-check configuration only. Never deploy this file.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "rss-reader-search-local",
+  "compatibility_date": "2026-05-01",
+  "r2_buckets": [{ "binding": "RSS_DATA", "bucket_name": "rss-reader-data" }],
+  "d1_databases": [
+    {
+      "binding": "ARTICLE_SEARCH",
+      "database_name": "rss-reader-search",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../migrations/article-search",
+    },
+  ],
+}

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { UserProfile } from "../../types";
 import { FallbackImage } from "../FallbackImage";
 import FooterIconButton from "./FooterIconButton";
+import { usePopupLock } from "../../hooks/usePopupLock";
 import { useMenuKeyboard } from "../../hooks/useMenuKeyboard";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -46,7 +48,7 @@ interface Props {
 
 /** 「もっと見る」ドロップダウン内 menuitem ボタンの共通クラス文字列 (#1057 で逐語的重複を集約)。 */
 const MENUITEM_CLASS =
-  "w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-default hover:bg-surface-hover transition-colors";
+  "w-full min-h-[44px] flex items-center gap-2.5 px-3 py-2 text-left text-[12px] text-text-default hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
 
 export default function SidebarFooter({
   user,
@@ -79,15 +81,19 @@ export default function SidebarFooter({
   const [moreOpen, setMoreOpen] = useState(false);
   // #1194: disclosure 3 点セット (aria-expanded / aria-controls / menu id)
   const moreMenuId = useId();
-  const moreRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: 12, bottom: 0, maxHeight: 320 });
+  usePopupLock(moreOpen);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { menuRef, handleKeyDown } = useMenuKeyboard(moreOpen, setMoreOpen, buttonRef);
 
   // 「もっと見る」ドロップダウンの外クリックで閉じる
   useEffect(() => {
     if (!moreOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+    function handleClickOutside(e: PointerEvent) {
+      if (
+        !menuRef.current?.contains(e.target as Node) &&
+        !buttonRef.current?.contains(e.target as Node)
+      ) {
         // フォーカスがメニュー内にある状態で外クリック dismiss する場合のみ
         // トリガーボタンへフォーカスを戻す (WCAG 2.4.3 Focus Order)。
         // メニュー外の別要素をクリックした場合はそのフォーカスを奪わない。
@@ -96,12 +102,56 @@ export default function SidebarFooter({
         if (focusInMenu) buttonRef.current?.focus();
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    function handleResize() {
+      const focusInMenu = menuRef.current?.contains(document.activeElement) ?? false;
+      setMoreOpen(false);
+      if (focusInMenu) buttonRef.current?.focus();
+    }
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+    };
   }, [moreOpen]);
 
+  // Restore focus before an action opens a modal, so its own focus restoration has
+  // a persistent target instead of a menu item that will immediately unmount.
+  function closeMenu() {
+    setMoreOpen(false);
+    buttonRef.current?.focus();
+  }
+
+  function toggleMenu() {
+    if (moreOpen) {
+      closeMenu();
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const width = Math.min(288, window.innerWidth - 24);
+      setMenuPosition({
+        left: Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12)),
+        bottom: window.innerHeight - rect.top + 4,
+        maxHeight: Math.max(44, rect.top - 16),
+      });
+    }
+    setMoreOpen(true);
+  }
+
+  function sendTestNotification() {
+    if (!push?.subscribed || !push.onSendTest || push.loading) return;
+    closeMenu();
+    void push
+      .onSendTest()
+      .then(success)
+      .catch((err: unknown) => {
+        showError(err instanceof Error ? err.message : "テスト送信に失敗しました");
+      });
+  }
+
   return (
-    <div className="px-3 py-2.5 border-t border-border-subtle flex items-center gap-1">
+    <div className="px-3 py-2.5 border-t border-border-default flex items-center gap-1 shrink-0">
       {user.picture ? (
         <FallbackImage
           url={user.picture}
@@ -112,65 +162,21 @@ export default function SidebarFooter({
       ) : (
         <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
       )}
-      <span className="text-[11px] text-text-muted truncate flex-1">{user.name}</span>
-
-      {/* 常時表示: 頻度の高いボタン群 */}
-      <FooterIconButton onClick={onShowStats} title="読書統計">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-        />
-      </FooterIconButton>
-
-      {/* Push通知ボタン (右クリックでテスト送信 → Toast化 #454) */}
-      {push?.supported && (
-        <button
-          onClick={push.onToggle}
-          onContextMenu={(e) => {
-            if (!push.subscribed || !push.onSendTest) return;
-            e.preventDefault();
-            void push
-              .onSendTest()
-              .then((msg) => success(msg))
-              .catch((err: unknown) => {
-                showError(err instanceof Error ? err.message : "テスト送信に失敗しました");
-              });
-          }}
-          disabled={push.loading}
-          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${push.error ? "text-error" : push.subscribed ? "text-accent-dot" : "text-text-faint hover:text-text-muted"} disabled:opacity-50`}
-          title={
-            push.error ??
-            (push.subscribed ? "プッシュ通知をオフ (右クリックでテスト送信)" : "プッシュ通知をオン")
-          }
-          aria-label={push.error ?? (push.subscribed ? "プッシュ通知をオフ" : "プッシュ通知をオン")}
-          aria-pressed={push.subscribed}
-        >
-          <svg
-            aria-hidden="true"
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
+      <div className="min-w-0 flex-1 px-1">
+        <p className="text-[11px] text-text-default truncate" title={user.name}>
+          {user.name}
+        </p>
+        {readTodayCount !== undefined && (
+          <p
+            className="text-[10px] text-text-muted tabular-nums"
+            title={weeklyGoal ? `週間目標 ${weeklyGoal}件` : "今日の読了数"}
           >
-            {push.subscribed ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9.143 17.082a24.248 24.248 0 003.844.148m-3.844-.148a23.856 23.856 0 01-5.455-1.31 8.964 8.964 0 002.3-5.542m3.155 6.852a3 3 0 005.667 1.97m1.965-2.277L21 21m-4.225-4.225a23.81 23.81 0 003.536-1.003A8.967 8.967 0 0018 9.75V9A6 6 0 006.53 6.53m10.245 10.245L6.53 6.53M3 3l3.53 3.53"
-              />
-            )}
-          </svg>
-        </button>
-      )}
+            今日 {readTodayCount}件
+          </p>
+        )}
+      </div>
 
+      {/* 常設操作は設定とその他。読書の主要導線を圧迫しない。 */}
       <FooterIconButton onClick={onOpenSettings} title="ユーザー設定">
         <path
           strokeLinecap="round"
@@ -180,45 +186,11 @@ export default function SidebarFooter({
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </FooterIconButton>
 
-      <FooterIconButton onClick={onOpenHelp} title="キーボードショートカット (?)">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.5M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
-        />
-      </FooterIconButton>
-
-      {readTodayCount !== undefined && (
-        <span className="text-[10px] text-text-muted tabular-nums" title="今日の読了数 / 週間目標">
-          今日 {readTodayCount}
-          {weeklyGoal ? "/" + weeklyGoal : ""}件
-        </span>
-      )}
-
-      <FooterIconButton
-        onClick={onToggleTheme}
-        title={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
-      >
-        {theme === "dark" ? (
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
-          />
-        ) : (
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
-          />
-        )}
-      </FooterIconButton>
-
       {/* 「もっと見る」ドロップダウン（低頻度ボタン群 #454） */}
-      <div className="relative flex-shrink-0" ref={moreRef}>
+      <div className="flex-shrink-0">
         <button
           ref={buttonRef}
-          onClick={() => setMoreOpen((v) => !v)}
+          onClick={toggleMenu}
           className="min-h-[44px] min-w-[44px] flex items-center justify-center text-text-faint hover:text-text-muted transition-colors duration-200 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
           title="その他のメニュー"
           aria-label="その他のメニュー"
@@ -233,293 +205,175 @@ export default function SidebarFooter({
           </svg>
         </button>
 
-        {moreOpen && (
-          <div
-            ref={menuRef}
-            id={moreMenuId}
-            role="menu"
-            aria-label="その他のメニュー"
-            className="absolute bottom-full right-0 mb-1 w-52 bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50"
-            onKeyDown={handleKeyDown}
-          >
-            {/* OPMLインポート */}
-            <button
-              onClick={() => {
-                onImport();
-                setMoreOpen(false);
-              }}
-              disabled={importing}
-              role="menuitem"
-              className={`${MENUITEM_CLASS} disabled:opacity-40`}
+        {moreOpen &&
+          createPortal(
+            <div
+              ref={menuRef}
+              id={moreMenuId}
+              role="menu"
+              data-print="hide"
+              aria-label="その他のメニュー"
+              className="fixed w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain bg-surface-elevated border border-border-default rounded-lg shadow-lg py-1 z-50"
+              style={menuPosition}
+              onKeyDown={handleKeyDown}
             >
-              <svg
-                className="w-3.5 h-3.5 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
+              <div role="group" aria-label="表示と通知">
+                <p
+                  className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-text-muted"
+                  aria-hidden="true"
+                >
+                  表示と通知
+                </p>
+                <button
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                  onClick={() => {
+                    closeMenu();
+                    onShowStats();
+                  }}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                    />
+                  </svg>
+                  読書統計
+                </button>
+                <button
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                  onClick={() => {
+                    closeMenu();
+                    onToggleTheme();
+                  }}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    {theme === "dark" ? (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
+                      />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
+                      />
+                    )}
+                  </svg>
+                  {theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
+                </button>
+                {push?.supported && (
+                  <>
+                    <button
+                      role="menuitemcheckbox"
+                      aria-label="プッシュ通知"
+                      aria-checked={push.subscribed}
+                      aria-disabled={push.loading}
+                      className={`${MENUITEM_CLASS} aria-disabled:opacity-40 aria-disabled:cursor-not-allowed`}
+                      title={push.error ?? undefined}
+                      onClick={() => {
+                        if (!push.loading) push.onToggle();
+                      }}
+                      onContextMenu={(e) => {
+                        if (!push.subscribed || !push.onSendTest) return;
+                        e.preventDefault();
+                        sendTestNotification();
+                      }}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        className="w-3.5 h-3.5 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+                        />
+                      </svg>
+                      <span className="flex-1">プッシュ通知</span>
+                      <span className="text-[10px] text-text-muted" aria-hidden="true">
+                        {push.loading ? "変更中…" : push.subscribed ? "オン" : "オフ"}
+                      </span>
+                    </button>
+                    {push.error && (
+                      <p role="status" className="px-3 py-1 text-[11px] text-error">
+                        {push.error}
+                      </p>
+                    )}
+                    {push.subscribed && push.onSendTest && (
+                      <button
+                        role="menuitem"
+                        disabled={push.loading}
+                        className={MENUITEM_CLASS}
+                        onClick={sendTestNotification}
+                      >
+                        <span className="w-3.5 shrink-0" aria-hidden="true" />
+                        テスト通知を送信
+                      </button>
+                    )}
+                  </>
+                )}
+                <button
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                  onClick={() => {
+                    closeMenu();
+                    onOpenHelp();
+                  }}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.5M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+                    />
+                  </svg>
+                  キーボードショートカット (?)
+                </button>
+              </div>
+              <div role="separator" className="border-t border-border-subtle my-1" />
+              <p
+                className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-text-muted"
                 aria-hidden="true"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                />
-              </svg>
-              OPML インポート
-            </button>
-
-            {/* OPMLエクスポート */}
-            <button
-              onClick={() => {
-                onExportOpml();
-                setMoreOpen(false);
-              }}
-              role="menuitem"
-              className={MENUITEM_CLASS}
-            >
-              <svg
-                className="w-3.5 h-3.5 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                />
-              </svg>
-              OPML エクスポート
-            </button>
-
-            {/* Markdownエクスポート */}
-            {onExportMarkdown && (
-              <>
-                <button
-                  onClick={() => {
-                    onExportMarkdown("bookmark");
-                    setMoreOpen(false);
-                  }}
-                  role="menuitem"
-                  className={MENUITEM_CLASS}
-                >
-                  <svg
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                    />
-                  </svg>
-                  ブックマーク → Markdown
-                </button>
-                <button
-                  onClick={() => {
-                    onExportMarkdown("reading_list");
-                    setMoreOpen(false);
-                  }}
-                  role="menuitem"
-                  className={MENUITEM_CLASS}
-                >
-                  <svg
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                    />
-                  </svg>
-                  後で読む → Markdown
-                </button>
-              </>
-            )}
-
-            {/* JSONエクスポート */}
-            {onExportJson && (
-              <>
-                <button
-                  onClick={() => {
-                    onExportJson("bookmark");
-                    setMoreOpen(false);
-                  }}
-                  role="menuitem"
-                  className={MENUITEM_CLASS}
-                >
-                  <svg
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
-                    />
-                  </svg>
-                  ブックマーク → JSON
-                </button>
-                <button
-                  onClick={() => {
-                    onExportJson("reading_list");
-                    setMoreOpen(false);
-                  }}
-                  role="menuitem"
-                  className={MENUITEM_CLASS}
-                >
-                  <svg
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
-                    />
-                  </svg>
-                  後で読む → JSON
-                </button>
-              </>
-            )}
-
-            {/* メモエクスポート */}
-            {onExportNotes && (noteCount ?? 0) > 0 && (
+                データ管理
+              </p>
+              {/* OPMLインポート */}
               <button
                 onClick={() => {
-                  onExportNotes();
-                  setMoreOpen(false);
+                  closeMenu();
+                  onImport();
                 }}
-                role="menuitem"
-                className={MENUITEM_CLASS}
-              >
-                <svg
-                  className="w-3.5 h-3.5 flex-shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                  />
-                </svg>
-                メモを Markdown で出力 ({noteCount}件)
-              </button>
-            )}
-
-            {/* メモ JSON エクスポート */}
-            {onExportNotesJson && (noteCount ?? 0) > 0 && (
-              <button
-                onClick={() => {
-                  onExportNotesJson();
-                  setMoreOpen(false);
-                }}
-                role="menuitem"
-                className={MENUITEM_CLASS}
-              >
-                <svg
-                  className="w-3.5 h-3.5 flex-shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
-                  />
-                </svg>
-                メモを JSON で出力 ({noteCount}件)
-              </button>
-            )}
-
-            {/* コレクションエクスポート (#1112、コレクション選択中のみ表示) */}
-            {selectedCollectionName && onExportCollectionMarkdown && (
-              <button
-                onClick={() => {
-                  onExportCollectionMarkdown();
-                  setMoreOpen(false);
-                }}
-                role="menuitem"
-                className={MENUITEM_CLASS}
-              >
-                <svg
-                  className="w-3.5 h-3.5 flex-shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                  />
-                </svg>
-                「{selectedCollectionName}」を Markdown で出力
-              </button>
-            )}
-            {selectedCollectionName && onExportCollectionJson && (
-              <button
-                onClick={() => {
-                  onExportCollectionJson();
-                  setMoreOpen(false);
-                }}
-                role="menuitem"
-                className={MENUITEM_CLASS}
-              >
-                <svg
-                  className="w-3.5 h-3.5 flex-shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
-                  />
-                </svg>
-                「{selectedCollectionName}」を JSON で出力
-              </button>
-            )}
-
-            {/* Readwise CSV エクスポート */}
-            {onExportReadwise && (noteCount ?? 0) > 0 && (
-              <button
-                onClick={() => {
-                  onExportReadwise();
-                  setMoreOpen(false);
-                }}
+                disabled={importing}
                 role="menuitem"
                 className={MENUITEM_CLASS}
               >
@@ -537,68 +391,14 @@ export default function SidebarFooter({
                     d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
                   />
                 </svg>
-                メモを Readwise CSV で出力 ({noteCount}件)
+                OPML インポート
               </button>
-            )}
 
-            {/* フィードヘルス */}
-            <button
-              onClick={() => {
-                onShowFeedHealth();
-                setMoreOpen(false);
-              }}
-              role="menuitem"
-              className={MENUITEM_CLASS}
-            >
-              <svg
-                className="w-3.5 h-3.5 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-                />
-              </svg>
-              フィードヘルス
-            </button>
-
-            {/* リリースノート */}
-            <button
-              onClick={() => {
-                onShowReleaseNotes();
-                setMoreOpen(false);
-              }}
-              role="menuitem"
-              className={MENUITEM_CLASS}
-            >
-              <svg
-                className="w-3.5 h-3.5 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                />
-              </svg>
-              リリースノート
-            </button>
-
-            {/* PWAインストール */}
-            {install?.canInstall && (
+              {/* OPMLエクスポート */}
               <button
                 onClick={() => {
-                  install.onInstall();
-                  setMoreOpen(false);
+                  closeMenu();
+                  onExportOpml();
                 }}
                 role="menuitem"
                 className={MENUITEM_CLASS}
@@ -614,42 +414,375 @@ export default function SidebarFooter({
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
                   />
                 </svg>
-                アプリをインストール
+                OPML エクスポート
               </button>
-            )}
 
-            <div className="border-t border-border-subtle my-1" />
+              {/* Markdownエクスポート */}
+              {onExportMarkdown && (
+                <>
+                  <button
+                    onClick={() => {
+                      closeMenu();
+                      onExportMarkdown("bookmark");
+                    }}
+                    role="menuitem"
+                    className={MENUITEM_CLASS}
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                      />
+                    </svg>
+                    ブックマーク → Markdown
+                  </button>
+                  <button
+                    onClick={() => {
+                      closeMenu();
+                      onExportMarkdown("reading_list");
+                    }}
+                    role="menuitem"
+                    className={MENUITEM_CLASS}
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                      />
+                    </svg>
+                    後で読む → Markdown
+                  </button>
+                </>
+              )}
 
-            {/* ログアウト */}
-            <button
-              onClick={() => {
-                onLogout();
-                setMoreOpen(false);
-              }}
-              role="menuitem"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-text-soft hover:text-text-default hover:bg-surface-hover transition-colors"
-            >
-              <svg
-                className="w-3.5 h-3.5 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
+              {/* JSONエクスポート */}
+              {onExportJson && (
+                <>
+                  <button
+                    onClick={() => {
+                      closeMenu();
+                      onExportJson("bookmark");
+                    }}
+                    role="menuitem"
+                    className={MENUITEM_CLASS}
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                      />
+                    </svg>
+                    ブックマーク → JSON
+                  </button>
+                  <button
+                    onClick={() => {
+                      closeMenu();
+                      onExportJson("reading_list");
+                    }}
+                    role="menuitem"
+                    className={MENUITEM_CLASS}
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                      />
+                    </svg>
+                    後で読む → JSON
+                  </button>
+                </>
+              )}
+
+              {/* メモエクスポート */}
+              {onExportNotes && (noteCount ?? 0) > 0 && (
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    onExportNotes();
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                    />
+                  </svg>
+                  メモを Markdown で出力 ({noteCount}件)
+                </button>
+              )}
+
+              {/* メモ JSON エクスポート */}
+              {onExportNotesJson && (noteCount ?? 0) > 0 && (
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    onExportNotesJson();
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                    />
+                  </svg>
+                  メモを JSON で出力 ({noteCount}件)
+                </button>
+              )}
+
+              {/* コレクションエクスポート (#1112、コレクション選択中のみ表示) */}
+              {selectedCollectionName && onExportCollectionMarkdown && (
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    onExportCollectionMarkdown();
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                    />
+                  </svg>
+                  「{selectedCollectionName}」を Markdown で出力
+                </button>
+              )}
+              {selectedCollectionName && onExportCollectionJson && (
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    onExportCollectionJson();
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                    />
+                  </svg>
+                  「{selectedCollectionName}」を JSON で出力
+                </button>
+              )}
+
+              {/* Readwise CSV エクスポート */}
+              {onExportReadwise && (noteCount ?? 0) > 0 && (
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    onExportReadwise();
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                    />
+                  </svg>
+                  メモを Readwise CSV で出力 ({noteCount}件)
+                </button>
+              )}
+
+              <div role="separator" className="border-t border-border-subtle my-1" />
+              <p
+                className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-text-muted"
                 aria-hidden="true"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-              ログアウト
-            </button>
-          </div>
-        )}
+                アプリとアカウント
+              </p>
+              {/* フィードヘルス */}
+              <button
+                onClick={() => {
+                  closeMenu();
+                  onShowFeedHealth();
+                }}
+                role="menuitem"
+                className={MENUITEM_CLASS}
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                  />
+                </svg>
+                フィードヘルス
+              </button>
+
+              {/* リリースノート */}
+              <button
+                onClick={() => {
+                  closeMenu();
+                  onShowReleaseNotes();
+                }}
+                role="menuitem"
+                className={MENUITEM_CLASS}
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                  />
+                </svg>
+                リリースノート
+              </button>
+
+              {/* PWAインストール */}
+              {install?.canInstall && (
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    install.onInstall();
+                  }}
+                  role="menuitem"
+                  className={MENUITEM_CLASS}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"
+                    />
+                  </svg>
+                  アプリをインストール
+                </button>
+              )}
+
+              <div role="separator" className="border-t border-border-subtle my-1" />
+
+              {/* ログアウト */}
+              <button
+                onClick={() => {
+                  closeMenu();
+                  onLogout();
+                }}
+                role="menuitem"
+                className={MENUITEM_CLASS}
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                ログアウト
+              </button>
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );

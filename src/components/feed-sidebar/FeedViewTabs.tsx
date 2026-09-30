@@ -170,12 +170,10 @@ export default function FeedViewTabs({
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, t.id)}
             className={`flex-1 flex items-center justify-center gap-1 px-1 min-h-[44px] rounded transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
-              isDragOver
-                ? "ring-2 ring-inset ring-text-muted bg-surface-subtle text-text-strong"
-                : isActive
-                  ? "text-text-strong bg-surface-subtle"
-                  : "text-text-faint hover:text-text-default hover:bg-surface-hover"
-            }`}
+              isActive
+                ? "selection-tab-current text-selection-accent"
+                : "text-text-faint hover:text-text-default hover:bg-surface-hover"
+            } ${isDragOver ? "ring-2 ring-inset ring-text-muted" : ""}`}
             title={t.label}
           >
             {t.icon}
