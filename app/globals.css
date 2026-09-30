@@ -1143,3 +1143,72 @@ body {
     display: none !important;
   }
 }
+
+/* AI summaries: compact Markdown with readable spacing in both themes. */
+.ai-summary-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--color-text-default);
+}
+.ai-summary-content :is(p, ul, ol, pre, blockquote, table) {
+  margin-block: 0.6em;
+}
+.ai-summary-content :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: 1em 0.4em;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+.ai-summary-content > :first-child {
+  margin-top: 0;
+}
+.ai-summary-content > :last-child {
+  margin-bottom: 0;
+}
+.ai-summary-content :is(ul, ol) {
+  padding-inline-start: 1.5em;
+}
+.ai-summary-content ul {
+  list-style-type: disc;
+}
+.ai-summary-content ol {
+  list-style-type: decimal;
+}
+.ai-summary-content li + li {
+  margin-top: 0.25em;
+}
+.ai-summary-content :is(strong, a) {
+  color: var(--color-text-strong);
+}
+.ai-summary-content a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ai-summary-content blockquote {
+  border-inline-start: 3px solid var(--color-border-default);
+  padding-inline-start: 1em;
+}
+.ai-summary-content code {
+  border-radius: 3px;
+  padding: 0.1em 0.25em;
+  background: var(--color-surface-subtle);
+}
+.ai-summary-content :is(pre, table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ai-summary-content pre {
+  padding: 0.75em;
+  background: var(--color-surface-subtle);
+}
+.ai-summary-content pre code {
+  padding: 0;
+  white-space: pre;
+}
+.ai-summary-content :is(th, td) {
+  border: 1px solid var(--color-border-default);
+  padding: 0.3em 0.6em;
+}
