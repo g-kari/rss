@@ -1,6 +1,7 @@
 "use client";
 
 import { getAuthReady, getTokenExpiry } from "../hooks/useAuth";
+import { isAbortError } from "./fetch";
 
 /**
  * 認証チェック完了を待ってから fetch を実行するラッパー。
@@ -98,7 +99,9 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   try {
     res = await fetch(input, init);
   } catch (err) {
-    notifyError(input, undefined);
+    // Article navigation/unmount cancels obsolete requests normally. Keep genuine
+    // network failures and TimeoutError signals visible, and rethrow either way.
+    if (!init?.signal?.aborted || !isAbortError(err)) notifyError(input, undefined);
     throw err;
   }
   // プロアクティブリフレッシュ済みの場合は 401 フォールバックをスキップ
@@ -115,7 +118,7 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       try {
         return await fetch(input, init);
       } catch (err) {
-        notifyError(input, undefined);
+        if (!init?.signal?.aborted || !isAbortError(err)) notifyError(input, undefined);
         throw err;
       }
     }
