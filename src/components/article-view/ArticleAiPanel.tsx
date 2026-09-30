@@ -1,8 +1,8 @@
-import type { JSX } from "react";
+import { useMemo } from "react";
 import type { Article, EngagementAction, AiRating } from "../../types";
 import { AI_RATINGS } from "../../types";
 import type { AiError, TranslationProvider } from "../../hooks/useArticleAi";
-import { parseSummaryLines } from "../../lib/ai-summary-parse";
+import { renderSummaryHtml } from "../../lib/ai-summary-markdown";
 
 interface ArticleAiPanelProps {
   aiResult: string | null;
@@ -19,40 +19,6 @@ interface ArticleAiPanelProps {
     value?: string,
   ) => void;
   onRetry?: () => void;
-}
-
-// #811: parseSummaryLines を経由することで非 string 入力 (decodeCached 旧形式や API edge
-// case で text が undefined/number/object になった場合) でも startsWith TypeError を起こさず
-// 空配列で safe fallback する設計。
-function renderSummary(text: unknown) {
-  return parseSummaryLines(text)
-    .map((line, i) => {
-      if (line.kind === "heading") {
-        return (
-          <p
-            key={i}
-            className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-faint mt-3 mb-1.5 first:mt-0"
-          >
-            {line.text}
-          </p>
-        );
-      }
-      if (line.kind === "bullet") {
-        return (
-          <div key={i} className="flex gap-2 text-[13px] leading-[1.7] text-text-default">
-            <span className="text-text-muted shrink-0 mt-[1px]">·</span>
-            <span>{line.text}</span>
-          </div>
-        );
-      }
-      if (line.kind === "empty") return null;
-      return (
-        <p key={i} className="text-[13px] leading-[1.8] text-text-soft">
-          {line.text}
-        </p>
-      );
-    })
-    .filter((el): el is JSX.Element => el !== null);
 }
 
 function RetryIcon() {
@@ -84,6 +50,8 @@ export default function ArticleAiPanel({
   onEngagement,
   onRetry,
 }: ArticleAiPanelProps) {
+  const summaryHtml = useMemo(() => renderSummaryHtml(aiResult), [aiResult]);
+
   return (
     <>
       {aiResult && (
@@ -131,7 +99,7 @@ export default function ArticleAiPanel({
               ))}
             </div>
           </div>
-          <div className="space-y-0.5">{renderSummary(aiResult)}</div>
+          <div className="ai-summary-content" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
         </div>
       )}
       {aiError && (
