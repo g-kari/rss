@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
-import { getSlideAwareContentCacheId } from "../lib/docswell";
+import { getProviderContentCacheId } from "../lib/slide-providers";
 import { contentLruCache } from "../lib/lru-cache";
 import { isAbortError } from "../lib/fetch";
 import { parseRetryAfter } from "../lib/retry-after";
@@ -105,7 +105,7 @@ async function fetchAndCacheArticle(
     const data = (await res.json()) as { content?: string };
     if (!data.content) return null;
 
-    contentLruCache.set(getSlideAwareContentCacheId(article.id, article.link), data.content);
+    contentLruCache.set(getProviderContentCacheId(article.id, article.link), data.content);
     // #866 案 A: 2 helper (image / iframe) を 1 関数呼び出しに集約して
     // 入力検証 + parsing pass を 1 箇所にまとめ、prefetch のホットパスの
     // function call boundary を削減する。
@@ -209,7 +209,7 @@ export function usePrefetchGalleryContents({
     const fromCache = new Map<string, PrefetchedMedia>();
     const toFetch: Article[] = [];
     for (const a of pending) {
-      const cached = contentLruCache.get(getSlideAwareContentCacheId(a.id, a.link));
+      const cached = contentLruCache.get(getProviderContentCacheId(a.id, a.link));
       if (cached) {
         // #866 案 A: LRU cache hit 経路でも collectGalleryMediaFromHtml で
         // image / iframe 抽出を 1 関数呼び出しに集約

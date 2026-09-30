@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { getSlideAwareContentCacheId } from "../lib/docswell";
+import { getProviderContentCacheId } from "../lib/slide-providers";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
@@ -76,7 +76,7 @@ export function useArticleContent(
   const cachedContent = useMemo(
     () =>
       articleId
-        ? (contentLruCache.get(getSlideAwareContentCacheId(articleId, articleLink)) ?? null)
+        ? (contentLruCache.get(getProviderContentCacheId(articleId, articleLink)) ?? null)
         : null,
     [articleId, articleLink],
   );
@@ -267,7 +267,7 @@ export function useArticleContent(
         if (controller.signal.aborted) return;
         if (data.content) {
           if (articleId)
-            contentLruCache.set(getSlideAwareContentCacheId(articleId, articleLink), data.content);
+            contentLruCache.set(getProviderContentCacheId(articleId, articleLink), data.content);
           setFetchedState({ id: articleId ?? "", link: articleLink, content: data.content });
           autoReadDebug("useArticleContent.fetch-success", {
             articleId,

@@ -30,7 +30,7 @@ import { buildImageProxyUrl } from "../../lib/image-proxy-url";
 import { FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../../lib/article-utils";
 import { getLineHeightStyle } from "../../lib/reader-settings";
 import ImageGallery from "./ImageGallery";
-import DocswellViewer from "./DocswellViewer";
+import SlideViewer from "./SlideViewer";
 import FetchFullContentArea from "./FetchFullContentArea";
 
 // WAI-ARIA Authoring Practices: role=tab キーボードナビゲーション (#903) で使用するタブ定義
@@ -246,7 +246,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
       <>
         {/* メディア埋め込み */}
         {embedInfo?.type === "slides" && (
-          <DocswellViewer url={article.link} title={article.title} />
+          <SlideViewer url={embedInfo.embedUrl} sourceUrl={article.link} title={article.title} />
         )}
         {embedInfo && embedInfo.type === "video" && (
           <div

@@ -23,6 +23,16 @@ describe("Docswell cache and extraction integration", () => {
       new URL((await buildClipCacheKey("https://rss.0g0.xyz", "user", url)).url).pathname,
     ).toContain("/clip/user/");
   });
+  it("refreshes new public slide providers while retaining original clip cache ownership", async () => {
+    const page = "https://speakerdeck.com/jnunemaker/atom";
+    expect(
+      new URL((await buildContentCacheKey("https://rss.0g0.xyz", page)).url).pathname,
+    ).toContain("/content/slides-v1/");
+    expect(
+      new URL((await buildClipCacheKey("https://rss.0g0.xyz", "user", page)).url).pathname,
+    ).toContain("/clip/user/");
+  });
+
   it("keeps short/image-only decks instead of replacing the safe viewer with AI markdown", async () => {
     const html = "<article><p>Short slide description</p></article>";
     const result = await extractContent(new TextEncoder().encode(html), "text/html", url);

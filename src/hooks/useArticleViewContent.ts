@@ -6,6 +6,8 @@ import type { Article } from "../types";
 import type { Theme } from "./useThemePreference";
 import { readingTime } from "../lib/article-utils";
 import { collectImageUrlsFromHtml } from "../lib/image-extractor";
+import { getSlidePageProvider } from "../lib/slide-providers";
+import { resolveSlideEmbed } from "../lib/slide-content";
 import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-utils";
 import { wrapSentencesInHtml } from "../lib/tts-dom";
 import type { Sentence } from "../lib/tts-sentences";
@@ -46,12 +48,18 @@ export function useArticleViewContent(
   // article.link 変化時のみ再計算 — extractEmbedInfo は新オブジェクトを返すため、
   // useMemo なしだと毎 render ごとに新 reference となり、processedContent useMemo 等が
   // すべて再実行される (TTS state 変化など親 re-render の度に 10-50KB HTML が再 sanitize)。
-  const embedInfo = useMemo(
-    () => (article?.link ? extractEmbedInfo(article.link) : null),
-    [article?.link],
-  );
-
   const rawContent = storedContent ?? article?.content ?? null;
+  const embedInfo = useMemo(() => {
+    if (!article?.link) return null;
+    // Direct players stay stable while their transcript arrives. SlideShare's numeric
+    // endpoint redirects to the official key player; changing src again would reset its page.
+    const direct = extractEmbedInfo(article.link);
+    if (direct?.type === "slides") return direct;
+    const slide = resolveSlideEmbed(article.link, rawContent);
+    return slide
+      ? { embedUrl: slide.embedUrl, type: "slides" as const, allow: "fullscreen" }
+      : direct;
+  }, [article?.link, rawContent]);
   const processedContent = useMemo(
     () =>
       rawContent
@@ -93,10 +101,11 @@ export function useArticleViewContent(
   );
 
   const isShortContent = !article?.content || article.content.length < SHORT_CONTENT_THRESHOLD;
+  const isSlidePage = !!article?.link && !!getSlidePageProvider(article.link);
   const canFetch =
     (!embedInfo || embedInfo.type === "slides") &&
     !!article?.link &&
-    (isShortContent || embedInfo?.type === "slides") &&
+    (isShortContent || isSlidePage) &&
     !storedContent;
   const hasContent = !!(processedContent || article?.summary);
   // #653: hasFullContent は「fetch 完了済み or fetch 不要」を厳格判定する。

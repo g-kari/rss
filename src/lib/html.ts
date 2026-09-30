@@ -1,4 +1,10 @@
-import { DOCSWELL_HOSTS, DOCSWELL_EMBED_PATH, parseDocswellUrl } from "./docswell";
+import {
+  parseSlideUrl,
+  SPEAKERDECK_EMBED_PATH,
+  SLIDESHARE_EMBED_PATH,
+  GOOGLE_SLIDES_EMBED_PATH,
+} from "./slide-providers";
+import { DOCSWELL_HOSTS, DOCSWELL_EMBED_PATH } from "./docswell";
 /**
  * HTML サニタイズユーティリティ
  *
@@ -223,8 +229,9 @@ export const TRUSTED_IFRAME_RULES: ReadonlyArray<{
   { hosts: ["embed.nicovideo.jp"] },
   { hosts: ["embed.zenn.studio"] },
   { hosts: ["platform.twitter.com"], pathPrefix: "/embed/" },
-  { hosts: ["speakerdeck.com"], pathPrefix: "/player/" },
-  { hosts: ["www.slideshare.net", "slideshare.net"], pathPrefix: "/slideshow/embed_code/" },
+  { hosts: ["speakerdeck.com"], pathPattern: SPEAKERDECK_EMBED_PATH },
+  { hosts: ["www.slideshare.net", "slideshare.net"], pathPattern: SLIDESHARE_EMBED_PATH },
+  { hosts: ["docs.google.com"], pathPattern: GOOGLE_SLIDES_EMBED_PATH },
 ];
 
 function isTrustedIframeSrc(src: string): boolean {
@@ -246,7 +253,7 @@ function isTrustedIframeSrc(src: string): boolean {
 
   return TRUSTED_IFRAME_RULES.some(({ hosts, pathPrefix, pathPattern }) => {
     if (!hosts.includes(h)) return false;
-    if (pathPattern) return pathPattern.test(p) && !!parseDocswellUrl(normalized);
+    if (pathPattern) return pathPattern.test(p) && !url.username && !url.password && !url.port;
     if (pathPrefix === undefined) return true;
     if (!p.startsWith(pathPrefix)) return false;
     // pathPrefix が '/' で終わる場合（例: "/embed/"）は startsWith だけで十分。
@@ -304,15 +311,18 @@ function sanitizeIframe(m: string, attrs: string): string {
   if (isPlaceholder && isTrustedIframeSrc(lazySrc)) src = lazySrc;
   if (!isTrustedIframeSrc(src)) return "";
   if (src.startsWith("//")) src = `https:${src}`;
-  const docswell = parseDocswellUrl(src);
-  if (docswell) {
-    src = docswell.embedUrl;
+  const slide = parseSlideUrl(src);
+  if (slide) {
+    src = slide.embedUrl;
     parsed.set("loading", "lazy");
-    parsed.set("referrerpolicy", "no-referrer");
+    parsed.set(
+      "referrerpolicy",
+      slide.provider === "docswell" ? "no-referrer" : "strict-origin-when-cross-origin",
+    );
     if (!parsed.has("sandbox")) parsed.set("sandbox", "allow-scripts allow-same-origin");
     parsed.set("allow", "fullscreen");
     parsed.set("allowfullscreen", "");
-    parsed.set("title", parsed.get("title") || "Docswell スライド");
+    parsed.set("title", parsed.get("title") || `${slide.label} スライド`);
     parsed.set("style", "border:0;width:100%;height:auto;aspect-ratio:16/10;max-height:80dvh");
   }
   // Canonical attributes exclude srcdoc, publisher lazy-loader state and event
