@@ -1,3 +1,4 @@
+import { removeExpiredPushSubscriptions } from "../lib/push-config";
 import type { Article, SharedFeedMeta, PushConfig, FeedArticleCommit } from "../types";
 
 import { parseFeed, type ParsedItem } from "../lib/xml-parser";
@@ -550,8 +551,14 @@ async function sendPushAll(
       }
 
       if (remaining.length !== config.subscriptions.length) {
-        config.subscriptions = remaining;
-        await r2Put(env.RSS_DATA, pushKey, config);
+        const active = new Set(remaining.map((sub) => sub.endpoint));
+        await removeExpiredPushSubscriptions(
+          env.RSS_DATA,
+          userId,
+          config.subscriptions
+            .filter((sub) => !active.has(sub.endpoint))
+            .map((sub) => sub.endpoint),
+        );
       }
     },
     USER_FETCH_CONCURRENCY,

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, userPushKey, pushSubscribeCooldownKey } from "@/lib/r2";
+import { pushSubscribeCooldownKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
 import { isValidBase64url, MAX_SUBSCRIPTIONS_PER_USER } from "@/lib/validation";
-import type { PushConfig, PushSubscriptionRecord } from "@/types";
+import { updatePushConfig } from "@/lib/push-config";
+import type { PushSubscriptionRecord } from "@/types";
 
 const PUSH_SUBSCRIBE_COOLDOWN_MS = 5 * 1000;
 
@@ -43,20 +44,16 @@ export async function POST(request: Request) {
       keys: { p256dh: body.keys.p256dh, auth: body.keys.auth },
     };
 
-    const key = userPushKey(session.userId);
-    const config = await r2Get<PushConfig>(env.RSS_DATA, key, { subscriptions: [] });
+    let tooMany = false;
+    await updatePushConfig(env.RSS_DATA, session.userId, (config) => {
+      const subscriptions = config.subscriptions.filter(
+        (s) => s.endpoint !== subscription.endpoint,
+      );
+      tooMany = subscriptions.length >= MAX_SUBSCRIPTIONS_PER_USER;
+      return tooMany ? config : { ...config, subscriptions: [...subscriptions, subscription] };
+    });
+    if (tooMany) return apiError("Too many subscriptions", 429, { code: "TOO_MANY_SUBSCRIPTIONS" });
 
-    // endpoint で重複排除して追加
-    config.subscriptions = config.subscriptions.filter((s) => s.endpoint !== subscription.endpoint);
-
-    // サブスクリプション数の上限チェック
-    if (config.subscriptions.length >= MAX_SUBSCRIPTIONS_PER_USER) {
-      return apiError("Too many subscriptions", 429, { code: "TOO_MANY_SUBSCRIPTIONS" });
-    }
-
-    config.subscriptions.push(subscription);
-
-    await r2Put(env.RSS_DATA, key, config);
     return NextResponse.json({ ok: true });
   });
 }

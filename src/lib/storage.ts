@@ -98,6 +98,7 @@ export const STORAGE_KEYS = {
   IMAGE_DL_FOLDER_NSFW: "rss-image-dl-folder-nsfw",
   DOWNLOADED_IMAGE_URLS: "rss-downloaded-image-urls",
   AI_MODEL: "rss-ai-model",
+  AI_PROVIDER: "rss-ai-provider",
   HEADER_SHARE_TARGETS: "rss-header-share-targets",
   ARTICLE_DETAIL_OVERLAY_WIDTH: "rss-article-detail-overlay-width",
   /** #874 候補 1: コレクションサイドバーの並び順設定 */

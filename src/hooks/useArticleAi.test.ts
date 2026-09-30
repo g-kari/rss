@@ -5,7 +5,7 @@
  * 記事 A の AI 結果が記事 B の view に表示される race が起きる (local-processor path の
  * signal.aborted guard と非対称)。各 await 後の abort recheck + abort-aware finally を固定する。
  */
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api-fetch", () => ({
@@ -147,5 +147,207 @@ describe("useAiOperation 記事切替後の stale 結果防止 (#abort-guard)", 
       message: "対象記事を処理できません",
       retryable: false,
     });
+  });
+});
+
+describe("useAiOperation AI の実行先とキャッシュ", () => {
+  const auto = {
+    provider: "auto",
+    model: "@cf/meta/llama-3.1-8b-instruct",
+    userId: "user-a",
+  } as const;
+  const cloud = { ...auto, provider: "workers-ai" } as const;
+  const browser = { ...auto, provider: "browser" } as const;
+
+  beforeEach(() => {
+    mockApiFetch.mockReset();
+    mockApiFetch.mockImplementation(
+      async () => new Response(JSON.stringify({ result: "cloud result" })),
+    );
+  });
+
+  it("クラウド指定は利用可能な Chrome AI を呼ばない", async () => {
+    const local = vi.fn(async () => ({
+      text: "local result",
+      isHtml: false,
+      provider: "browser" as const,
+    }));
+    const { result } = renderHook(() =>
+      useAiOperation("/api/ai/summarize", makeCache(), "失敗", local, cloud),
+    );
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    expect(local).not.toHaveBeenCalled();
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    expect(result.current.result?.provider).toBe("workers-ai");
+  });
+
+  it.each(["unavailable", "throws", "empty", "no-input"])(
+    "Chrome 指定 (%s) はクラウドへ黙って切り替えない",
+    async (state) => {
+      const local = vi.fn(async () => {
+        if (state === "throws") throw new Error("unavailable");
+        return state === "empty" ? { text: "", isHtml: false, provider: "browser" as const } : null;
+      });
+      const { result } = renderHook(() =>
+        useAiOperation("/api/ai/translate", makeCache(), "失敗", local, browser),
+      );
+      await act(async () =>
+        result.current.run(
+          "https://example.com/1",
+          "1",
+          state === "no-input" ? undefined : "article",
+        ),
+      );
+      expect(mockApiFetch).not.toHaveBeenCalled();
+      expect(result.current.error?.message).toContain("Chrome");
+      expect(result.current.result).toBeNull();
+      expect(result.current.loading).toBe(false);
+    },
+  );
+
+  it("自動では Chrome 成功時は端末上の結果を使い、利用不可ならクラウドへ切り替える", async () => {
+    const local = vi
+      .fn()
+      .mockResolvedValueOnce({ text: "local result", isHtml: false, provider: "browser" })
+      .mockResolvedValueOnce(null);
+    const cache = makeCache();
+    const { result } = renderHook(() =>
+      useAiOperation("/api/ai/summarize", cache, "失敗", local, auto),
+    );
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    expect(result.current.result?.provider).toBe("browser");
+    await act(async () => result.current.run("https://example.com/2", "2", "article"));
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    expect(result.current.result?.provider).toBe("workers-ai");
+  });
+
+  it("実行先・モデル・ユーザーの変更では前の結果を再利用しない", async () => {
+    const local = vi.fn(async () => ({
+      text: "local result",
+      isHtml: false,
+      provider: "browser" as const,
+    }));
+    const cache = makeCache();
+    const { result, rerender } = renderHook(
+      ({ prefs }) => useAiOperation("/api/ai/summarize", cache, "失敗", local, prefs),
+      {
+        initialProps: { prefs: { ...auto } as import("../lib/ai-preferences").AiPreferences },
+      },
+    );
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    rerender({ prefs: cloud });
+    expect(result.current.result).toBeNull();
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    expect(result.current.result?.text).toBe("cloud result");
+    expect(local).toHaveBeenCalledTimes(1);
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    rerender({ prefs: { ...cloud, model: "@cf/meta/llama-3.2-3b-instruct" } });
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    expect(mockApiFetch).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(mockApiFetch.mock.calls[1][1]?.body as string).model).toBe(
+      "@cf/meta/llama-3.2-3b-instruct",
+    );
+    rerender({ prefs: { ...cloud, userId: "user-b" } });
+    await act(async () => result.current.run("https://example.com/1", "1", "article"));
+    expect(mockApiFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("出所が不明な旧 article-only キャッシュを指定プロバイダーの結果にしない", async () => {
+    const cache = makeCache();
+    cache.set("1", JSON.stringify({ text: "legacy local", provider: "browser" }));
+    const { result } = renderHook(() =>
+      useAiOperation("/api/ai/summarize", cache, "失敗", undefined, cloud),
+    );
+    await act(async () => result.current.run("https://example.com/1", "1"));
+    expect(result.current.result?.text).toBe("cloud result");
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("Chrome 待機中にクラウドへ変更しても古い結果を表示・フォールバックしない", async () => {
+    let rejectLocal: ((error: Error) => void) | undefined;
+    const local = vi.fn(
+      () =>
+        new Promise<null>((_, reject) => {
+          rejectLocal = reject;
+        }),
+    );
+    const cache = makeCache();
+    const { result, rerender } = renderHook(
+      ({ prefs }) => useAiOperation("/api/ai/summarize", cache, "失敗", local, prefs),
+      {
+        initialProps: { prefs: { ...auto } as import("../lib/ai-preferences").AiPreferences },
+      },
+    );
+    act(() => {
+      void result.current.run("https://example.com/1", "1", "article");
+    });
+    rerender({ prefs: cloud });
+    await act(async () => {
+      rejectLocal?.(new Error("old local failure"));
+    });
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    expect(result.current.result).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+});
+
+afterEach(cleanup);
+
+describe("useAiOperation 遅れて到着した本文取得 callback", () => {
+  it("実行先・モデル・アカウント・記事が変わったあとは古い run を開始しない", async () => {
+    mockApiFetch.mockReset();
+    const local = vi.fn(async () => ({
+      text: "local",
+      isHtml: false,
+      provider: "browser" as const,
+    }));
+    const cache = makeCache();
+    const { result, rerender, unmount } = renderHook(
+      ({ prefs, article }) =>
+        useAiOperation("/api/ai/summarize", cache, "失敗", local, prefs, article),
+      {
+        initialProps: {
+          prefs: {
+            provider: "auto",
+            model: "@cf/meta/llama-3.1-8b-instruct",
+            userId: "user-a",
+          } as import("../lib/ai-preferences").AiPreferences,
+          article: "article-a",
+        },
+      },
+    );
+    const pendingContentCallback = result.current.run;
+    rerender({
+      prefs: { provider: "workers-ai", model: "@cf/meta/llama-3.2-3b-instruct", userId: "user-b" },
+      article: "article-b",
+    });
+    await act(async () =>
+      pendingContentCallback("https://example.com/a", "article-a", "late content"),
+    );
+    expect(local).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    const pendingBeforeUnmount = result.current.run;
+    unmount();
+    await act(async () =>
+      pendingBeforeUnmount("https://example.com/b", "article-b", "late content"),
+    );
+    expect(mockApiFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("useAiOperation 自動処理の端末限定", () => {
+  it("Auto で端末限定なら Chrome が途中で失敗してもクラウドへ切り替えない", async () => {
+    mockApiFetch.mockReset();
+    const cache = makeCache();
+    const local = vi.fn(async () => null);
+    const { result } = renderHook(() => useAiOperation("/api/ai/summarize", cache, "失敗", local));
+    await act(async () =>
+      result.current.run("https://example.com", "a", "content", { browserOnly: true }),
+    );
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    expect(result.current.error?.message).toContain("Chrome");
   });
 });

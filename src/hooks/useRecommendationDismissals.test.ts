@@ -3,6 +3,10 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useRecommendationDismissals } from "./useRecommendationDismissals";
 import { STORAGE_KEYS } from "../lib/storage";
 
+vi.mock("../lib/api-fetch", () => ({
+  apiFetch: vi.fn(async () => new Response(JSON.stringify({ recommendationEnabled: false }))),
+}));
+
 const NOW = Date.parse("2026-09-30T12:00:00Z");
 const key = (userId: string) => `${STORAGE_KEYS.ARTICLE_RECOMMENDATION_DISMISSALS}:${userId}`;
 beforeEach(() => {

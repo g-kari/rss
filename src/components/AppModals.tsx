@@ -10,6 +10,7 @@ const SnoozeModal = dynamic(() => import("./SnoozeModal"), { ssr: false });
 const SessionExpiredModal = dynamic(() => import("./SessionExpiredModal"), { ssr: false });
 
 interface Props {
+  userId: string;
   sessionExpired: boolean;
   snoozeTargetId: string | null;
   snoozeArticleTitle: string;
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export default function AppModals({
+  userId,
   sessionExpired,
   snoozeTargetId,
   snoozeArticleTitle,
@@ -75,6 +77,8 @@ export default function AppModals({
       {showHelp && <KeyboardShortcutsModal onClose={onHelpClose} />}
       {showSettings && (
         <UserSettingsModal
+          key={userId}
+          userId={userId}
           feeds={feeds}
           articles={articles}
           setNote={setNote}

@@ -17,6 +17,7 @@ import { useFilteredArticles } from "../hooks/useFilteredArticles";
 import { useReadingHistory } from "../hooks/useReadingHistory";
 import { useThemePreference } from "../hooks/useThemePreference";
 import { useLayoutSettings } from "../hooks/useLayoutSettings";
+import { useAiPreferences } from "../hooks/useAiPreferences";
 import { useAutoReadSettings } from "../hooks/useAutoReadSettings";
 import { useAccessibilitySettings } from "../hooks/useAccessibilitySettings";
 import { useNSFWMode } from "../hooks/useNSFWMode";
@@ -101,7 +102,7 @@ export default function AppShell({
 
   const initialMobilePane = searchParams.get("article")
     ? "view"
-    : searchParams.get("feed")
+    : searchParams.get("feed") || searchParams.get("recommendations") === "1"
       ? "list"
       : "sidebar";
 
@@ -150,9 +151,10 @@ export default function AppShell({
     toggleAutoAiBrowserOnly,
     deduplicateByLink,
     toggleDeduplicateByLink,
-    aiModel,
-    onChangeAiModel,
   } = useAutoReadSettings();
+  const { aiProvider, onChangeAiProvider, aiModel, onChangeAiModel, aiUserId } = useAiPreferences(
+    user?.id ?? null,
+  );
   const { lineHeight, onChangeLineHeight, textJustify, onChangeTextJustify } =
     useAccessibilitySettings();
   const { mobilePane, setMobilePane } = useMobilePane(initialMobilePane);
@@ -367,6 +369,9 @@ export default function AppShell({
     onChangeImageDlFolder,
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
+    aiProvider,
+    onChangeAiProvider,
+    aiUserId,
     aiModel,
     onChangeAiModel,
   });
@@ -548,6 +553,31 @@ export default function AppShell({
     notifyArticlesAdded,
     duplicateInfo,
   } = filterState;
+
+  // A digest click should land on the article list even if the last session used
+  // pictures/search/a specialized filter. Keep privacy and keyword filters intact.
+  const pendingRecommendationLanding = useRef(searchParams.get("recommendations") === "1");
+  useEffect(() => {
+    if (!pendingRecommendationLanding.current) return;
+    if (activeFeedView !== "articles") {
+      onChangeActiveFeedView("articles");
+      return;
+    }
+    pendingRecommendationLanding.current = false;
+    clearFeedGroupArticleSelection();
+    setSelectedTag(null);
+    setSelectedCollectionId(null);
+    resetAllFilters();
+    setMobilePane("list");
+  }, [
+    activeFeedView,
+    onChangeActiveFeedView,
+    clearFeedGroupArticleSelection,
+    setSelectedTag,
+    setSelectedCollectionId,
+    resetAllFilters,
+    setMobilePane,
+  ]);
 
   const { prevArticle, nextArticle } = useArticleNavigation(selectedArticle, filtered);
 
@@ -844,6 +874,7 @@ export default function AppShell({
               hasPendingChanges={hasPendingChanges}
               confirmModalProps={confirmModalProps}
               appModalsProps={{
+                userId: user.id,
                 sessionExpired,
                 snoozeTargetId,
                 snoozeArticleTitle,

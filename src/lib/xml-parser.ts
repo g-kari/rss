@@ -112,6 +112,7 @@ export interface ParsedFeed {
 const MAX_SUMMARY_LENGTH = 5000;
 
 const XML_ARRAY_FIELDS: ReadonlySet<string> = new Set(["item", "entry", "link", "category"]);
+const XML_CONTENT_FIELDS = ["description", "content:encoded", "content", "summary"] as const;
 
 const BASE_PARSER_OPTIONS = {
   ignoreAttributes: false,
@@ -150,8 +151,37 @@ const parser = new XMLParser(BASE_PARSER_OPTIONS);
  */
 const parserLenient = new XMLParser({
   ...BASE_PARSER_OPTIONS,
-  stopNodes: ["*.description", "*.content:encoded", "*.content", "*.summary"],
+  stopNodes: XML_CONTENT_FIELDS.map((field) => `*.${field}`),
 });
+
+function getXmlItems(parsed: RawParsedXml): FeedItem[] {
+  return toArray(parsed.rss?.channel?.item ?? parsed.feed?.entry ?? parsed["rdf:RDF"]?.item);
+}
+
+function hasChildElements(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasChildElements);
+  if (value === null || typeof value !== "object") return false;
+  return Object.keys(value).some((key) => key !== "#text" && !key.startsWith("@_"));
+}
+
+/**
+ * 生 HTML / Atom XHTML は通常パースでも成功するが、子要素が object 化される。
+ * String(object) や #text だけでは本文・順序・空白を失うため、該当ノードだけ
+ * stopNodes で採り直す。通常の CDATA / escaped HTML は元のデコード結果を保持し、
+ * 子要素のない一般的な feed では二度目のパースを行わない。
+ */
+function preserveNestedContent(parsed: RawParsedXml, xml: string): void {
+  const items = getXmlItems(parsed);
+  if (!items.some((item) => XML_CONTENT_FIELDS.some((field) => hasChildElements(item[field])))) {
+    return;
+  }
+  const rawItems = getXmlItems(parserLenient.parse(xml) as RawParsedXml);
+  for (const [index, item] of items.entries()) {
+    for (const field of XML_CONTENT_FIELDS) {
+      if (hasChildElements(item[field])) item[field] = rawItems[index]?.[field];
+    }
+  }
+}
 
 /**
  * XML パース前の前処理:
@@ -212,8 +242,10 @@ function parseDate(s: string | undefined | null): string | null {
 
 function str(val: unknown): string {
   if (val == null) return "";
-  if (typeof val === "object" && "#text" in (val as object))
-    return String((val as { "#text": unknown })["#text"]);
+  if (Array.isArray(val)) return val.map(str).join("");
+  if (typeof val === "object") {
+    return "#text" in val ? str(val["#text"]) : "";
+  }
   return String(val);
 }
 
@@ -527,6 +559,7 @@ export function parseFeed(xml: string): ParsedFeed {
   let parsed: RawParsedXml;
   try {
     parsed = parser.parse(cleaned) as RawParsedXml;
+    preserveNestedContent(parsed, cleaned);
   } catch (strictErr) {
     try {
       parsed = parserLenient.parse(cleaned) as RawParsedXml;

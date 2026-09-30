@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import type { Article } from "../types";
-import type { AiOperationResult } from "./useArticleAi";
+import type { AiOperationResult, AiRunOptions } from "./useArticleAi";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
 import { isEditableShortcutTarget } from "../lib/keyboard-target";
@@ -16,9 +16,9 @@ interface ArticleViewShortcutsDeps {
   fetchFullContent: (cb?: (content: string) => void) => Promise<void> | void;
   aiResult: string | null;
   aiLoading: boolean;
-  doRunAi: (link: string, id: string) => void;
+  doRunAi: (link: string, id: string, options?: AiRunOptions) => void;
   resetAi: () => void;
-  handleTranslate: () => void;
+  handleTranslate: (options?: AiRunOptions) => void;
   mainRef: RefObject<HTMLElement | null>;
   autoTranslate: boolean;
   /** #695: Built-In AI が利用できる環境では自動要約。autoTranslate と同じトリガーパターン */
@@ -28,6 +28,7 @@ interface ArticleViewShortcutsDeps {
    * Workers AI へのフォールバックを発動させたくない場合に使う。
    */
   autoAiBrowserOnly: boolean;
+  aiPreferenceKey: string;
   /**
    * #700: ブラウザ Translator の利用可否 (`null` は診断中)。
    * `autoAiBrowserOnly=true` のとき auto-translate skip 判定に使う。
@@ -57,6 +58,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     autoTranslate,
     autoSummarize,
     autoAiBrowserOnly,
+    aiPreferenceKey,
     translatorAvailable,
     summarizerAvailable,
     translateResult,
@@ -113,14 +115,15 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
   useEffect(() => {
     if (!autoTranslate || !article?.id || !storedContent || translateResult || translateLoading)
       return;
-    if (autoTranslateTriggered.current === article.id) return;
+    const triggerKey = `${article.id}:${aiPreferenceKey}`;
+    if (autoTranslateTriggered.current === triggerKey) return;
     // 200 char だと英文 abstract / byline / URL を含む記事冒頭で日本語判定 false → 不要な auto-translate
     // が起きる罠を防ぐため canonical (browser-translator.ts#detectSourceLanguage) の 500 char sample に統一。
     if (isStoredContentJapanese(storedContent)) return;
     // #700: ブラウザ翻訳が使えなくて Workers AI フォールバックを避けたい場合は skip
     if (shouldSkipAutoAi(translatorAvailable, autoAiBrowserOnly)) return;
-    autoTranslateTriggered.current = article.id;
-    handleTranslate();
+    autoTranslateTriggered.current = triggerKey;
+    handleTranslate({ browserOnly: autoAiBrowserOnly });
   }, [
     autoTranslate,
     article?.id,
@@ -129,6 +132,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     translateLoading,
     handleTranslate,
     autoAiBrowserOnly,
+    aiPreferenceKey,
     translatorAvailable,
   ]);
 
@@ -139,11 +143,12 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
   useEffect(() => {
     if (!autoSummarize || !article?.id || !article.link || !storedContent) return;
     if (aiResult || aiLoading) return;
-    if (autoSummarizeTriggered.current === article.id) return;
+    const triggerKey = `${article.id}:${aiPreferenceKey}`;
+    if (autoSummarizeTriggered.current === triggerKey) return;
     // #700: ブラウザ要約が使えなくて Workers AI フォールバックを避けたい場合は skip
     if (shouldSkipAutoAi(summarizerAvailable, autoAiBrowserOnly)) return;
-    autoSummarizeTriggered.current = article.id;
-    doRunAi(article.link, article.id);
+    autoSummarizeTriggered.current = triggerKey;
+    doRunAi(article.link, article.id, { browserOnly: autoAiBrowserOnly });
   }, [
     autoSummarize,
     article?.id,
@@ -153,6 +158,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     aiLoading,
     doRunAi,
     autoAiBrowserOnly,
+    aiPreferenceKey,
     summarizerAvailable,
   ]);
 }

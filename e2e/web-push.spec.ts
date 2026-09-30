@@ -213,10 +213,17 @@ test.describe("sendPush — fetch レスポンス別の戻り値", () => {
     expect(result).toEqual({ ok: false, gone: true });
   });
 
-  test("500 Server Error → { ok: false, gone: false }", async () => {
+  test("500 Server Error is a definite rejection eligible for a later retry", async () => {
     global.fetch = async () => new Response(null, { status: 500 }) as Response;
     const result = await sendPush(sub, TEST_PAYLOAD);
-    expect(result).toEqual({ ok: false, gone: false });
+    expect(result).toEqual({ ok: false, gone: false, retryable: true, retryAfterMs: 1800000 });
+  });
+
+  test("429 preserves the provider Retry-After backoff", async () => {
+    globalThis.fetch = async () =>
+      new Response(null, { status: 429, headers: { "Retry-After": "7200" } });
+    const result = await sendPush(sub, TEST_PAYLOAD);
+    expect(result).toEqual({ ok: false, gone: false, retryable: true, retryAfterMs: 7200000 });
   });
 
   test("fetch が例外を throw → { ok: false, gone: false }", async () => {

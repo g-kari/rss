@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, userPushKey, pushSubscribeCooldownKey } from "@/lib/r2";
+import { pushSubscribeCooldownKey } from "@/lib/r2";
 import { isValidHttpsUrl } from "@/lib/url";
-import type { PushConfig } from "@/types";
+import { removeExpiredPushSubscriptions } from "@/lib/push-config";
 
 const PUSH_SUBSCRIBE_COOLDOWN_MS = 5 * 1000;
 
@@ -24,11 +24,7 @@ export async function POST(request: Request) {
       return apiError("Invalid endpoint URL", 400, { code: "INVALID_ENDPOINT" });
     }
 
-    const key = userPushKey(session.userId);
-    const config = await r2Get<PushConfig>(env.RSS_DATA, key, { subscriptions: [] });
-
-    config.subscriptions = config.subscriptions.filter((s) => s.endpoint !== body.endpoint);
-    await r2Put(env.RSS_DATA, key, config);
+    await removeExpiredPushSubscriptions(env.RSS_DATA, session.userId, [body.endpoint]);
 
     return NextResponse.json({ ok: true });
   });

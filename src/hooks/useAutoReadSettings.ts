@@ -2,12 +2,6 @@
 
 import { useState, useCallback } from "react";
 import { STORAGE_KEYS, storageGet, storageSet } from "../lib/storage";
-import {
-  AI_MODELS,
-  DEFAULT_AI_MODEL,
-  isWorkersAiModelId,
-  type WorkersAiModelId,
-} from "../lib/ai-models";
 import { useStoredBoolToggle } from "./useStoredSetting";
 
 export const AUTO_READ_THRESHOLD_CYCLE = [70, 80, 90] as const;
@@ -45,16 +39,11 @@ function loadDeduplicateByLink(): boolean {
   return stored !== "0";
 }
 
-function loadAiModel(): WorkersAiModelId {
-  const stored = storageGet(STORAGE_KEYS.AI_MODEL);
-  return stored && isWorkersAiModelId(stored) ? stored : DEFAULT_AI_MODEL;
-}
-
-export { AI_MODELS, type WorkersAiModelId };
+export { AI_MODELS, type WorkersAiModelId } from "../lib/ai-models";
 
 /**
- * オート系設定 (auto-read / auto-translate / auto-summarize / auto-AI-browser-only / dedup-by-link / threshold / AI model) を localStorage に永続化しつつ管理する hook。
- * @returns 各設定の現在値 + toggle/setter callback (`{ autoReadEnabled, toggleAutoRead, autoReadThreshold, cycleAutoReadThreshold, aiModel, onChangeAiModel, ... }`)
+ * オート系設定 (auto-read / auto-translate / auto-summarize / auto-AI-browser-only / dedup-by-link / threshold) を localStorage に永続化しつつ管理する hook。
+ * @returns 各設定の現在値 + toggle/setter callback (`{ autoReadEnabled, toggleAutoRead, autoReadThreshold, cycleAutoReadThreshold, ... }`)
  */
 export function useAutoReadSettings() {
   const [autoReadEnabled, toggleAutoRead] = useStoredBoolToggle(
@@ -79,7 +68,6 @@ export function useAutoReadSettings() {
     loadDeduplicateByLink,
     STORAGE_KEYS.DEDUP_BY_LINK,
   );
-  const [aiModel, setAiModel] = useState<WorkersAiModelId>(loadAiModel);
 
   const cycleAutoReadThreshold = useCallback(() => {
     setAutoReadThreshold((prev) => {
@@ -93,11 +81,6 @@ export function useAutoReadSettings() {
   const onChangeAutoReadThreshold = useCallback((next: AutoReadThreshold) => {
     setAutoReadThreshold(next);
     storageSet(STORAGE_KEYS.AUTO_READ_THRESHOLD, String(next));
-  }, []);
-
-  const onChangeAiModel = useCallback((next: WorkersAiModelId) => {
-    setAiModel(next);
-    storageSet(STORAGE_KEYS.AI_MODEL, next);
   }, []);
 
   return {
@@ -114,7 +97,5 @@ export function useAutoReadSettings() {
     toggleAutoAiBrowserOnly,
     deduplicateByLink,
     toggleDeduplicateByLink,
-    aiModel,
-    onChangeAiModel,
   } as const;
 }
