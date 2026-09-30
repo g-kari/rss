@@ -93,7 +93,11 @@ export function useArticleViewContent(
   );
 
   const isShortContent = !article?.content || article.content.length < SHORT_CONTENT_THRESHOLD;
-  const canFetch = !embedInfo && !!article?.link && isShortContent && !storedContent;
+  const canFetch =
+    (!embedInfo || embedInfo.type === "slides") &&
+    !!article?.link &&
+    (isShortContent || embedInfo?.type === "slides") &&
+    !storedContent;
   const hasContent = !!(processedContent || article?.summary);
   // #653: hasFullContent は「fetch 完了済み or fetch 不要」を厳格判定する。
   // 旧実装 `!!processedContent` は article.content (RSS 本文) があれば fetch 前でも

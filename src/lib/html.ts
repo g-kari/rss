@@ -1,3 +1,4 @@
+import { DOCSWELL_HOSTS, DOCSWELL_EMBED_PATH, parseDocswellUrl } from "./docswell";
 /**
  * HTML サニタイズユーティリティ
  *
@@ -209,7 +210,9 @@ function sanitizeStyleAttr(style: string): string {
 export const TRUSTED_IFRAME_RULES: ReadonlyArray<{
   hosts: readonly string[];
   pathPrefix?: string;
+  pathPattern?: RegExp;
 }> = [
+  { hosts: DOCSWELL_HOSTS, pathPattern: DOCSWELL_EMBED_PATH },
   { hosts: ["youtube.com", "www.youtube.com"], pathPrefix: "/embed/" },
   { hosts: ["youtube-nocookie.com", "www.youtube-nocookie.com"], pathPrefix: "/embed/" },
   { hosts: ["player.vimeo.com"] },
@@ -241,8 +244,9 @@ function isTrustedIframeSrc(src: string): boolean {
   const h = url.hostname;
   const p = url.pathname;
 
-  return TRUSTED_IFRAME_RULES.some(({ hosts, pathPrefix }) => {
+  return TRUSTED_IFRAME_RULES.some(({ hosts, pathPrefix, pathPattern }) => {
     if (!hosts.includes(h)) return false;
+    if (pathPattern) return pathPattern.test(p) && !!parseDocswellUrl(normalized);
     if (pathPrefix === undefined) return true;
     if (!p.startsWith(pathPrefix)) return false;
     // pathPrefix が '/' で終わる場合（例: "/embed/"）は startsWith だけで十分。
@@ -300,6 +304,17 @@ function sanitizeIframe(m: string, attrs: string): string {
   if (isPlaceholder && isTrustedIframeSrc(lazySrc)) src = lazySrc;
   if (!isTrustedIframeSrc(src)) return "";
   if (src.startsWith("//")) src = `https:${src}`;
+  const docswell = parseDocswellUrl(src);
+  if (docswell) {
+    src = docswell.embedUrl;
+    parsed.set("loading", "lazy");
+    parsed.set("referrerpolicy", "no-referrer");
+    if (!parsed.has("sandbox")) parsed.set("sandbox", "allow-scripts allow-same-origin");
+    parsed.set("allow", "fullscreen");
+    parsed.set("allowfullscreen", "");
+    parsed.set("title", parsed.get("title") || "Docswell スライド");
+    parsed.set("style", "border:0;width:100%;height:auto;aspect-ratio:16/10;max-height:80dvh");
+  }
   // Canonical attributes exclude srcdoc, publisher lazy-loader state and event
   // handlers. Preserve an existing sandbox rather than loosening its policy.
   const allowed = new Set([

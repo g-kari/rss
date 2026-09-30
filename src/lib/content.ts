@@ -1,3 +1,6 @@
+import { extractDocswellTranscript } from "./docswell-content";
+import { parseDocswellUrl } from "./docswell";
+import { buildDocswellEmbed } from "./html-embed-transforms";
 /**
  * 記事全文取得・コンテンツ抽出ユーティリティ
  *
@@ -14,6 +17,7 @@ import {
   transformZennMermaidEmbeds,
   transformSpeakerDeckScriptEmbeds,
   transformSlideShareEmbedLinks,
+  transformDocswellScriptEmbeds,
   postProcess,
 } from "./html-post-processor";
 import { extractWithReadability } from "./readability-extractor";
@@ -341,6 +345,23 @@ export function extractMainContent(
   html: string,
   pageUrl: string,
 ): { content: string; source: "readability" | "regex" } {
+  const docswell = parseDocswellUrl(pageUrl);
+  const transcript = docswell ? extractDocswellTranscript(html, pageUrl) : null;
+  const docswellFallback = docswell
+    ? `<p><a href="${escapeHtml(docswell.pageUrl)}" target="_blank" rel="noopener noreferrer">Docswell で開く ↗</a></p>`
+    : "";
+  if (transcript) {
+    return {
+      content: buildDocswellEmbed(pageUrl) + docswellFallback + transcript,
+      source: "regex",
+    };
+  }
+  const augmentWithDocswell = (content: string): string => {
+    if (!docswell) return content;
+    // The article UI also strips this frame when it renders its dedicated viewer.
+    const withoutFrames = content.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe\s*>/gi, "");
+    return buildDocswellEmbed(pageUrl) + docswellFallback + withoutFrames;
+  };
   // SpeakerDeck は CSR サービスのため静的 HTML に <script class="speakerdeck-embed"> が
   // 存在しない。代わりに <meta property="og:video"> にプレイヤー URL が含まれる (#896)。
   // any transform の前に元 HTML から og:video を抽出する。
@@ -367,6 +388,7 @@ export function extractMainContent(
   // SpeakerDeck の <script class="speakerdeck-embed"> を <iframe> に変換する。
   // preClean で <script> が除去される前に行う必要がある。
   preprocessed = transformSpeakerDeckScriptEmbeds(preprocessed);
+  preprocessed = transformDocswellScriptEmbeds(preprocessed);
 
   // SlideShare のリンクを iframe 埋め込みに変換する。
   // Readability が <a> タグを本文外と判定して除去することがあるため、
@@ -408,19 +430,24 @@ export function extractMainContent(
       // Math.max(1, ...) で「regex に最低 1 枚以上の img がある」ことを保証する
       if (regexImgCount >= Math.max(1, rcImgCount * 2)) {
         return {
-          content: augmentWithSpeakerDeck(augmentWithJsonLd(regexContent)) + buildGallery(),
+          content:
+            augmentWithDocswell(augmentWithSpeakerDeck(augmentWithJsonLd(regexContent))) +
+            buildGallery(),
           source: "regex",
         };
       }
     }
     return {
-      content: augmentWithSpeakerDeck(augmentWithJsonLd(postProcess(rc, pageUrl))) + buildGallery(),
+      content:
+        augmentWithDocswell(augmentWithSpeakerDeck(augmentWithJsonLd(postProcess(rc, pageUrl)))) +
+        buildGallery(),
       source: "readability",
     };
   }
   const regexContent = extractWithRegex(preprocessed, pageUrl);
   return {
-    content: augmentWithSpeakerDeck(augmentWithJsonLd(regexContent)) + buildGallery(),
+    content:
+      augmentWithDocswell(augmentWithSpeakerDeck(augmentWithJsonLd(regexContent))) + buildGallery(),
     source: "regex",
   };
 }
