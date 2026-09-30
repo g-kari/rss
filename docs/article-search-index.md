@@ -1,13 +1,19 @@
 # Derived article search index (#1378)
 
-R2 remains the source of truth. `ARTICLE_SEARCH` is a separate, disposable D1 projection of shared feed articles. It is not the retired D1 primary database from `migrations/0001_initial.sql`. Its migrations live only in `migrations/article-search/`.
+R2 remains the source of truth. `ARTICLE_SEARCH` is a separate, disposable D1 projection of shared feed articles. It is not the retired D1 primary database from `migrations/0001_initial.sql`. Its migrations live only in `migrations/article-search/`:
+
+- `0001_article_search.sql`: normalized article rows, feed readiness and trigram FTS
+- `0002_rebuild_checkpoints.sql`: bounded rebuild progress
+- `0003_rebuild_nul_safe_fts.sql`: invalidate old FTS readiness/checkpoints so every existing projection is rebuilt with NUL-safe candidate text
+
+Applying migration 0003 intentionally makes previously indexed feeds unready until their rebuild completes. Do not manually mark old rows ready. It changes no R2 source data.
 
 ## Request behavior
 
 `GET /api/articles?q=...` parses the same AST as the client search evaluator. It reads subscriptions, saved articles, read state, small feed metadata and HEAD revision metadata. It never walks every article page or segment in the request.
 
 - Normalization is shared with `full-text-search.ts`: JavaScript lowercase; content HTML stripping; raw summary; joined category/language/metadata fields; the same default-field separators
-- FTS5 uses `trigram case_sensitive 1`, only as a candidate prefilter. Exact `instr` predicates evaluate every term and the full AND/OR/NOT AST. It is **not** `unicode61` word matching
+- FTS5 uses `trigram case_sensitive 1`, only as a candidate prefilter. Exact `instr` predicates evaluate every term and the full AND/OR/NOT AST. It is **not** `unicode61` word matching. Candidate fields use newline separators and replace embedded NUL with newline because workerd FTS stops tokenizing at NUL; exact normalized fields remain untouched
 - One- and two-character terms (including Japanese), NUL/separator terms, and user-specific feed/tag predicates run exact SQL without the trigram shortcut. These can scan eligible D1 rows, but do not read the R2 corpus
 - Saved articles are checked first with the existing evaluator. All saved IDs, including nonmatches, are excluded from shared results before SQL LIMIT. Among duplicate shared IDs the first subscription and then first physical object wins, before matching
 - Feed custom titles and article tags come from current user data, not a shared index. Search deliberately retains the old behavior of ignoring feed keyword filters and TTL
@@ -53,6 +59,10 @@ Large backfills must respect D1's per-invocation statement/query, duration and r
 
 Individual normalized records above 1.9 MB are rejected before binding rather than silently truncated. Normalized exact fields and FTS text retain roughly two copies of text; depending on other fields and JSON escaping, an article around 900 KB of plain text can reach that limit. Such a feed remains unready until the oversized-data issue is addressed. This implementation does not claim support for indexing arbitrary multi-megabyte article bodies in D1.
 
+### Migration commands
+
+Use the [combined migration commands](migration-commands.md) for the one-time setup, bounded backup, effective writer pause, automatic schema/storage/index sequence, receipt resumption and explicit deployment integration. The shared schema wrapper rejects the retired migration directory and verifies the resulting search schema before conversion.
+
 ### Resumable maintenance runner
 
 Pause article writers for the affected feed during an initial large backfill. Otherwise, a new article revision restarts the snapshot and a frequently updated large feed may never finish at cron cadence. Run the resumable driver repeatedly/continuously until it reports `ready: true`, then resume writers. Normal search remains 503 until the full subscribed set is ready. Cron and bulk refresh rotate their starting feed across time windows so a fixed ordering does not permanently favor early feeds when maintenance budgets are exhausted.
@@ -60,9 +70,24 @@ Pause article writers for the affected feed during an initial large backfill. Ot
 ```sh
 # Local data and local D1 only by default; no production database is provisioned
 node scripts/rebuild-article-search.mjs --feed=0123456789abcdef --config=config/search-index.local.jsonc
-# Optional local state directory
-node scripts/rebuild-article-search.mjs --feed=0123456789abcdef --config=config/search-index.local.jsonc --persist-to=config/.wrangler/state
+# Optional local state root: pass the SAME root to migrations and the rebuild CLI
+pnpm exec wrangler d1 migrations apply ARTICLE_SEARCH --local --config=config/search-index.local.jsonc --persist-to=./local-search-state
+node scripts/rebuild-article-search.mjs --feed=0123456789abcdef --config=config/search-index.local.jsonc --persist-to=./local-search-state
 ```
+
+The default local root is `.wrangler/state` beside the selected config, matching Wrangler CLI. An explicit `--persist-to` is relative to the shell's current directory. Both are state **roots**: the maintenance helper appends `v3` for `getPlatformProxy`. Do not append `v3` yourself. With the checked-in local config, both migrations and maintenance therefore use `config/.wrangler/state/v3`. The CLI prints its resolved local directory before connecting, so a wrong local database is visible.
+
+### Binding startup troubleshooting
+
+Run the actual `.mjs` file as shown above. A diagnostic launched using `node --input-type=module` can hang even though the file-based CLI works: this Node option is inherited by Miniflare's CommonJS `eval` worker, which fails with `require is not defined`; its host is waiting synchronously in `Atomics.wait`. Use a `.mjs` file for probes, or plain `node scripts/rebuild-article-search.mjs ...`. Do not interpret this probe-only failure as an authentication or D1 service failure, and do not change credentials or remote resources to fix it.
+
+The separate “Feed metadata was not found” failure can indicate mismatched local persistence roots. Apply local migrations and seed/import local R2 data using the same state root; do not silently switch to remote bindings. The isolated smoke below verifies both the config-relative default and an explicit relative root using real local Wrangler migrations, 601 synthetic R2 articles and a four-step rebuild:
+
+```sh
+npm run test:migrations
+```
+
+It checks durable ready state, 14 representative query/result comparisons per configuration, repeat invocation, and unchanged R2 source bytes/ETags. The same suite includes legacy backup/conversion/backfill and the complete pipeline, including missing-pause and invalid-backup rejection before schema, schema-failure abortion before storage, plus receipt resumption. Fixtures live in temporary directories and use local-only dummy bindings; the smoke does not require a Cloudflare account.
 
 `config/search-index.remote.example.jsonc` documents the separately approved remote binding setup. The driver requires explicit `--remote` plus a different config with remote bindings for production access. It only reads R2 and writes derived D1 data; it does not create databases, apply migrations, delete R2 data or deploy. No production maintenance command has been run as part of this change.
 
@@ -70,7 +95,7 @@ node scripts/rebuild-article-search.mjs --feed=0123456789abcdef --config=config/
 
 The tests execute the real schema, FTS triggers and search SQL against Node's built-in SQLite. They cover differential parity with the existing evaluator; Japanese substrings and short terms; phrases/NOT/OR/field queries; title/tag isolation; duplicate/saved priority; date fallback/top K; incremental/rebuild/refetch/deletion; D1 failure isolation; conflicting builders; readiness races; source changes during hydration; no-hit zero body reads; over 1,000 subscriptions with five parameters; and global hydration concurrency.
 
-The SQL migration is also validated using local Wrangler/workerd D1. No production database is used.
+All three SQL migrations and the file-based maintenance CLI are also validated using real local Wrangler/workerd D1 and R2 bindings. This catches runtime differences that a Node SQLite-only test cannot: in particular, workerd FTS stops at NUL while `instr` still sees the text after it. No production database is used.
 
 A reproducible selective-query check is the test “hydrates only selected physical objects, not unmatched objects or every candidate”: 12 indexed archive objects, 11 matching, `limit=7`, exactly seven article-body GETs, zero latest-body GETs, and at most four concurrent R2 operations. The no-hit test performs only metadata GETs/HEADs, with zero article-body GETs. Increase archive count while keeping the selected limit fixed to verify that R2 hydration cost depends on returned physical objects, not corpus size. Short-term/NOT-only SQL latency must be measured separately because their exact D1 predicates can examine many rows.
 

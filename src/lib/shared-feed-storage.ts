@@ -310,6 +310,7 @@ async function prepareCommit(
   feedHash: string,
   snapshot: FeedArticleSnapshot,
   fetched: Article[],
+  forceMigration = false,
 ): Promise<PreparedCommit | null> {
   const revision = crypto.randomUUID();
   let nextSegmentId = snapshot.nextSegmentId;
@@ -318,7 +319,12 @@ async function prepareCommit(
   let segments = [...snapshot.segments];
   // Duplicate IDs in the same response have one deterministic winner (last occurrence).
   const incoming = new Map(fetched.map((article) => [article.id, article]));
-  const recent = new Map(snapshot.latest.map((article) => [article.id, article]));
+  const recent = new Map<string, Article>();
+  for (const article of snapshot.latest) {
+    // Explicit migration preserves the first physical copy, matching legacy readers/backups.
+    // Routine response merging keeps its existing last-occurrence-wins behavior.
+    if (!forceMigration || !recent.has(article.id)) recent.set(article.id, article);
+  }
   const existing = new Map(recent);
   const touched = new Map<string, Article[]>();
   const known = new Set([...snapshot.knownIds, ...recent.keys()]);
@@ -326,6 +332,7 @@ async function prepareCommit(
 
   // Polling an unchanged latest page does not trigger a legacy migration or archive reads.
   if (
+    !forceMigration &&
     [...incoming].every(([id, value]) => {
       const previous = recent.get(id);
       return previous && !isArticleMutated(previous, value);
@@ -354,6 +361,7 @@ async function prepareCommit(
     const migrated: FeedArticleSegment[] = [];
     for (const segment of segments) {
       const raw = await readRequiredArticles(bucket, segment.objectKey);
+      if (forceMigration) assertMigrationArticles(raw, feedHash, segment.objectKey);
       const articles = raw
         .filter((article) => {
           if (seen.has(article.id)) return false;
@@ -366,7 +374,12 @@ async function prepareCommit(
         if (known.has(article.id)) locations[article.id] = segment.priority;
         if (incoming.has(article.id)) existing.set(article.id, article);
       }
-      if (articles.length === raw.length && articles.length <= PAGE_SIZE && articles.length > 0) {
+      if (
+        articles.length === raw.length &&
+        articles.length <= PAGE_SIZE &&
+        articles.length > 0 &&
+        articles.every((article, index) => article === raw[index])
+      ) {
         const descriptor = describeSegment(segment.objectKey, segment.priority, articles);
         migrated.push(descriptor);
         if (articles.some((article) => incoming.has(article.id)))
@@ -498,9 +511,66 @@ async function prepareCommit(
   };
 }
 
+/** Reconcile only article-derived metadata; upstream fetch state is unrelated to migration. */
+function applyArticleSnapshotMetadata(meta: SharedFeedMeta, snapshot: FeedArticleSnapshot): void {
+  meta.articleRevision = snapshot.revision;
+  meta.articleCount = snapshot.articleCount;
+  meta.pageCount = snapshot.pageCount;
+  meta.knownIds = snapshot.knownIds;
+  meta.oversizeAlert = snapshot.articleCount > PAGE_SIZE * MAX_PAGES;
+}
+
+/** Both routine updates and explicit migration publish through this one atomic commit path. */
+async function publishPreparedCommit(
+  bucket: R2Bucket,
+  meta: SharedFeedMeta,
+  snapshot: FeedArticleSnapshot,
+  prepared: PreparedCommit,
+): Promise<FeedArticleCommit | null> {
+  for (const batch of prepared.changedObjects) await r2Put(bucket, batch.objectKey, batch.articles);
+  const onlyIf = snapshot.exists
+    ? snapshot.etag
+      ? { etagMatches: snapshot.etag }
+      : undefined
+    : new Headers({ "If-None-Match": "*" });
+  const count =
+    prepared.head.articles.length + prepared.head.segments.reduce((n, s) => n + s.count, 0);
+  const result = await bucket.put(latestKey(meta.feedHash), JSON.stringify(prepared.head), {
+    onlyIf,
+    httpMetadata: { contentType: "application/json" },
+    customMetadata: {
+      articleRevision: prepared.head.revision,
+      articleCount: String(count),
+      pageCount: String(logicalPageCount(count)),
+    },
+  });
+  if (result === null) return null;
+  applyArticleSnapshotMetadata(meta, {
+    ...snapshot,
+    revision: prepared.head.revision,
+    articleCount: count,
+    pageCount: logicalPageCount(count),
+    knownIds: prepared.head.knownIds,
+  });
+  return {
+    revision: prepared.head.revision,
+    previousRevision: snapshot.revision,
+    changedObjects: [
+      ...prepared.changedObjects,
+      {
+        objectKey: latestKey(meta.feedHash),
+        priority: LATEST_PRIORITY,
+        articles: prepared.head.articles,
+      },
+    ],
+    removedObjectKeys: prepared.removedObjectKeys,
+    requiresRebuild: snapshot.legacy,
+  };
+}
+
 /**
  * Segment PUTs precede the conditional head commit. Failure leaves the previous snapshot fully
- * readable. Concurrent writers retry against the winning head; unreferenced objects are harmless.
+ * readable. Concurrent writers retry against the winner; unreferenced objects are harmless.
  */
 export async function mergeNewArticlesWithChanges(
   bucket: R2Bucket,
@@ -513,58 +583,117 @@ export async function mergeNewArticlesWithChanges(
     const snapshot = await readFeedArticleSnapshot(bucket, meta.feedHash, meta);
     const prepared = await prepareCommit(bucket, meta.feedHash, snapshot, fetchedArticles);
     if (!prepared) {
-      if (!snapshot.legacy) {
-        meta.articleRevision = snapshot.revision;
-        meta.articleCount = snapshot.articleCount;
-        meta.pageCount = snapshot.pageCount;
-        meta.knownIds = snapshot.knownIds;
-        meta.oversizeAlert = snapshot.articleCount > PAGE_SIZE * MAX_PAGES;
-      }
+      if (!snapshot.legacy) applyArticleSnapshotMetadata(meta, snapshot);
       return { newArticles: [] };
     }
-    for (const batch of prepared.changedObjects)
-      await r2Put(bucket, batch.objectKey, batch.articles);
-    const onlyIf = snapshot.exists
-      ? snapshot.etag
-        ? { etagMatches: snapshot.etag }
-        : undefined
-      : new Headers({ "If-None-Match": "*" });
-    const count =
-      prepared.head.articles.length + prepared.head.segments.reduce((n, s) => n + s.count, 0);
-    const result = await bucket.put(latestKey(meta.feedHash), JSON.stringify(prepared.head), {
-      onlyIf,
-      httpMetadata: { contentType: "application/json" },
-      customMetadata: {
-        articleRevision: prepared.head.revision,
-        articleCount: String(count),
-        pageCount: String(logicalPageCount(count)),
-      },
-    });
-    if (result === null) continue;
-    meta.articleRevision = prepared.head.revision;
-    meta.articleCount = count;
-    meta.pageCount = logicalPageCount(count);
-    meta.oversizeAlert = count > PAGE_SIZE * MAX_PAGES;
-    meta.knownIds = prepared.head.knownIds;
-    return {
-      newArticles: prepared.brandNew,
-      commit: {
-        revision: prepared.head.revision,
-        previousRevision: snapshot.revision,
-        changedObjects: [
-          ...prepared.changedObjects,
-          {
-            objectKey: latestKey(meta.feedHash),
-            priority: LATEST_PRIORITY,
-            articles: prepared.head.articles,
-          },
-        ],
-        removedObjectKeys: prepared.removedObjectKeys,
-        requiresRebuild: snapshot.legacy,
-      },
-    };
+    const commit = await publishPreparedCommit(bucket, meta, snapshot, prepared);
+    if (commit) return { newArticles: prepared.brandNew, commit };
   }
   throw new Error(`Article head changed concurrently for ${meta.feedHash}; retry the fetch`);
+}
+
+/** Validate existing data before explicit conversion; never substitute a fabricated article. */
+function assertMigrationArticles(articles: Article[], feedHash: string, objectKey: string): void {
+  const fields = ["id", "feedHash", "guid", "title", "link", "summary", "createdAt"] as const;
+  if (
+    !Array.isArray(articles) ||
+    articles.some(
+      (article) =>
+        !article ||
+        typeof article !== "object" ||
+        fields.some((field) => typeof article[field] !== "string") ||
+        !article.id ||
+        article.feedHash !== feedHash ||
+        (article.publishedAt !== null && typeof article.publishedAt !== "string") ||
+        [article.content, article.ogImage, article.author].some(
+          (value) => value !== undefined && typeof value !== "string",
+        ) ||
+        (article.categories !== undefined &&
+          (!Array.isArray(article.categories) ||
+            article.categories.some((value) => typeof value !== "string"))) ||
+        (article.metadata !== undefined &&
+          (!Array.isArray(article.metadata) ||
+            article.metadata.some(
+              (value) => !value || typeof value.key !== "string" || typeof value.value !== "string",
+            ))),
+    )
+  )
+    throw new Error(`Invalid article source: ${objectKey}`);
+}
+
+/**
+ * Explicit R2-only conversion for a paused-writer rollout. No upstream fetch or D1 operation is
+ * performed. The caller persists the repaired meta.json and rebuilds D1 only after this succeeds.
+ * Repeating a successful conversion is a no-op, including after a metadata-write interruption.
+ */
+export async function migrateFeedArticleStorage(
+  bucket: R2Bucket,
+  meta: SharedFeedMeta,
+): Promise<{ migrated: boolean; commit?: FeedArticleCommit }> {
+  for (let attempt = 0; attempt < COMMIT_ATTEMPTS; attempt++) {
+    const snapshot = await readFeedArticleSnapshot(bucket, meta.feedHash, meta);
+    if (!snapshot.exists)
+      throw new Error(`Missing article migration source: ${latestKey(meta.feedHash)}`);
+    if (!snapshot.etag) throw new Error(`Missing article migration source ETag: ${meta.feedHash}`);
+    assertMigrationArticles(snapshot.latest, meta.feedHash, latestKey(meta.feedHash));
+    if (!snapshot.legacy) {
+      if (
+        !Array.isArray(snapshot.knownIds) ||
+        snapshot.knownIds.length > KNOWN_IDS_MAX ||
+        snapshot.knownIds.some((id) => typeof id !== "string") ||
+        !snapshot.articleLocations ||
+        typeof snapshot.articleLocations !== "object" ||
+        Array.isArray(snapshot.articleLocations) ||
+        !Number.isSafeInteger(snapshot.nextSegmentId) ||
+        snapshot.nextSegmentId < 1 ||
+        snapshot.nextSegmentId >= Number.MAX_SAFE_INTEGER ||
+        snapshot.latest.length > PAGE_SIZE ||
+        !Number.isSafeInteger(snapshot.articleCount) ||
+        snapshot.articleCount < 0 ||
+        typeof snapshot.revision !== "string" ||
+        !snapshot.revision ||
+        snapshot.segments.some(
+          (segment) =>
+            !segment.objectKey.startsWith(`feeds/${meta.feedHash}/articles/`) ||
+            segment.objectKey === latestKey(meta.feedHash) ||
+            !Number.isSafeInteger(segment.priority) ||
+            (segment.priority < 0
+              ? -segment.priority >= snapshot.nextSegmentId
+              : segment.priority < 2 || segment.priority > MAX_PAGES) ||
+            !Number.isSafeInteger(segment.count) ||
+            segment.count < 1 ||
+            segment.count > PAGE_SIZE,
+        )
+      )
+        throw new Error(`Invalid article migration head: ${meta.feedHash}`);
+      const objectKeys = new Set(snapshot.segments.map((segment) => segment.objectKey));
+      const priorities = new Set(snapshot.segments.map((segment) => segment.priority));
+      const knownIds = new Set(snapshot.knownIds);
+      const latestIds = new Set(snapshot.latest.map((article) => article.id));
+      if (
+        objectKeys.size !== snapshot.segments.length ||
+        priorities.size !== snapshot.segments.length ||
+        Object.entries(snapshot.articleLocations).some(
+          ([id, priority]) =>
+            !Number.isSafeInteger(priority) ||
+            !priorities.has(priority) ||
+            !knownIds.has(id) ||
+            latestIds.has(id),
+        )
+      )
+        throw new Error(`Invalid article migration head: ${meta.feedHash}`);
+      applyArticleSnapshotMetadata(meta, snapshot);
+      return { migrated: false };
+    }
+    if (!Number.isInteger(meta.pageCount) || meta.pageCount < 0 || meta.pageCount >= MAX_PAGES) {
+      throw new Error(`Invalid legacy article page count: ${meta.feedHash}`);
+    }
+    const prepared = await prepareCommit(bucket, meta.feedHash, snapshot, [], true);
+    if (!prepared) throw new Error(`Unable to prepare article migration for ${meta.feedHash}`);
+    const commit = await publishPreparedCommit(bucket, meta, snapshot, prepared);
+    if (commit) return { migrated: true, commit };
+  }
+  throw new Error(`Article head changed concurrently for ${meta.feedHash}; retry the migration`);
 }
 
 /** Backward-compatible caller API, with an optional post-commit derived-index callback. */

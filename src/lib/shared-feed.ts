@@ -28,6 +28,7 @@ export {
   isArticleMutated,
   mergeNewArticles,
   mergeNewArticlesWithChanges,
+  migrateFeedArticleStorage,
 } from "./shared-feed-storage";
 
 /** 1 ユーザーあたりの最大フィード購読数 */

@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
-import type { Article, FeedArticleCommit, FeedArticleSnapshot, SharedFeedMeta } from "../types";
+import { describe, expect, it, vi } from "vitest";
+import type {
+  Article,
+  FeedArticleCommit,
+  FeedArticleSegment,
+  FeedArticleSnapshot,
+  SharedFeedMeta,
+} from "../types";
 import {
   iterateFeedArticleBatches,
   mergeNewArticlesWithChanges,
+  migrateFeedArticleStorage,
   readArticlePage,
   readFeedArticleObject,
   readFeedArticleRevision,
@@ -54,6 +61,7 @@ function fakeBucket() {
   let sequence = 0;
   let failPut: ((key: string) => boolean) | undefined;
   let beforeHeadPut: (() => Promise<void>) | undefined;
+  let rejectHeadPuts = 0;
   function seed(key: string, value: unknown, customMetadata?: Record<string, string>) {
     store.set(key, { body: JSON.stringify(value), etag: String(++sequence), customMetadata });
   }
@@ -74,6 +82,10 @@ function fakeBucket() {
         const hook = beforeHeadPut;
         beforeHeadPut = undefined;
         await hook();
+      }
+      if (key === HEAD && rejectHeadPuts > 0) {
+        rejectHeadPuts--;
+        return null;
       }
       const condition = options?.onlyIf;
       if (condition instanceof Headers) {
@@ -97,6 +109,9 @@ function fakeBucket() {
     },
     beforeHeadPut: (hook: () => Promise<void>) => {
       beforeHeadPut = hook;
+    },
+    rejectHeadPuts: (count: number) => {
+      rejectHeadPuts = count;
     },
   };
 }
@@ -502,4 +517,333 @@ it("distinguishes a truly empty feed from a missing populated head during index 
   await expect(
     readFeedArticleRevision(mock.bucket, FEED, { ...metadata(), articleCount: 1 }),
   ).rejects.toThrow("Missing latest article object");
+});
+
+describe("explicit shared feed storage migration", () => {
+  it.each([0, 2, 500])(
+    "converts a legacy latest-only feed of %i articles without fetching or inventing content",
+    async (count) => {
+      const mock = fakeBucket();
+      const articles = Array.from({ length: count }, (_, i) => article(i));
+      const meta = {
+        ...metadata(),
+        articleCount: count,
+        etag: "upstream-etag",
+        lastFetchedAt: "2026-09-01",
+      };
+      const before = structuredClone(meta);
+      mock.seed(HEAD, articles);
+      mock.seed(META, meta);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new Error("External fetch forbidden"));
+      try {
+        const result = await migrateFeedArticleStorage(mock.bucket, meta);
+        expect(result.migrated).toBe(true);
+        expect(result.commit?.requiresRebuild).toBe(true);
+        expect(result.commit?.changedObjects).toEqual([
+          { objectKey: HEAD, priority: -Number.MAX_SAFE_INTEGER, articles },
+        ]);
+        expect(await allArticles(mock.bucket)).toEqual(articles);
+        expect(meta).toMatchObject({
+          articleCount: count,
+          pageCount: 0,
+          etag: before.etag,
+          lastFetchedAt: before.lastFetchedAt,
+        });
+        expect(mock.writes).toEqual([HEAD]);
+        expect(JSON.parse(mock.store.get(META)!.body)).toEqual(before);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    },
+  );
+
+  it("preserves the first legacy latest duplicate's full content during explicit migration", async () => {
+    const mock = fakeBucket();
+    const first = article(0, {
+      title: "first",
+      summary: "first summary",
+      content: "first body",
+      author: "first author",
+    });
+    const last = article(0, {
+      title: "last",
+      summary: "last summary",
+      content: "last body",
+      author: "last author",
+      createdAt: "2099-01-01",
+    });
+    const other = article(1);
+    const meta = { ...metadata(), articleCount: 3 };
+    mock.seed(HEAD, [first, other, last]);
+    const result = await migrateFeedArticleStorage(mock.bucket, meta);
+    expect(result.migrated).toBe(true);
+    expect(await readLatestArticles(mock.bucket, FEED)).toEqual([first, other]);
+    expect(await allArticles(mock.bucket)).toEqual([first, other]);
+    expect(
+      result.commit?.changedObjects.find((batch) => batch.objectKey === HEAD)?.articles,
+    ).toEqual([first, other]);
+    expect(meta.articleCount).toBe(2);
+    expect((await migrateFeedArticleStorage(mock.bucket, meta)).migrated).toBe(false);
+    expect(await allArticles(mock.bucket)).toEqual([first, other]);
+  });
+
+  it("converts legacy archives preserving content and global order, splitting oversized and deduplicating old pages", async () => {
+    const mock = fakeBucket();
+    const original = Array.from({ length: 1301 }, (_, i) => article(i));
+    const meta = { ...metadata(), articleCount: 1302, pageCount: 2 };
+    mock.seed(HEAD, original.slice(0, 500));
+    mock.seed(`feeds/${FEED}/articles/p2.json`, original.slice(500, 1000).reverse());
+    mock.seed(`feeds/${FEED}/articles/p3.json`, [article(0), ...original.slice(1000)]);
+    const oldObjects = new Map(mock.store);
+    const result = await migrateFeedArticleStorage(mock.bucket, meta);
+    expect(result.migrated).toBe(true);
+    const pages: Article[] = [];
+    for (let page = 1; page <= meta.pageCount + 1; page++)
+      pages.push(...(await readArticlePage(mock.bucket, FEED, page)));
+    expect(pages).toEqual(original);
+    expect(meta.articleCount).toBe(original.length);
+    expect(meta.pageCount).toBe(2);
+    expect(
+      (await readFeedArticleSnapshot(mock.bucket, FEED)).segments.every(
+        (s) => s.count <= PAGE_SIZE,
+      ),
+    ).toBe(true);
+    for (const [key, value] of oldObjects)
+      if (key !== HEAD) expect(mock.store.get(key)).toBe(value);
+    expect(
+      mock.writes.every(
+        (key) => key === HEAD || key.startsWith(`feeds/${FEED}/articles/segments/`),
+      ),
+    ).toBe(true);
+  });
+
+  it("explicitly converts an oversized final legacy page while keeping the MAX_PAGES no-loss contract", async () => {
+    const mock = fakeBucket();
+    const meta = {
+      ...metadata(),
+      articleCount: MAX_PAGES * PAGE_SIZE + 2,
+      pageCount: MAX_PAGES - 1,
+    };
+    mock.seed(
+      HEAD,
+      Array.from({ length: PAGE_SIZE }, (_, i) => article(i)),
+    );
+    const get = mock.bucket.get.bind(mock.bucket);
+    // Generate archive bodies on demand so the fixture itself never retains 250,002 articles.
+    mock.bucket.get = (async (key: string) => {
+      const match = key.match(/\/p(\d+)\.json$/);
+      const page = Number(match?.[1]);
+      if (page >= 2 && page <= MAX_PAGES) {
+        const articles = Array.from({ length: PAGE_SIZE + (page === MAX_PAGES ? 2 : 0) }, (_, i) =>
+          article((page - 1) * PAGE_SIZE + i),
+        );
+        return { etag: `legacy-page-${page}`, json: async () => articles };
+      }
+      return get(key);
+    }) as R2Bucket["get"];
+    expect((await migrateFeedArticleStorage(mock.bucket, meta)).migrated).toBe(true);
+    const finalPage = await readArticlePage(mock.bucket, FEED, MAX_PAGES);
+    expect(finalPage).toEqual(
+      Array.from({ length: PAGE_SIZE + 2 }, (_, i) => article((MAX_PAGES - 1) * PAGE_SIZE + i)),
+    );
+    expect(meta).toMatchObject({
+      articleCount: MAX_PAGES * PAGE_SIZE + 2,
+      pageCount: MAX_PAGES - 1,
+      oversizeAlert: true,
+    });
+    expect(mock.writes).toHaveLength(3); // two chunks replacing p500, then the head
+  });
+
+  it("is idempotent and repairs already-v2 metadata without rewriting any object", async () => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    await commit(
+      mock.bucket,
+      meta,
+      Array.from({ length: 501 }, (_, i) => article(i)),
+    );
+    const expected = structuredClone(meta);
+    const head = mock.store.get(HEAD);
+    const stale = {
+      ...metadata(),
+      articleCount: 9999,
+      pageCount: 300,
+      knownIds: ["wrong"],
+      articleRevision: "stale",
+    };
+    mock.writes.length = 0;
+    expect(await migrateFeedArticleStorage(mock.bucket, stale)).toEqual({ migrated: false });
+    expect(stale).toEqual(expected);
+    expect(mock.store.get(HEAD)).toBe(head);
+    expect(mock.writes).toEqual([]);
+    expect(await migrateFeedArticleStorage(mock.bucket, stale)).toEqual({ migrated: false });
+    expect(mock.writes).toEqual([]);
+  });
+
+  it("rejects a malformed existing v2 head instead of treating it as a repaired no-op", async () => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    await commit(mock.bucket, meta, [article(0)]);
+    const broken = JSON.parse(mock.store.get(HEAD)!.body);
+    broken.nextSegmentId = 0;
+    mock.seed(HEAD, broken);
+    const before = structuredClone(meta);
+    mock.writes.length = 0;
+    await expect(migrateFeedArticleStorage(mock.bucket, meta)).rejects.toThrow(
+      "Invalid article migration head",
+    );
+    expect(meta).toEqual(before);
+    expect(mock.writes).toEqual([]);
+  });
+
+  it.each([
+    "duplicate-key",
+    "duplicate-priority",
+    "sequence-collision",
+    "unsafe-sequence",
+    "nonnumeric-location",
+    "fractional-location",
+    "unsafe-location",
+    "dangling-location",
+    "unknown-id-location",
+    "latest-id-location",
+    "zero-priority",
+    "invalid-legacy-priority",
+  ])(
+    "rejects the %s v2 head invariant without archive reads or metadata repair",
+    async (defect) => {
+      const mock = fakeBucket();
+      const meta = metadata();
+      await commit(
+        mock.bucket,
+        meta,
+        Array.from({ length: 1100 }, (_, i) => article(i)),
+      );
+      const broken = JSON.parse(mock.store.get(HEAD)!.body) as {
+        segments: FeedArticleSegment[];
+        nextSegmentId: number;
+        articleLocations: Record<string, unknown>;
+        knownIds: string[];
+      };
+      const first = broken.segments[0];
+      const archivedId = article(500).id;
+      if (defect === "duplicate-key") broken.segments[1].objectKey = first.objectKey;
+      if (defect === "duplicate-priority") broken.segments[1].priority = first.priority;
+      if (defect === "sequence-collision") broken.nextSegmentId = -first.priority;
+      if (defect === "unsafe-sequence") broken.nextSegmentId = Number.MAX_SAFE_INTEGER;
+      if (defect === "nonnumeric-location")
+        broken.articleLocations[archivedId] = String(first.priority);
+      if (defect === "fractional-location") broken.articleLocations[archivedId] = -1.5;
+      if (defect === "unsafe-location")
+        broken.articleLocations[archivedId] = -Number.MAX_SAFE_INTEGER - 1;
+      if (defect === "dangling-location") broken.articleLocations[archivedId] = -999999;
+      if (defect === "unknown-id-location")
+        broken.articleLocations["not-retained"] = first.priority;
+      if (defect === "latest-id-location") broken.articleLocations[article(0).id] = first.priority;
+      if (defect === "zero-priority") first.priority = 0;
+      if (defect === "invalid-legacy-priority") first.priority = MAX_PAGES + 1;
+      mock.seed(HEAD, broken);
+      const head = mock.store.get(HEAD);
+      const before = structuredClone(meta);
+      mock.reads.length = 0;
+      mock.writes.length = 0;
+      await expect(migrateFeedArticleStorage(mock.bucket, meta)).rejects.toThrow(
+        "Invalid article migration head",
+      );
+      expect(meta).toEqual(before);
+      expect(mock.store.get(HEAD)).toBe(head);
+      expect(mock.writes).toEqual([]);
+      expect(mock.reads).toEqual([HEAD]);
+    },
+  );
+
+  it("accepts an already-migrated head that retains valid positive legacy-page priorities", async () => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 501, pageCount: 1 };
+    mock.seed(
+      HEAD,
+      Array.from({ length: 500 }, (_, i) => article(i)),
+    );
+    mock.seed(`feeds/${FEED}/articles/p2.json`, [article(500)]);
+    await migrateFeedArticleStorage(mock.bucket, meta);
+    const snapshot = await readFeedArticleSnapshot(mock.bucket, FEED);
+    expect(snapshot.articleLocations[article(500).id]).toBe(2);
+    mock.reads.length = 0;
+    mock.writes.length = 0;
+    expect(await migrateFeedArticleStorage(mock.bucket, meta)).toEqual({ migrated: false });
+    expect(mock.reads).toEqual([HEAD]);
+    expect(mock.writes).toEqual([]);
+  });
+
+  it("retries against a changed legacy head and retains all source articles", async () => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 2 };
+    mock.seed(HEAD, [article(0), article(1)]);
+    mock.beforeHeadPut(async () => {
+      mock.seed(HEAD, [article(-1), article(0), article(1)]);
+    });
+    const result = await migrateFeedArticleStorage(mock.bucket, meta);
+    expect(result.migrated).toBe(true);
+    expect(await allArticles(mock.bucket)).toEqual([article(-1), article(0), article(1)]);
+    expect(meta.articleCount).toBe(3);
+  });
+
+  it("does not rewrite a concurrent migration winner and repairs its revision", async () => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 2 };
+    mock.seed(HEAD, [article(0), article(1)]);
+    let winningRevision: string | undefined;
+    mock.beforeHeadPut(async () => {
+      const winner = { ...meta };
+      await migrateFeedArticleStorage(mock.bucket, winner);
+      winningRevision = winner.articleRevision;
+    });
+    expect(await migrateFeedArticleStorage(mock.bucket, meta)).toEqual({ migrated: false });
+    expect(meta.articleRevision).toBe(winningRevision);
+    expect(await allArticles(mock.bucket)).toEqual([article(0), article(1)]);
+  });
+
+  it.each(["segment", "head", "conflict"])(
+    "preserves the authoritative legacy snapshot and caller metadata on %s failure",
+    async (failure) => {
+      const mock = fakeBucket();
+      const articles = Array.from({ length: 501 }, (_, i) => article(i));
+      const meta = { ...metadata(), articleCount: 501 };
+      const before = structuredClone(meta);
+      mock.seed(HEAD, articles);
+      const legacy = mock.store.get(HEAD);
+      if (failure === "conflict") mock.rejectHeadPuts(3);
+      else mock.fail((key) => (failure === "head" ? key === HEAD : key.includes("/segments/")));
+      await expect(migrateFeedArticleStorage(mock.bucket, meta)).rejects.toThrow();
+      expect(mock.store.get(HEAD)).toBe(legacy);
+      expect(meta).toEqual(before);
+      expect(await allArticles(mock.bucket)).toEqual(articles);
+    },
+  );
+
+  it.each([
+    "missing-latest",
+    "invalid-json",
+    "invalid-article",
+    "missing-page",
+    "invalid-page",
+    "invalid-meta",
+  ])("rejects %s sources before publishing a new head", async (failure) => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 1 };
+    if (failure !== "missing-latest") mock.seed(HEAD, [article(0)]);
+    if (failure === "invalid-json") mock.store.set(HEAD, { body: "{", etag: "bad" });
+    if (failure === "invalid-article") mock.seed(HEAD, [{ id: "broken" }]);
+    if (failure === "missing-page" || failure === "invalid-page") meta.pageCount = 1;
+    if (failure === "invalid-page")
+      mock.seed(`feeds/${FEED}/articles/p2.json`, { not: "articles" });
+    if (failure === "invalid-meta") meta.pageCount = MAX_PAGES;
+    const before = mock.store.get(HEAD);
+    await expect(migrateFeedArticleStorage(mock.bucket, meta)).rejects.toThrow();
+    expect(mock.store.get(HEAD)).toBe(before);
+    expect(mock.writes).toEqual([]);
+  });
 });

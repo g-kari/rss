@@ -12,7 +12,7 @@
     "build": "next build",
     "preview": "wrangler dev",
     "build:cf": "npx @opennextjs/cloudflare build && node scripts/remove-bundled-wasm.mjs && node scripts/add-scheduled-handler.mjs",
-    "deploy": "node scripts/stamp-sw-version.mjs && npm run build:cf && wrangler deploy",
+    "deploy": "node scripts/stamp-sw-version.mjs && npm run build:cf && npm run migrate:search:remote && wrangler deploy",
     "pretypecheck": "node scripts/sync-release-notes.mjs",
     "typecheck": "tsc --noEmit",
     "precheck": "node scripts/sync-release-notes.mjs",
@@ -24,7 +24,11 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "upload:piper-wasm": "node scripts/upload-piper-wasm.mjs",
-    "upload:piper-voices": "node scripts/upload-piper-voices.mjs"
+    "upload:piper-voices": "node scripts/upload-piper-voices.mjs",
+    "migrate:search:local": "node scripts/migrate-search-schema.mjs --config=config/search-index.local.jsonc",
+    "migrate:search:remote": "node scripts/migrate-search-schema.mjs --remote --config=wrangler.toml",
+    "migrate:feed": "node scripts/migrate-feed.mjs",
+    "test:migrations": "node --test scripts/lib/search-maintenance-options.test.mjs scripts/migrate-search-schema.test.mjs scripts/rebuild-article-search.test.mjs"
   },
   "dependencies": {
     "@cloudflare/puppeteer": "^1.1.0",

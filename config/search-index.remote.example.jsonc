@@ -3,6 +3,7 @@
   // No entrypoint is provided: this configuration must not be deployed.
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "rss-reader-search-maintenance",
+  "account_id": "REPLACE_WITH_VERIFIED_32_HEX_ACCOUNT_ID",
   "compatibility_date": "2026-05-01",
   "r2_buckets": [{ "binding": "RSS_DATA", "bucket_name": "rss-reader-data", "remote": true }],
   "d1_databases": [

@@ -7,6 +7,10 @@ description: Feeds API 仕様 — /api/feeds の CRUD + refresh + OPML import/ex
 
 フィードの追加・一覧・更新・削除・リフレッシュ・インポート/エクスポート・LLM 再推論・キャッシュパージのエンドポイント仕様。
 
+## 移行時の一時停止
+
+`RSS_FEED_WRITES_PAUSED` が有効な Worker では、`/api/feeds` 配下の GET/HEAD/OPTIONS 以外をルート実行前に停止する。レスポンスは 503、`code: "FEED_WRITES_PAUSED"`、`retryable: true`、`Retry-After: 300`、`Cache-Control: no-store`。登録/import/refresh/reinfer/変更/削除/cache purge を含む。記事・フィードの読み取りと認証の検証は通常どおり委譲する。cron と直接呼ばれた取得処理も同じフラグを確認する。既存の実行は自動キャンセルされないため、[停止・drain手順](../../docs/migrations/feed-writer-maintenance.md)を確認する。
+
 ---
 
 ## POST /api/feeds

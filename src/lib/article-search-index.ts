@@ -31,6 +31,7 @@ export const SEARCH_R2_CONCURRENCY = 4;
 const INDEX_BATCH_SIZE = 20;
 const INDEX_BATCH_BYTES = 256 * 1024;
 const MAX_INDEX_ROW_BYTES = 1_900_000;
+const INDEX_ENCODER = new TextEncoder();
 const MAX_REBUILD_STEP_ARTICLES = 200;
 const EMPTY_CONTEXT: SearchContext = { feedTitleByHash: new Map() };
 const STATIC_FIELDS: SearchField[] = [
@@ -158,9 +159,25 @@ export function normalizeSearchArticle(article: Article): {
     searchText: [
       defaultHaystack(article, EMPTY_CONTEXT),
       ...["url", "guid", "published", "language", "metadata"].map((field) => fields[field]),
-    ].join("\u0000"),
+    ]
+      // workerd's FTS tokenizer stops at NUL even though SQLite instr preserves it.
+      // Candidate text may produce false positives; exact fields below never change.
+      .join("\n")
+      .replaceAll("\u0000", "\n"),
     sortKey: getArticleTimestamp(article),
   };
+}
+
+/** Shared by D1 writes and the read-only maintenance preflight; count actual UTF-8 JSON bytes. */
+export function serializeSearchIndexArticle(
+  article: Article,
+  ordinal: number,
+): { row: string; bytes: number } {
+  const row = JSON.stringify({ id: article.id, ordinal, ...normalizeSearchArticle(article) });
+  const bytes = INDEX_ENCODER.encode(row).byteLength;
+  if (bytes > MAX_INDEX_ROW_BYTES)
+    throw new SearchIndexUnavailableError("Article exceeds D1 search row limit");
+  return { row, bytes };
 }
 
 /** Parameter count stays five regardless of subscription/tag/query sizes (D1 limit: 100). */
@@ -280,7 +297,6 @@ async function writeBatch(
   const seen = new Set<string>();
   let rows: string[] = [];
   let bytes = 2;
-  const encoder = new TextEncoder();
   async function flush(): Promise<void> {
     if (!rows.length) return;
     // One constant-size statement per bounded JSON chunk, rather than one subrequest
@@ -301,14 +317,7 @@ async function writeBatch(
   for (const [index, article] of batch.articles.entries()) {
     if (seen.has(article.id)) continue;
     seen.add(article.id);
-    const row = JSON.stringify({
-      id: article.id,
-      ordinal: ordinalOffset + index,
-      ...normalizeSearchArticle(article),
-    });
-    const rowBytes = encoder.encode(row).byteLength;
-    if (rowBytes > MAX_INDEX_ROW_BYTES)
-      throw new SearchIndexUnavailableError("Article exceeds D1 search row limit");
+    const { row, bytes: rowBytes } = serializeSearchIndexArticle(article, ordinalOffset + index);
     if (rows.length && (bytes + rowBytes > INDEX_BATCH_BYTES || rows.length >= INDEX_BATCH_SIZE))
       await flush();
     rows.push(row);

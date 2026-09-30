@@ -45,7 +45,12 @@ import {
   withSearchIndexBudget,
 } from "../lib/article-search-index";
 
-type FetchEnv = Pick<CloudflareEnv, "RSS_DATA" | "FINDME_RSS" | "RATE_LIMIT" | "ARTICLE_SEARCH">;
+import { assertFeedWritesAllowed, isFeedWritesPaused } from "../lib/feed-write-maintenance";
+
+type FetchEnv = Pick<
+  CloudflareEnv,
+  "RSS_DATA" | "FINDME_RSS" | "RATE_LIMIT" | "ARTICLE_SEARCH" | "RSS_FEED_WRITES_PAUSED"
+>;
 
 /** One D1 budget for the whole invocation, shared by all feed workers (Paid plan). */
 function withMaintenanceBudget(env: FetchEnv): FetchEnv {
@@ -324,6 +329,7 @@ export async function fetchAndUpdateSharedFeed(
   requestCookie?: string,
   limitBody = createConcurrencyLimiter(FEED_BODY_CONCURRENCY),
 ): Promise<{ newArticles: Article[]; meta: SharedFeedMeta | null }> {
+  assertFeedWritesAllowed(env);
   const meta = await readFeedMeta(env.RSS_DATA, feedHash);
   if (!meta) {
     console.warn("fetchAndUpdateSharedFeed: meta not found", { feedHash });
@@ -551,6 +557,7 @@ async function sendPushAll(
  * 3. 新着記事があったフィードの購読ユーザーに Push 通知を送る
  */
 export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
+  if (isFeedWritesPaused(env.RSS_FEED_WRITES_PAUSED)) return;
   env = withMaintenanceBudget(env);
   const { feedUserMap, feedLastAccessMap, feedHasPriority, privateFeedCookies } =
     await buildFeedUserMapCached(env.RSS_DATA, env.RATE_LIMIT);
@@ -666,6 +673,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
  * エラー・レートリミット状態に関わらず再試行する。
  */
 export async function fetchArticles(env: FetchEnv, userId: string): Promise<void> {
+  assertFeedWritesAllowed(env);
   env = withMaintenanceBudget(env);
   const subs = await readUserSubscriptions(env.RSS_DATA, userId);
   if (subs.length === 0) return;
@@ -689,6 +697,7 @@ export async function fetchSingleFeed(
   userId: string,
   feedHash: string,
 ): Promise<import("../types").Feed | null> {
+  assertFeedWritesAllowed(env);
   env = withMaintenanceBudget(env);
   const subs = await readUserSubscriptions(env.RSS_DATA, userId);
   const sub = subs.find((s) => s.feedHash === feedHash);
@@ -710,6 +719,7 @@ export async function registerAndFetchFeed(
   requestCookie?: string,
   userId?: string,
 ): Promise<void> {
+  assertFeedWritesAllowed(env);
   env = withMaintenanceBudget(env);
   const feedHash =
     requestCookie && userId

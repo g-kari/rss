@@ -58,6 +58,35 @@ segment keys. Do not delete replaced or orphan objects during a request: concurr
 index rebuilds can still hold an older snapshot. Future garbage collection must use explicit
 retention, reachability from retained snapshots/backups, and separately approved deletion.
 
+## Explicit conversion API
+
+`migrateFeedArticleStorage(bucket, meta)` converts one feed using only its existing R2 objects.
+It returns `{ migrated: boolean, commit?: FeedArticleCommit }` and never fetches the feed URL,
+adds a synthetic article, updates content, accesses D1, or deletes an old object. An existing
+empty `latest.json` array is a valid source; a missing latest object is rejected even if the
+metadata says the feed is empty. Missing/corrupt referenced legacy pages are also rejected.
+
+The explicit path uses the same segment preparation and segment-first, ETag-conditional head
+publication as ordinary updates. It can migrate unchanged latest-only feeds while writers remain
+paused. Existing IDs are deduplicated with the storage layer's existing precedence, date/ID order
+is preserved, unsorted legacy archive runs are rewritten in order, and oversized legacy pages
+are split without dropping articles. A conflict retries against the current head; if another
+migration wins, the retry becomes a no-op. Repeated conflicts or failed writes preserve the
+previous authoritative head, and unsuccessful attempts do not mutate the caller's metadata.
+
+On success, the supplied `meta` object is repaired from the committed snapshot, including its
+revision, count, logical page count, known-ID window, and oversize flag. Upstream ETag, last-modified,
+fetch timestamps, title, and other feed settings are unchanged. The function intentionally does
+not write `meta.json`: the rollout runner must persist that repaired metadata after the head commit.
+If that metadata write is interrupted, invoking migration again returns `{ migrated: false }`,
+repairs the supplied metadata from the existing v2 head, and writes no article object.
+
+After conversion, persist metadata, verify the committed snapshot and all referenced objects,
+then perform the final D1 backfill against that revision. An already-v2 migration call validates
+and reads the head but does not scan every archive; full reference verification remains part of
+backfill/rollout verification. Neither a successful R2 conversion nor the returned change record
+means the search index is ready. Keep writers paused through final verification and backfill.
+
 ## Controlled production rollout
 
 1. Take an inventory of feeds and current object sizes, including oversized legacy final pages.
@@ -67,9 +96,10 @@ retention, reachability from retained snapshots/backups, and separately approved
 3. Back up each feed's exact `latest.json` and `meta.json`, retaining object identities and an
    inventory of the historical `pN.json` objects. Preserve existing historical objects. Back up
    the complete feed prefix if the storage provider/process cannot guarantee their retention.
-4. Deploy the v2 reader/writer only after the backup is verified. Roll out a small feed set first.
-   This implementation starts v2 writes on the first content-changing or archived-item refresh; it has no rollout
-   flag. A phased reader-only release would need to be prepared separately if desired.
+4. Deploy the v2 reader/writer only after the backup is verified, with every writer still paused.
+   Roll out a small feed set first. Invoke `migrateFeedArticleStorage` for each selected feed and
+   persist its repaired metadata; do not simulate an upstream update to trigger conversion.
+   Ordinary merge calls can also migrate lazily, so the writer pause must remain active.
 5. Verify the logical article set/order, 499/500/501 boundaries, historic final page, head metadata
    revision, and successful search-index rebuild for the same captured revision. Do not mark D1
    ready when a referenced R2 object is missing or a head changes during rebuild.

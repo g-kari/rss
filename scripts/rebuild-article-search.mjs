@@ -8,6 +8,10 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { getPlatformProxy, unstable_readConfig } from "wrangler";
+import {
+  getMaintenanceProxyOptions,
+  requireRemoteSearchBindings,
+} from "./lib/search-maintenance-options.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const { values } = parseArgs({
@@ -26,6 +30,9 @@ if (values.help) {
   console.log(
     "Defaults to isolated local bindings. --remote requires an operator-approved config whose RSS_DATA and ARTICLE_SEARCH bindings both set remote:true. Does not deploy, create a database, migrate SQL, or write R2.",
   );
+  console.log(
+    "--persist-to is a Wrangler state root (v3 is appended automatically); the default is .wrangler/state beside the selected config.",
+  );
   process.exit(0);
 }
 if (!values.feed || !/^[a-f0-9]{16}$/.test(values.feed)) {
@@ -38,18 +45,7 @@ if (values.remote && values.config === "config/search-index.local.jsonc") {
 }
 const configPath = resolve(root, values.config);
 if (values.remote) {
-  const config = unstable_readConfig({ config: configPath });
-  const source = config.r2_buckets.find((binding) => binding.binding === "RSS_DATA");
-  const index = config.d1_databases.find((binding) => binding.binding === "ARTICLE_SEARCH");
-  if (
-    !source?.remote ||
-    !index?.remote ||
-    !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(index.database_id ?? "")
-  ) {
-    throw new Error(
-      "Remote maintenance needs explicit remote:true bindings and a real operator-approved D1 database ID",
-    );
-  }
+  requireRemoteSearchBindings(unstable_readConfig({ config: configPath }));
 }
 const result = await build({
   entryPoints: [resolve(root, "src/lib/article-search-index.ts")],
@@ -62,11 +58,16 @@ const result = await build({
 });
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(result.outputFiles[0].contents).toString("base64")}`;
 const { rebuildFeedSearchIndexStep } = await import(moduleUrl);
-const proxy = await getPlatformProxy({
-  configPath,
-  remoteBindings: values.remote,
-  ...(values["persist-to"] ? { persist: { path: resolve(values["persist-to"]) } } : {}),
+const proxyOptions = getMaintenanceProxyOptions(configPath, {
+  persistTo: values["persist-to"],
+  remote: values.remote,
 });
+console.log(
+  values.remote
+    ? "Initializing explicitly selected remote bindings"
+    : `Initializing local bindings at ${proxyOptions.persist.path}`,
+);
+const proxy = await getPlatformProxy(proxyOptions);
 try {
   const { RSS_DATA: bucket, ARTICLE_SEARCH: db } = proxy.env;
   if (!bucket || !db) throw new Error("RSS_DATA and ARTICLE_SEARCH bindings are required");

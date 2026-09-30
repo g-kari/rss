@@ -12,6 +12,8 @@ interface CacheStorage {
 type AiModelId = Parameters<Ai["run"]>[0];
 
 interface CloudflareEnv extends Partial<SearchIndexEnv> {
+  /** Operator-controlled feed-writer pause. Unset/"false" allows writes; other values pause. */
+  RSS_FEED_WRITES_PAUSED?: string;
   RSS_DATA: R2Bucket;
   /** レートリミット用 KV namespace */
   RATE_LIMIT: KVNamespace;

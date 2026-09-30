@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildIndexedSearchQuery,
   normalizeSearchArticle,
+  serializeSearchIndexArticle,
   rebuildFeedSearchIndex,
   rebuildFeedSearchIndexStep,
   ensureFeedSearchIndex,
@@ -877,5 +878,47 @@ it("merges saved matches into the top K before hydrating shared references", asy
     [saved],
   );
   expect(fixture.gets.filter((key) => key.includes("/articles/"))).toEqual([]);
+  db.sqlite.close();
+});
+
+it("keeps NUL out of the FTS candidate while preserving exact searchable fields", () => {
+  const source = article("nul", { content: "<p>before\u0000after</p>" });
+  const normalized = normalizeSearchArticle(source);
+  expect(normalized.searchText).not.toContain("\u0000");
+  expect(normalized.searchText).toContain("after");
+  expect(JSON.parse(normalized.fields).content).toBe("before\u0000after");
+});
+
+it("uses the same exact UTF-8 row-size guard for maintenance preflight and D1 writes", () => {
+  const small = serializeSearchIndexArticle(article("size"), Number.MAX_SAFE_INTEGER);
+  expect(small.bytes).toBe(new TextEncoder().encode(small.row).byteLength);
+  expect(JSON.parse(small.row)).toMatchObject({ id: "size", ordinal: Number.MAX_SAFE_INTEGER });
+  expect(() =>
+    serializeSearchIndexArticle(article("large", { content: "界".repeat(500_000) }), 0),
+  ).toThrow("row limit");
+});
+
+it("invalidates pre-fix FTS readiness and rebuilds instead of resuming an obsolete checkpoint", async () => {
+  const db = database();
+  const fixture = bucketFixture();
+  const meta = storeHead(fixture, "r1", [article("a")]);
+  await rebuildFeedSearchIndex(db.binding, fixture.bucket, meta);
+  db.sqlite
+    .prepare("UPDATE article_search_feeds SET next_object = 99, indexed_articles = 99")
+    .run();
+  db.sqlite.exec(
+    readFileSync(
+      new URL("../../migrations/article-search/0003_rebuild_nul_safe_fts.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  expect(
+    db.sqlite
+      .prepare("SELECT status, mode, next_object, indexed_articles FROM article_search_feeds")
+      .get(),
+  ).toMatchObject({ status: "failed", mode: "invalidated", next_object: 0, indexed_articles: 0 });
+  await expect(search(db.binding, fixture, "東京都")).rejects.toThrow("not ready");
+  await ensureFeedSearchIndex(db.binding, fixture.bucket, meta);
+  expect((await search(db.binding, fixture, "published:2026-09")).map((a) => a.id)).toEqual(["a"]);
   db.sqlite.close();
 });

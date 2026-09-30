@@ -424,6 +424,10 @@ src/
     recommendation.ts        # フィード推薦ロジック
     article-recommendations.ts # 既存記事・保存/いいね/閲覧から未読3件を理由付きで選ぶローカル順位付け
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
+    shared-feed-storage.ts   # 追記型記事保存・CAS commit・論理ページ・明示的な旧形式移行
+    shared-feed-constants.ts # 記事ページと既知IDの共有上限
+    article-search-index.ts # D1派生検索索引・厳密な検索・再開可能な索引構築
+    feed-write-maintenance.ts # cronとフィード変更操作の可逆な一時停止ガード
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
     collections.ts           # コレクション R2 読み書き（readCollections / writeCollections）
     concurrency.ts           # 並行度制限付き非同期マッピング（pMap / pMapSettled）
@@ -1164,6 +1168,14 @@ npm run deploy   # @opennextjs/cloudflare build && wrangler deploy
 
 `scripts/` 配下は `package.json` の `pre*` hook / `gen:*` / `upload:*` / `deploy` で呼ばれる Node.js script 群 (.mjs)。各 script の役割:
 
+- **`rebuild-article-search.mjs`** — R2を読み、D1派生索引を200記事単位で再開可能に構築する。既定はローカルのみ。
+- **`migrate-feed.mjs`** — 明示的な棚卸し/バックアップ/適用コマンド。適用時は検証・索引サイズ確認・schema migration・R2変換/再開・D1索引構築を順に実行する。
+- **`migrate-search-schema.mjs`** — 検索専用migrationのフォルダ/設定を検証し、SQL適用後のversion・column・FTS構造を確認する。通常buildや起動からは呼ばない。
+- **`check-feed-indexability.mjs`** — 検証済みバックアップに対応する1フィードを読み取り、D1と同じUTF-8行サイズ判定で変換前に超大記事を検出する。
+- **`migrate-feed-storage.mjs`** — 1フィードの容量制限付き棚卸し・private backup・checksum/ETag照合・明示的v2変換。バックアップと停止確認を必須にし、R2削除はしない。
+- **`lib/search-maintenance-options.mjs`** — Wrangler CLIと保守スクリプトのローカルstate保存先を統一し、明示的remote binding設定を検証する。
+- **`lib/feed-storage-maintenance.mjs`** — 既存記事のバックアップ検証・限定したCAS更新・変換後の内容照合・記録済みrevisionからの安全な再開を行うNode専用処理。
+- **`rebuild-article-search.test.mjs`** — 実際のローカルD1/R2でmigration・CLI・検索意味論・永続化を検証する独立smoke test。
 - **`sync-release-notes.mjs`** — `RELEASE_NOTES.md` → `src/lib/release-notes-data.ts` 自動生成。`predev` / `prebuild` / `pretypecheck` / `precheck` / `precheck:fix` の 5 hook で実行、`release-notes-data.ts` は `.gitignore` 対象 (auto-generated)。
 - **`generate-test-coverage-map.mjs`** — e2e spec ファイルから `architecture.md` の `<!-- TEST_COVERAGE_MAP_AUTO_GEN START / END -->` マーカー間にテストカバレッジマップを差し込む。`gen:coverage-map` script、現状 Phase 1 (markers + script 配置済、データ整備は Phase 2 で運用切替予定、`rule-maintenance.md § 10 派生「自動化 infrastructure markers」` 参照)。
 - **`remove-bundled-wasm.mjs`** — `build:cf` post-step。`.open-next/assets/_next/static/media/` 配下の wasm (`onnxruntime-web` の `ort-wasm-simd-threaded.jsep.wasm` 25 MiB 等) を削除して Cloudflare Workers asset 上限 (25 MiB / 件) 抵触を回避、wasm は R2 (`piper-wasm/<file>`) セルフホスト (#674 Phase 2c / closes #753)。

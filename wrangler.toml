@@ -1,5 +1,8 @@
 name = "rss-reader"
 main = "./worker.ts"
+# Preserve operator-managed variables (including maintenance pause) across deployments.
+# Explicit config/CLI values still override retained values; verify each effective deployment.
+keep_vars = true
 compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 
@@ -21,6 +24,9 @@ service = "findme-rss"
 binding = "IMAGES"
 
 [vars]
+# RSS_FEED_WRITES_PAUSED is intentionally NOT defaulted here. Unset/"false" = running;
+# "true" = paused; malformed configured values fail closed. Never add a hardcoded false
+# during a paused rollout. See docs/migrations/feed-writer-maintenance.md.
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字・未設定 = 制限なし（全員許可）
