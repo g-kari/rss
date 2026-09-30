@@ -11,7 +11,7 @@ test.beforeAll(async () => {
     stdin: {
       contents: `import { createRoot } from "react-dom/client";
         import Harness from "./e2e/helpers/slide-viewer-keyboard";
-        createRoot(document.getElementById("root")).render(<Harness />);`,
+        createRoot(document).render(<html><head /><body><Harness /></body></html>);`,
       resolveDir: process.cwd(),
       loader: "tsx",
     },
@@ -37,10 +37,11 @@ test.beforeEach(async ({ page }) => {
         });</script>`,
     }),
   );
-  await page.setContent('<div id="root"></div>');
-  await page.addStyleTag({ content: viewerStyles });
+  // Match Next App Router's document event-delegation root.
+  await page.setContent("<!doctype html><html><head></head><body></body></html>");
   await page.addScriptTag({ content: viewerScript });
   await expect(page.getByTestId("selected")).toHaveText("Current");
+  await page.addStyleTag({ content: viewerStyles });
 });
 
 test("expanded dialog isolates article keys and returns shortcuts after Escape", async ({
