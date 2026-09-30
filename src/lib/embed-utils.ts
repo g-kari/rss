@@ -1,4 +1,4 @@
-import { parseDocswellUrl } from "./docswell";
+import { parseSlideUrl } from "./slide-providers";
 import { transformDocswellScriptEmbeds } from "./html-embed-transforms";
 import { transformXTweetEmbeds } from "./html-post-processor";
 import { escapeHtml, sanitizeHtml, unescapeHtml } from "./html";
@@ -18,8 +18,8 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
     "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
   const ALLOW_AUDIO = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
 
-  const docswell = parseDocswellUrl(url);
-  if (docswell) return { embedUrl: docswell.embedUrl, type: "slides", allow: "fullscreen" };
+  const slide = parseSlideUrl(url);
+  if (slide) return { embedUrl: slide.embedUrl, type: "slides", allow: "fullscreen" };
 
   // YouTube
   const videoId = extractYouTubeVideoId(url);
@@ -71,24 +71,6 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
       embedUrl: `https://player.twitch.tv/?channel=${twitchCh[1]}&parent=rss.0g0.xyz`,
       type: "video",
       allow: "autoplay; fullscreen",
-    };
-
-  // SpeakerDeck (player URL)
-  const sd = url.match(/speakerdeck\.com\/player\/([a-f0-9]+)/);
-  if (sd)
-    return {
-      embedUrl: `https://speakerdeck.com/player/${sd[1]}`,
-      type: "video",
-      allow: "autoplay; fullscreen; web-share",
-    };
-
-  // SlideShare (embed_code URL)
-  const ss = url.match(/slideshare\.net\/slideshow\/embed_code\/(\d+)/);
-  if (ss)
-    return {
-      embedUrl: `https://www.slideshare.net/slideshow/embed_code/${ss[1]}`,
-      type: "video",
-      allow: "autoplay; fullscreen; web-share",
     };
 
   // Spotify
@@ -150,7 +132,7 @@ export function processContent(html: string, theme: "light" | "dark" = "light"):
       const fallback = `<a href="https://speakerdeck.com/player/${playerId}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">Speaker Deck で見る ↗</a>`;
       return (
         `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
-        `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
+        `<iframe${attrs.replace(/\sstyle="[^"]*"/gi, "")} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
         `</div>` +
         fallback
       );
@@ -159,12 +141,12 @@ export function processContent(html: string, theme: "light" | "dark" = "light"):
 
   // SlideShare iframe → レスポンシブラッパー
   result = result.replace(
-    /<iframe([^>]*src=["']https?:\/\/(?:www\.)?slideshare\.net\/slideshow\/embed_code\/(\d+)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
+    /<iframe([^>]*src=["']https?:\/\/(?:www\.)?slideshare\.net\/slideshow\/embed_code\/((?:key\/)?[a-zA-Z0-9]+)[^"']*["'][^>]*)>([\s\S]*?)<\/iframe>/gi,
     (_match, attrs: string, slideId: string, inner: string) => {
       const fallback = `<a href="https://www.slideshare.net/slideshow/embed_code/${slideId}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">SlideShare で見る ↗</a>`;
       return (
         `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.25em 0;border-radius:8px">` +
-        `<iframe${attrs} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
+        `<iframe${attrs.replace(/\sstyle="[^"]*"/gi, "")} style="position:absolute;top:0;left:0;width:100%;height:100%;border:0">${inner}</iframe>` +
         `</div>` +
         fallback
       );

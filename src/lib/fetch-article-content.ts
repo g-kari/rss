@@ -21,7 +21,7 @@ import {
   markdownToHtml,
 } from "@/lib/content";
 import { postProcessMarkdownContent } from "@/lib/html-post-processor";
-import { parseDocswellUrl } from "./docswell";
+import { getSlidePageProvider } from "./slide-providers";
 import { isValidFeedUrl } from "@/lib/url";
 
 const CONTENT_CACHE_TTL_SEC = 7 * 24 * 60 * 60;
@@ -61,7 +61,10 @@ export function clampContentBytes(
  *   全 POP 一斉無効化にはキー名前空間の差し替えが最も確実な手段）
  */
 export async function buildContentCacheKey(origin: string, url: string): Promise<Request> {
-  return buildCacheKey(origin, parseDocswellUrl(url) ? "content/docswell-v1" : "content/v2", url);
+  const provider = getSlidePageProvider(url);
+  const namespace =
+    provider === "docswell" ? "content/docswell-v1" : provider ? "content/slides-v1" : "content/v2";
+  return buildCacheKey(origin, namespace, url);
 }
 
 /** clip 経由のユーザースコープ Cache キー。保存したユーザー自身のみが /api/content で参照可能。 */
@@ -91,7 +94,7 @@ export async function extractContent(
   let contentSource: string = source;
 
   // 抽出結果が貧弱な場合は Cloudflare AI toMarkdown API でフォールバック
-  if (!parseDocswellUrl(url) && !isContentSufficient(content)) {
+  if (!getSlidePageProvider(url) && !isContentSufficient(content)) {
     const hostname = new URL(url).hostname;
     const md = await fetchMarkdownFromHtml(html, hostname);
     if (md) {

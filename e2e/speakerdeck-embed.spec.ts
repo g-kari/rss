@@ -18,7 +18,7 @@ test.describe("extractEmbedInfo — SpeakerDeck", () => {
       "https://speakerdeck.com/player/0c10de77615947f082ce9f8daa5c5569",
     );
     expect(info).not.toBeNull();
-    expect(info!.type).toBe("video");
+    expect(info!.type).toBe("slides");
     expect(info!.embedUrl).toBe("https://speakerdeck.com/player/0c10de77615947f082ce9f8daa5c5569");
   });
 
@@ -129,13 +129,13 @@ test.describe("extractEmbedInfo — SlideShare", () => {
   test("embed_code URL を認識する", () => {
     const info = extractEmbedInfo("https://www.slideshare.net/slideshow/embed_code/287205719");
     expect(info).not.toBeNull();
-    expect(info!.type).toBe("video");
+    expect(info!.type).toBe("slides");
     expect(info!.embedUrl).toBe("https://www.slideshare.net/slideshow/embed_code/287205719");
   });
 
-  test("SlideShare ページ URL は認識しない（embed_code のみ）", () => {
+  test("SlideShare ページ URL をスライドとして認識する", () => {
     const info = extractEmbedInfo("https://www.slideshare.net/slideshow/claude-code/287205719");
-    expect(info).toBeNull();
+    expect(info?.type).toBe("slides");
   });
 });
 
@@ -213,7 +213,7 @@ test.describe("extractMainContent — SpeakerDeck og:video 注入 (#896)", () =>
     const { content } = extractMainContent(html, "https://speakerdeck.com/user/my-talk");
     expect(content).toContain(`src="${PLAYER_URL}"`);
     expect(content).toContain("iframe");
-    expect(content).toContain("padding-bottom:56.25%");
+    expect(content).toContain("aspect-ratio:16/10");
   });
 
   test("og:video がない場合は iframe を注入しない", () => {

@@ -1,4 +1,6 @@
 import { stripIframes } from "./embed-utils";
+import { parseSlideUrl } from "./slide-providers";
+import { extractProviderSlideContent } from "./slide-content";
 import { extractDocswellTranscript } from "./docswell-content";
 import { parseDocswellUrl } from "./docswell";
 import { buildDocswellEmbed } from "./html-embed-transforms";
@@ -346,6 +348,8 @@ export function extractMainContent(
   html: string,
   pageUrl: string,
 ): { content: string; source: "readability" | "regex" } {
+  const providerContent = extractProviderSlideContent(html, pageUrl);
+  if (providerContent) return { content: providerContent, source: "regex" };
   const docswell = parseDocswellUrl(pageUrl);
   const transcript = docswell ? extractDocswellTranscript(html, pageUrl) : null;
   const docswellFallback = docswell
@@ -367,9 +371,8 @@ export function extractMainContent(
   // 存在しない。代わりに <meta property="og:video"> にプレイヤー URL が含まれる (#896)。
   // any transform の前に元 HTML から og:video を抽出する。
   const ogVideo = extractOgMeta(html, "video");
-  const speakdeckPlayerUrl = /^https:\/\/speakerdeck\.com\/player\/[a-f0-9]+/i.test(ogVideo)
-    ? ogVideo
-    : null;
+  const ogSlide = parseSlideUrl(ogVideo);
+  const speakdeckPlayerUrl = ogSlide?.provider === "speakerdeck" ? ogSlide.embedUrl : null;
   const augmentWithSpeakerDeck = (content: string): string => {
     if (!speakdeckPlayerUrl) return content;
     // 既に speakerdeck player iframe が含まれていれば追加しない (冪等)
