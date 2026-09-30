@@ -7,7 +7,6 @@ import type { ArticleRecommendationOptions } from "../lib/article-recommendation
 import {
   createImmersiveBatch,
   getImmersiveCandidates,
-  immersiveExcerpt,
   safeRecommendationThumbnail,
 } from "../lib/immersive-articles";
 import { resolveThumbnail } from "../lib/article-utils";
@@ -16,9 +15,7 @@ import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import CinematicArticle from "./CinematicArticle";
-import { VisualModeSwitch } from "./VisualModeBar";
 import { useVisualMode } from "../contexts/VisualModeContext";
-import { ArticleThumbnail } from "./article-items/shared";
 
 interface Props extends ArticleRecommendationOptions {
   onClose: () => void;
@@ -28,8 +25,7 @@ interface Props extends ArticleRecommendationOptions {
   onRestore: (id: string) => void;
 }
 
-const secondaryButton =
-  "min-h-11 rounded-lg border border-border-default px-3 text-[12px] text-text-default hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-40";
+const secondaryButton = "immersive-button";
 
 export default function ImmersiveArticleMode(props: Props) {
   const {
@@ -41,7 +37,14 @@ export default function ImmersiveArticleMode(props: Props) {
     readingListIds,
     dismissedIds,
   } = props;
-  const { enabled: visualMode } = useVisualMode();
+  const { motionEnabled, motionReason, pageVisible } = useVisualMode();
+  const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const canAdvance = motionEnabled && !motionReason && pageVisible && !paused;
+  const canAdvanceRef = useSyncedRef(canAdvance);
+  useEffect(() => {
+    if (!motionEnabled || motionReason) setPaused(true);
+  }, [motionEnabled, motionReason]);
   const [batch, setBatch] = useState(() => createImmersiveBatch(props, []));
   const [served, setServed] = useState<Article[]>(() => batch.map(({ article }) => article));
   const [index, setIndex] = useState(0);
@@ -75,6 +78,7 @@ export default function ImmersiveArticleMode(props: Props) {
   );
   const moveTo = (next: number) => {
     const value = Math.max(0, Math.min(batch.length, next));
+    indexRef.current = value;
     setIndex(value);
     const element = scrollRef.current;
     // An immediate move avoids queued smooth-scroll races and honors reduced motion.
@@ -107,11 +111,16 @@ export default function ImmersiveArticleMode(props: Props) {
       aria-labelledby={titleId}
       aria-describedby={helpId}
       tabIndex={-1}
-      className="fixed inset-0 z-50 flex h-dvh flex-col overflow-hidden bg-surface-base text-text-strong outline-none"
+      className="immersive-dialog fixed inset-0 z-50 h-dvh overflow-hidden outline-none"
       onKeyDown={(event) => {
         event.stopPropagation();
         handleKeyDown(event);
         if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if ((event.target as HTMLElement).closest("select, input, textarea")) return;
+        if (event.key === " " && !(event.target as HTMLElement).closest("button")) {
+          event.preventDefault();
+          setPaused((previous) => !previous);
+        }
         if (event.key === "ArrowDown" || event.key === "PageDown") {
           event.preventDefault();
           moveTo(index + 1);
@@ -122,35 +131,58 @@ export default function ImmersiveArticleMode(props: Props) {
         }
       }}
     >
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border-default px-4 pt-[env(safe-area-inset-top)]">
-        <div className="min-w-0 py-2">
-          <h2 id={titleId} className="text-[14px] font-medium">
-            ドパガキモード
-          </h2>
-          <p id={helpId} className="text-[11px] text-text-muted">
-            縦スワイプ・↑↓で移動 / 最大10件でひと区切り
-          </p>
-        </div>
+      <header className="immersive-toolbar">
         <button type="button" onClick={onClose} className={secondaryButton}>
           一覧に戻る
         </button>
-        <VisualModeSwitch />
+        <h2 id={titleId} className="sr-only">
+          ドパガキモード
+        </h2>
+        <p id={helpId} className="sr-only">
+          自動再生・縦スワイプ・↑↓で移動。スペースで一時停止。最大10件で停止します。
+        </p>
+        <div className="immersive-playback-controls">
+          <button
+            type="button"
+            className={secondaryButton}
+            disabled={!motionEnabled || !!motionReason || !activeArticle}
+            aria-label={paused ? "自動再生を再開" : "自動再生を一時停止"}
+            aria-pressed={paused}
+            onClick={() => setPaused((previous) => !previous)}
+          >
+            {paused ? "▶ 再開" : "Ⅱ 停止"}
+          </button>
+          <label className="immersive-speed">
+            <span className="sr-only">再生速度</span>
+            <select
+              aria-label="再生速度"
+              value={speed}
+              onChange={(event) => setSpeed(Number(event.target.value))}
+            >
+              <option value={0.75}>0.75×</option>
+              <option value={1}>1×</option>
+              <option value={1.5}>1.5×</option>
+              <option value={2}>2×</option>
+            </select>
+          </label>
+        </div>
       </header>
       <div
         ref={scrollRef}
         role="region"
         aria-label="おすすめ記事を縦にスワイプ"
         tabIndex={0}
-        className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2"
+        className="immersive-scroller h-full snap-y snap-mandatory overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2"
         onScroll={(event) => {
           const element = event.currentTarget;
-          if (element.clientHeight > 0)
-            setIndex(
-              Math.max(
-                0,
-                Math.min(batch.length, Math.round(element.scrollTop / element.clientHeight)),
-              ),
+          if (element.clientHeight > 0) {
+            const next = Math.max(
+              0,
+              Math.min(batch.length, Math.round(element.scrollTop / element.clientHeight)),
             );
+            indexRef.current = next;
+            setIndex(next);
+          }
         }}
       >
         {batch.map((item, itemIndex) => {
@@ -161,44 +193,31 @@ export default function ImmersiveArticleMode(props: Props) {
               key={item.article.id}
               aria-hidden={itemIndex !== index}
               inert={itemIndex !== index || undefined}
-              className="h-full snap-start snap-always overflow-y-auto"
+              className="immersive-slide h-full snap-start snap-always overflow-hidden"
             >
-              <article className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center gap-3 p-4 sm:p-6">
+              <article className="h-full w-full">
                 {article ? (
                   <>
-                    {visualMode && Math.abs(itemIndex - index) <= 1 ? (
+                    {Math.abs(itemIndex - index) <= 1 && (
                       <CinematicArticle
                         key={`${article.id}:${itemIndex === index}`}
                         article={article}
                         thumb={thumb}
                         feedTitle={item.feedTitle}
                         active={itemIndex === index}
+                        paused={paused}
+                        speed={speed}
+                        onComplete={() => {
+                          // The synchronous index ref rejects duplicate and stale media callbacks.
+                          if (itemIndex !== indexRef.current || !canAdvanceRef.current) return;
+                          moveTo(itemIndex + 1);
+                        }}
                       />
-                    ) : (
-                      <>
-                        {Math.abs(itemIndex - index) <= 1 && (
-                          <ArticleThumbnail
-                            key={`${article.id}:${thumb ?? "none"}`}
-                            thumb={thumb}
-                            className="h-[24dvh] min-h-20 max-h-72 w-full shrink-0 rounded-xl bg-surface-subtle object-contain"
-                          />
-                        )}
-                        <p className="break-words text-[11px] text-text-muted">{item.feedTitle}</p>
-                        <h3 className="break-words text-xl font-medium leading-relaxed sm:text-2xl">
-                          {article.title}
-                        </h3>
-                        <p className="break-words text-[14px] leading-relaxed text-text-default">
-                          {immersiveExcerpt(article) ||
-                            "短い説明はありません。「本文を読む」から記事を開けます。"}
-                        </p>
-                      </>
                     )}
-                    <p className="break-words text-[11px] leading-relaxed text-text-muted">
-                      {item.reasons.join(" · ")}
-                    </p>
+                    <p className="sr-only">{item.reasons.join(" · ")}</p>
                   </>
                 ) : (
-                  <p className="py-12 text-center text-[14px] text-text-muted">
+                  <p className="immersive-empty">
                     この記事はおすすめの対象から外れました。次の記事へ進めます。
                   </p>
                 )}
@@ -208,27 +227,27 @@ export default function ImmersiveArticleMode(props: Props) {
         })}
         <section
           aria-hidden={index !== batch.length}
-          className="flex h-full snap-start snap-always flex-col items-center justify-center gap-4 overflow-y-auto p-6 text-center"
+          className="immersive-end flex h-full snap-start snap-always flex-col items-center justify-center gap-4 overflow-y-auto p-6 text-center"
         >
           <h3 className="text-xl font-medium">
             {batch.length ? "ここでひと区切り" : "いま紹介できる記事はありません"}
           </h3>
-          <p className="max-w-sm text-[14px] leading-relaxed text-text-muted">
+          <p className="max-w-sm text-[16px] leading-relaxed">
             {nextAvailable
               ? "続けたいときだけ、次の最大10件を表示できます。"
               : "読み込み済みのおすすめはここまでです。一覧から記事を追加で読み込めます。"}
           </p>
-          <p className="text-[12px] text-text-muted">スワイプしただけでは既読になりません</p>
+          <p className="text-[14px]">スワイプしただけでは既読になりません</p>
         </section>
       </div>
-      <footer className="shrink-0 border-t border-border-default bg-surface-elevated px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <div className="mx-auto flex max-w-2xl flex-col gap-2">
-          <div className="flex min-h-11 flex-wrap items-center justify-center gap-2">
+      <footer className="immersive-footer">
+        <div className="flex flex-col gap-2">
+          <div className={activeArticle ? "immersive-actions" : "immersive-batch-actions"}>
             {activeArticle && (
               <>
                 <button
                   type="button"
-                  className="min-h-11 rounded-lg bg-ink px-4 text-[13px] text-ink-text hover:bg-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2"
+                  className={secondaryButton}
                   onClick={() => {
                     onClose();
                     onSelectArticle(activeArticle);
@@ -258,6 +277,7 @@ export default function ImmersiveArticleMode(props: Props) {
                   className={secondaryButton}
                   title="この記事だけをおすすめから30日間非表示"
                   onClick={() => {
+                    setPaused(true);
                     onDismiss(activeArticle.id);
                     setLastDismissed(activeArticle.id);
                     setMessage("おすすめから外しました");
@@ -270,12 +290,14 @@ export default function ImmersiveArticleMode(props: Props) {
             {index === batch.length && nextAvailable && (
               <button
                 type="button"
-                className="min-h-11 rounded-lg bg-ink px-4 text-[13px] text-ink-text hover:bg-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2"
+                className={secondaryButton}
                 onClick={() => {
                   const next = createImmersiveBatch(props, served);
                   setBatch(next);
                   setServed((previous) => [...previous, ...next.map(({ article }) => article)]);
+                  indexRef.current = 0;
                   setIndex(0);
+                  setPaused(false);
                   setMessage("");
                   if (scrollRef.current) scrollRef.current.scrollTop = 0;
                 }}
@@ -289,7 +311,7 @@ export default function ImmersiveArticleMode(props: Props) {
               </button>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2">
+          <div className="immersive-navigation flex items-center justify-between gap-2">
             <button
               type="button"
               className={secondaryButton}
@@ -303,7 +325,7 @@ export default function ImmersiveArticleMode(props: Props) {
               role="status"
               aria-live="polite"
               aria-atomic="true"
-              className="text-center text-[12px] text-text-muted"
+              className="text-center text-[14px]"
             >
               {index < batch.length ? `${index + 1} / ${batch.length}件` : "区切り"}
             </span>
@@ -320,7 +342,7 @@ export default function ImmersiveArticleMode(props: Props) {
           {message && (
             <div
               role="status"
-              className="flex flex-wrap items-center justify-center gap-2 text-[12px] text-text-muted"
+              className="immersive-message flex flex-wrap items-center justify-center gap-2 text-[14px]"
             >
               <span>{message}</span>
               {lastDismissed && dismissedIds.has(lastDismissed) && (

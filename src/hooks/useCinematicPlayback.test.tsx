@@ -15,6 +15,7 @@ interface TimelineOptions {
 }
 
 class TimelineStub {
+  speed = 1;
   add = vi.fn(() => this);
   play = vi.fn(() => this);
   pause = vi.fn(() => this);
@@ -254,4 +255,45 @@ describe("useCinematicPlayback", () => {
     expect(anime.createTimeline).toHaveBeenCalledOnce();
     expect(timeline.play).not.toHaveBeenCalled();
   });
+});
+
+it("autoplays an opted-in session, honors persistent pause/rate and completes only once", async () => {
+  const complete = vi.fn();
+  const { result, rerender } = renderHook(
+    ({ paused, speed }) =>
+      useCinematicPlayback(imageRef, true, true, {
+        autoPlay: true,
+        paused,
+        speed,
+        onComplete: complete,
+      }),
+    { initialProps: { paused: false, speed: 1 } },
+  );
+  await waitFor(() => expect(timeline.play).toHaveBeenCalledOnce());
+  expect(result.current.playing).toBe(true);
+  rerender({ paused: true, speed: 0.75 });
+  expect(timeline.pause).toHaveBeenCalled();
+  act(() => options.onComplete());
+  expect(complete).not.toHaveBeenCalled();
+  rerender({ paused: false, speed: 1.5 });
+  expect(timeline.speed).toBe(1.5);
+  act(() => options.onComplete());
+  act(() => options.onComplete());
+  expect(complete).toHaveBeenCalledOnce();
+});
+
+it("ignores late completion after unmount and while hidden", async () => {
+  const complete = vi.fn();
+  const { rerender, unmount } = renderHook(
+    ({ visible }) =>
+      useCinematicPlayback(imageRef, true, visible, { autoPlay: true, onComplete: complete }),
+    { initialProps: { visible: true } },
+  );
+  await waitFor(() => expect(timeline.play).toHaveBeenCalledOnce());
+  rerender({ visible: false });
+  act(() => options.onComplete());
+  expect(complete).not.toHaveBeenCalled();
+  unmount();
+  act(() => options.onComplete());
+  expect(complete).not.toHaveBeenCalled();
 });

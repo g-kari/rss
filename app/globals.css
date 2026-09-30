@@ -951,33 +951,130 @@ body {
 [data-visual-mode="cinema"] .article-content img {
   border-radius: 14px;
 }
-.cinematic-article {
+
+/* Immersive mode owns a full-viewport media stage, independent of the reader skin. */
+.immersive-dialog {
+  --visual-shot-bg: oklch(0.16 0.02 285);
+  --visual-shot-text: oklch(0.99 0.006 285);
+  --visual-shot-muted: oklch(0.9 0.028 285);
+  --visual-shot-accent: oklch(0.85 0.13 170);
+  --immersive-control-bg: oklch(0.12 0.02 285 / 0.85);
+  color: var(--visual-shot-text);
+  background: var(--visual-shot-bg);
+}
+.immersive-scroller {
+  scrollbar-width: none;
+}
+.immersive-scroller::-webkit-scrollbar {
+  display: none;
+}
+.immersive-toolbar {
+  position: absolute;
+  z-index: 3;
+  inset: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 1.5rem
+    max(0.75rem, env(safe-area-inset-left));
+  background: linear-gradient(var(--immersive-control-bg), transparent);
+  pointer-events: none;
+}
+.immersive-playback-controls {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.immersive-button,
+.immersive-speed select {
+  min-height: 44px;
+  border: 1px solid oklch(1 0 0 / 0.35);
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  color: var(--visual-shot-text);
+  background: var(--immersive-control-bg);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: auto;
+}
+.immersive-button:disabled {
+  opacity: 0.45;
+}
+.immersive-button:focus-visible,
+.immersive-speed select:focus-visible {
+  outline: 2px solid var(--visual-shot-accent);
+  outline-offset: 3px;
+}
+.immersive-footer {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
+  padding: 0.75rem max(0.75rem, env(safe-area-inset-right))
+    max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  background: linear-gradient(transparent, var(--immersive-control-bg));
+  pointer-events: none;
+}
+.immersive-actions {
+  position: absolute;
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: calc(7rem + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 76px;
+}
+.immersive-actions button {
+  min-height: 56px;
+  padding-inline: 0.4rem;
+  border-radius: 18px;
+}
+.immersive-navigation {
+  min-height: 44px;
+}
+.immersive-batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.immersive-message {
+  position: fixed;
+  top: calc(5rem + env(safe-area-inset-top));
+  left: 1rem;
+  right: 1rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 12px;
+  color: var(--visual-shot-text);
+  background: var(--immersive-control-bg);
+  pointer-events: auto;
+}
+.immersive-end {
+  padding-block: 6rem 10rem;
+}
+.immersive-empty {
+  padding: 35dvh 6rem 0 1.5rem;
+  font-size: 24px;
+}
+.cinematic-article,
+.cinematic-shot {
   width: 100%;
+  height: 100%;
 }
 .cinematic-shot {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  display: flex;
-  align-items: flex-end;
-  min-height: 320px;
-  min-height: min(54dvh, 580px);
-  border-radius: 24px;
-  background:
-    radial-gradient(ellipse at 20% 0%, var(--visual-aura), transparent 65%), var(--visual-shot-bg);
+  background: var(--visual-shot-bg);
   color: var(--visual-shot-text);
-  border: 1px solid var(--color-border-default);
-  box-shadow:
-    0 6px 0 var(--color-border-subtle),
-    0 18px 50px var(--visual-aura);
 }
-.cinematic-image {
+.cinematic-image,
+.cinematic-video {
   position: absolute;
   inset: 0;
-  opacity: 0.7;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transform-origin: center;
 }
 .cinematic-shade {
@@ -985,60 +1082,46 @@ body {
   inset: 0;
   background: linear-gradient(
     180deg,
-    oklch(0.12 0.02 285 / 0.35),
-    oklch(0.12 0.02 285 / 0.12) 25%,
-    oklch(0.12 0.02 285 / 0.92) 70%
+    transparent 15%,
+    oklch(0.12 0.02 285 / 0.2) 35%,
+    oklch(0.12 0.02 285 / 0.92)
   );
-}
-.cinematic-kicker {
-  position: absolute;
-  top: 1rem;
-  left: 1.25rem;
-  right: 1.25rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  font-weight: 700;
-  color: var(--visual-shot-accent);
-}
-.cinematic-kicker span:first-child {
-  padding: 0.3rem 0.5rem;
-  border-radius: 999px;
-  background: oklch(0.12 0.02 285 / 0.9);
-}
-.cinematic-kicker span:last-child {
-  font-size: 28px;
+  pointer-events: none;
 }
 .cinematic-copy {
-  position: relative;
-  padding: 1.25rem 1.5rem 1.5rem;
-  background: oklch(0.12 0.02 285 / 0.9);
-  width: 100%;
+  position: absolute;
+  left: max(1.25rem, env(safe-area-inset-left));
+  right: calc(6.5rem + env(safe-area-inset-right));
+  bottom: calc(7rem + env(safe-area-inset-bottom));
+  max-width: 1000px;
   overflow-wrap: anywhere;
+  text-shadow: 0 2px 10px var(--visual-shot-bg);
+}
+.cinematic-feed,
+.cinematic-static {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--visual-shot-muted);
 }
 .cinematic-feed {
-  font-size: 11px;
-  color: var(--visual-shot-accent);
-  margin-bottom: 0.6rem;
-}
-.cinematic-title {
-  font-size: clamp(1.25rem, 3vw, 2.4rem);
-  line-height: 1.45;
-  font-weight: 800;
-  text-wrap: pretty;
-  letter-spacing: -0.03em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin-bottom: 0.75rem;
 }
 .cinematic-caption {
-  margin-top: 1rem;
-  font-size: clamp(0.85rem, 1.5vw, 1rem);
-  line-height: 1.85;
-  color: var(--visual-shot-muted);
+  font-size: clamp(24px, 5vw, 58px);
+  line-height: 1.35;
+  font-weight: 800;
+  text-wrap: pretty;
+  letter-spacing: -0.02em;
+}
+.cinematic-static {
+  margin-top: 0.75rem;
 }
 .cinematic-progress {
   position: absolute;
-  bottom: 0;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
   height: 3px;
@@ -1048,28 +1131,6 @@ body {
   display: block;
   height: 100%;
   background: var(--visual-shot-accent);
-}
-.cinematic-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-.cinematic-transcript {
-  color: var(--color-text-default);
-  font-size: 12px;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-.cinematic-transcript > span {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  margin-bottom: 0.3rem;
 }
 @media (prefers-reduced-motion: no-preference) {
   [data-visual-motion="full"] .visual-mode-orbit {
@@ -1123,12 +1184,6 @@ body {
   .visual-mode-bar {
     padding-inline: max(0.4rem, env(safe-area-inset-left));
     gap: 0.2rem;
-  }
-  .cinematic-copy {
-    padding-inline: 1rem;
-  }
-  .cinematic-shot {
-    border-radius: 18px;
   }
 }
 @media print {

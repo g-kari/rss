@@ -19,7 +19,7 @@ const articles: Article[] = Array.from({ length: 23 }, (_, index) => ({
   link: `https://example.com/${index}`,
   ogImage: "https://rss-preview.test/image.svg",
   summary:
-    "いつものニュースを少し違う角度から。好きなところで止めて、気になった言葉から深く読む。この記事の説明はフィードにある文章をそのまま表示しています。自動では次の記事へ進まず、未読の状態も変わりません。",
+    "いつものニュースを少し違う角度から。好きなところで止めて、気になった言葉から深く読む。この記事の説明はフィードにある文章をそのまま表示しています。表示が終わると次の記事へ進みます。未読の状態は変わりません。",
   publishedAt: new Date(now - index * 60000).toISOString(),
   createdAt: new Date(now).toISOString(),
 }));

@@ -70,16 +70,13 @@ for (const viewport of [
       await page.getByRole("button", { name: "設定", exact: true }).click();
       const dialog = page.getByRole("dialog");
       await dialog.getByRole("spinbutton").fill("22");
-      await dialog.getByRole("button", { name: "通常表示に戻す" }).click();
-      await expect(dialog.getByRole("spinbutton")).toHaveValue("22");
-      await expect(dialog.getByRole("button", { name: "ビジュアル表示" })).toBeFocused();
       await page.keyboard.press("Escape");
       expect(await list.evaluate((element) => element.scrollTop)).toBe(300);
       await chrome.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
       await page.reload();
       await expect(page.locator("html")).toHaveAttribute("data-visual-mode", "cinema");
     });
-    test("bounded presentation, normal-mode exit, keyboard, and reduced motion", async ({
+    test("full-viewport media, readable overlays, keyboard, and reduced motion", async ({
       page,
     }, testInfo) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
@@ -88,7 +85,20 @@ for (const viewport of [
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("button", { name: "一覧に戻る" })).toBeFocused();
       await expect(dialog.getByRole("button", { name: "20秒の演出を再生" })).toHaveCount(0);
-      await expect(dialog.getByText("静止表示で楽しめます")).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "自動再生を再開" })).toBeDisabled();
+      const stage = dialog.locator('.immersive-slide[aria-hidden="false"] .cinematic-shot');
+      const stageBox = await stage.boundingBox();
+      expect(stageBox!.width).toBe(viewport.width);
+      expect(stageBox!.height).toBe(viewport.height);
+      const caption = stage.locator(".cinematic-caption");
+      expect(
+        await caption.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
+      ).toBeGreaterThanOrEqual(24);
+      const captionBox = await caption.boundingBox();
+      const actionsBox = await dialog.locator(".immersive-actions").boundingBox();
+      expect(captionBox!.x + captionBox!.width).toBeLessThanOrEqual(actionsBox!.x);
+      expect(captionBox!.y).toBeGreaterThan(60);
+      expect(captionBox!.y + captionBox!.height).toBeLessThan(viewport.height - 80);
       expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
         true,
       );
@@ -111,22 +121,23 @@ for (const viewport of [
   });
 }
 
-test("one explicit 20-second shot stops without navigating or marking read", async ({ page }) => {
+test("opening immersive mode autoplays, keeps pause/speed available and advances without marking read", async ({
+  page,
+}) => {
   await page.route("https://rss-preview.test/**", (route) =>
     route.fulfill({ contentType: "text/html", body: html }),
   );
   await page.goto("https://rss-preview.test/");
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
+  // No site-wide visual-mode switch is required.
   await page.getByRole("button", { name: "ドパガキモードを開く" }).click();
-  const play = page.getByRole("button", { name: "20秒の演出を再生", exact: true });
-  await expect(play).toBeVisible();
-  await play.click();
-  await expect(page.getByRole("button", { name: "演出を一時停止" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "20秒の演出をもう一度再生" })).toBeVisible({
-    timeout: 25_000,
-  });
+  await expect(page.getByRole("button", { name: "自動再生を一時停止" })).toBeEnabled();
+  await page.getByRole("button", { name: "自動再生を一時停止" }).click();
+  await page.getByLabel("再生速度").selectOption("2");
   await expect(page.getByRole("status")).toHaveText("1 / 10件");
+  await page.getByRole("button", { name: "自動再生を再開" }).click();
+  await expect(page.getByRole("status")).toHaveText("2 / 10件", { timeout: 25_000 });
+  await expect(page.getByLabel("再生速度")).toHaveValue("2");
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("selected")).toHaveText("開いた記事: なし");
 });
