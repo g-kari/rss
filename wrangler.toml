@@ -27,6 +27,9 @@ binding = "IMAGES"
 # RSS_FEED_WRITES_PAUSED is intentionally NOT defaulted here. Unset/"false" = running;
 # "true" = paused; malformed configured values fail closed. Never add a hardcoded false
 # during a paused rollout. See docs/migrations/feed-writer-maintenance.md.
+# RSS_ARTICLE_STORAGE_V2 and RSS_ARTICLE_SEARCH_INDEX are opt-in rollout gates.
+# Leave unset until backups, writer drain, D1 schema and feed indexes are verified.
+# Unset/false/invalid keeps legacy storage and search; an existing v2 head is never downgraded.
 AUTH_BASE_URL = "https://id.0g0.xyz"
 APP_BASE_URL = "https://rss.0g0.xyz"
 # ベータアクセス制限: 許可する sub をカンマ区切りで列挙。空文字・未設定 = 制限なし（全員許可）
@@ -49,6 +52,7 @@ bucket_name = "rss-reader-data"
 # database_name = "rss-reader-search"
 # database_id = "<provisioned-database-id>"
 # migrations_dir = "migrations/article-search"
+# Binding alone does not activate D1 reads/writes: RSS_ARTICLE_SEARCH_INDEX=true is required.
 
 # レートリミット用 KV namespace
 # ⚠️ デプロイ前に以下を実行して id を取得・設定すること:

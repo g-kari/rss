@@ -65,10 +65,11 @@ gating and the checked-in configuration, not the effective production variables 
    writer, and operator job capable of modifying the feed objects. Take and verify a private
    preliminary backup before changing service availability. It must be reconciled/replaced
    with a fresh verified backup after draining if the live source changed in the meantime.
-2. Arrange for the guard-bearing version to receive `RSS_FEED_WRITES_PAUSED="true"` from
-   its first exposure to traffic or cron. Prefer deploying a compatible guard-only version
-   before introducing the v2 writer. If deploying the migration-capable version directly,
-   the pause must be present in that deployment; setting it afterward leaves a write window.
+2. First deploy the compatible guard-bearing version with `RSS_ARTICLE_STORAGE_V2` and
+   `RSS_ARTICLE_SEARCH_INDEX` unset. It keeps legacy writes/search active without requiring D1.
+   Do not enable either rollout gate yet. If deploying with conversion already enabled, the
+   pause must be effective from its first exposure to traffic or cron; setting it afterward
+   leaves a write window.
 3. Set the operator-managed variable to `"true"`, verify the effective deployed value,
    and confirm the approved rollout reaches all relevant routes/versions. A version that
    predates this guard ignores the variable. Mixed-version deployments are not quiescent.
@@ -88,7 +89,8 @@ gating and the checked-in configuration, not the effective production variables 
    the automatic master deployment, explicit v2 conversion, metadata repair, D1 backfill,
    and final head/index revision verification. Recheck the effective flag after every
    deployment, not just at the start of maintenance.
-7. Resume only after the operator approves verified migration/backfill results. Explicitly
+7. After all migration/backfill results are verified, enable `RSS_ARTICLE_STORAGE_V2=true`
+   and `RSS_ARTICLE_SEARCH_INDEX=true` while still paused. Resume only after verification. Explicitly
    change the effective flag to `"false"`; deleting it from the local config does not remove
    a retained remote `"true"`. Verify the actual deployment value and normal mutation
    behavior, then observe the next scheduled ingestion/prefetch, R2 writes, and index health.

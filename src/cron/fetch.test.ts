@@ -10,6 +10,8 @@ import {
 import * as concurrency from "../lib/concurrency";
 import * as r2 from "../lib/r2";
 import * as webPush from "../lib/web-push";
+import * as searchIndex from "../lib/article-search-index";
+import { LegacyArticleWriteConflictError } from "../lib/shared-feed-legacy";
 import type { PushConfig } from "../types";
 import {
   buildFeedUserMapCached,
@@ -85,6 +87,100 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+describe("safe article rollout defaults", () => {
+  it("does not overwrite winner metadata or index after a legacy CAS conflict", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(XML, { headers: { ETag: '"new"' } })),
+    );
+    const meta = makeMeta();
+    vi.mocked(readFeedMeta).mockResolvedValue(meta);
+    const conflict = new LegacyArticleWriteConflictError("Concurrent legacy writer");
+    vi.mocked(mergeNewArticlesWithChanges).mockRejectedValue(conflict);
+    const index = vi.spyOn(searchIndex, "ensureFeedSearchIndex");
+    await expect(fetchAndUpdateSharedFeed(env, "feed-1", true)).rejects.toBe(conflict);
+    expect(meta.etag).toBe('"old"');
+    expect(meta.title).toBe("Original");
+    expect(meta.lastFetchedAt).toBe("2026-01-01T00:00:00Z");
+    expect(meta.articleCount).toBe(0);
+    expect(writeFeedMeta).not.toHaveBeenCalled();
+    expect(index).not.toHaveBeenCalled();
+  });
+  it.each([undefined, "false", "invalid"])(
+    "keeps legacy writes and does not use an attached D1 with gate %s",
+    async (flag) => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(XML)));
+      const index = vi.spyOn(searchIndex, "ensureFeedSearchIndex");
+      const prepare = vi.fn(() => {
+        throw new Error("Unprepared D1 must not be accessed");
+      });
+      await fetchAndUpdateSharedFeed(
+        {
+          ...env,
+          ARTICLE_SEARCH: { prepare } as unknown as D1Database,
+          RSS_ARTICLE_STORAGE_V2: flag,
+          RSS_ARTICLE_SEARCH_INDEX: flag,
+        },
+        "feed-1",
+        true,
+      );
+      expect(mergeNewArticlesWithChanges).toHaveBeenCalledWith(
+        env.RSS_DATA,
+        expect.any(Object),
+        expect.any(Array),
+        [],
+        { allowLegacyMigration: false },
+      );
+      expect(index).not.toHaveBeenCalled();
+      expect(prepare).not.toHaveBeenCalled();
+    },
+  );
+
+  it("enables storage and index updates only after explicit activation", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(XML)));
+    const index = vi.spyOn(searchIndex, "ensureFeedSearchIndex").mockResolvedValue(undefined);
+    const db = {} as D1Database;
+    await fetchAndUpdateSharedFeed(
+      {
+        ...env,
+        ARTICLE_SEARCH: db,
+        RSS_ARTICLE_STORAGE_V2: "true",
+        RSS_ARTICLE_SEARCH_INDEX: "true",
+      },
+      "feed-1",
+      true,
+    );
+    expect(mergeNewArticlesWithChanges).toHaveBeenCalledWith(
+      env.RSS_DATA,
+      expect.any(Object),
+      expect.any(Array),
+      [],
+      { allowLegacyMigration: true },
+    );
+    expect(index).toHaveBeenCalledWith(db, env.RSS_DATA, expect.any(Object), undefined);
+  });
+
+  it("keeps the writer pause stronger than both rollout gates", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      fetchAndUpdateSharedFeed(
+        {
+          ...env,
+          RSS_FEED_WRITES_PAUSED: "true",
+          RSS_ARTICLE_STORAGE_V2: "true",
+          RSS_ARTICLE_SEARCH_INDEX: "true",
+        },
+        "feed-1",
+        true,
+      ),
+    ).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(readFeedMeta).not.toHaveBeenCalled();
+    expect(mergeNewArticlesWithChanges).not.toHaveBeenCalled();
+  });
 });
 
 describe("bounded feed bodies", () => {

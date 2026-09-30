@@ -9,6 +9,7 @@ import type {
 import {
   iterateFeedArticleBatches,
   mergeNewArticlesWithChanges,
+  LegacyArticleWriteConflictError,
   migrateFeedArticleStorage,
   readArticlePage,
   readFeedArticleObject,
@@ -845,5 +846,250 @@ describe("explicit shared feed storage migration", () => {
     await expect(migrateFeedArticleStorage(mock.bucket, meta)).rejects.toThrow();
     expect(mock.store.get(HEAD)).toBe(before);
     expect(mock.writes).toEqual([]);
+  });
+});
+
+describe("legacy article write rollout opt-out", () => {
+  const legacyOptions = { allowLegacyMigration: false };
+
+  it("keeps initial and subsequent overflow writes in latest/pN arrays with no v2 commit", async () => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    const original = Array.from({ length: 700 }, (_, i) => article(i));
+    const initial = await mergeNewArticlesWithChanges(
+      mock.bucket,
+      meta,
+      original,
+      [],
+      legacyOptions,
+    );
+    expect(initial).toEqual({ newArticles: original });
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toEqual(original.slice(0, 500));
+    expect(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body)).toEqual(
+      original.slice(500),
+    );
+    expect(meta).toMatchObject({ articleCount: 700, pageCount: 1 });
+    const added = await mergeNewArticlesWithChanges(
+      mock.bucket,
+      meta,
+      [article(-1)],
+      [],
+      legacyOptions,
+    );
+    expect(added).toEqual({ newArticles: [article(-1)] });
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toEqual([
+      article(-1),
+      ...original.slice(0, 499),
+    ]);
+    expect(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body)).toEqual(
+      original.slice(499),
+    );
+    expect([...mock.store.keys()].some((key) => key.includes("/segments/"))).toBe(false);
+    expect(mock.store.get(HEAD)?.customMetadata?.articleRevision).toBeUndefined();
+    expect(meta.articleRevision).toBeUndefined();
+  });
+
+  it("preserves legacy latest-only updates, createdAt and unchanged-response no-op semantics", async () => {
+    const mock = fakeBucket();
+    const original = article(0, { title: "Old", createdAt: "2020-01-01" });
+    const meta = { ...metadata(), articleCount: 1, knownIds: [original.id] };
+    mock.seed(HEAD, [original]);
+    const updated = { ...original, title: "Updated", createdAt: "2099-01-01" };
+    expect(
+      await mergeNewArticlesWithChanges(mock.bucket, meta, [updated], [], legacyOptions),
+    ).toEqual({ newArticles: [] });
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toEqual([{ ...original, title: "Updated" }]);
+    mock.writes.length = 0;
+    expect(
+      await mergeNewArticlesWithChanges(mock.bucket, meta, [updated], [], legacyOptions),
+    ).toEqual({ newArticles: [] });
+    expect(mock.writes).toEqual([]);
+  });
+
+  it("does not migrate an existing full legacy history during routine opt-out updates", async () => {
+    const mock = fakeBucket();
+    const articles = Array.from({ length: 1500 }, (_, i) => article(i));
+    const meta = {
+      ...metadata(),
+      articleCount: 1500,
+      pageCount: 2,
+      knownIds: articles.map((a) => a.id),
+    };
+    mock.seed(HEAD, articles.slice(0, 500));
+    mock.seed(`feeds/${FEED}/articles/p2.json`, articles.slice(500, 1000));
+    mock.seed(`feeds/${FEED}/articles/p3.json`, articles.slice(1000));
+    const result = await mergeNewArticlesWithChanges(
+      mock.bucket,
+      meta,
+      [article(-1)],
+      [],
+      legacyOptions,
+    );
+    expect(result).toEqual({ newArticles: [article(-1)] });
+    expect(meta).toMatchObject({ articleCount: 1501, pageCount: 3 });
+    expect(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p4.json`)!.body)).toEqual([
+      article(1499),
+    ]);
+    expect(mock.writes.every((key) => key === HEAD || /\/p\d+\.json$/.test(key))).toBe(true);
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toBeInstanceOf(Array);
+  });
+
+  it("keeps an actual v2 head on the v2 path even with opt-out and stale legacy metadata", async () => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    await commit(
+      mock.bucket,
+      meta,
+      Array.from({ length: 501 }, (_, i) => article(i)),
+    );
+    const stale = metadata();
+    const result = await mergeNewArticlesWithChanges(
+      mock.bucket,
+      stale,
+      [article(-1)],
+      [],
+      legacyOptions,
+    );
+    expect(result.commit?.requiresRebuild).toBe(false);
+    expect(JSON.parse(mock.store.get(HEAD)!.body).version).toBe(2);
+    expect(stale.articleRevision).toBe(result.commit?.revision);
+    expect(stale.articleCount).toBe(502);
+    expect(await allArticles(mock.bucket)).toHaveLength(502);
+  });
+
+  it("fails a repeatedly conflicting legacy update before any historical write or metadata change", async () => {
+    const mock = fakeBucket();
+    const articles = Array.from({ length: 500 }, (_, i) => article(i));
+    const meta = { ...metadata(), articleCount: 500, knownIds: articles.map((a) => a.id) };
+    mock.seed(HEAD, articles);
+    const before = structuredClone(meta);
+    const head = mock.store.get(HEAD);
+    mock.rejectHeadPuts(3);
+    await expect(
+      mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
+    ).rejects.toThrow("changed concurrently");
+    expect(mock.store.get(HEAD)).toBe(head);
+    expect(meta).toEqual(before);
+    expect(mock.writes).toEqual([HEAD]);
+  });
+
+  it.each([false, true])(
+    "fails a competing legacy CAS without duplicate articles, notifications or metadata writes (different ID: %s)",
+    async (differentId) => {
+      const mock = fakeBucket();
+      const articles = Array.from({ length: 500 }, (_, i) => article(i));
+      const meta = { ...metadata(), articleCount: 500, knownIds: articles.map((a) => a.id) };
+      const before = structuredClone(meta);
+      const winnerMeta = structuredClone(meta);
+      mock.seed(HEAD, articles);
+      const winnerArticle = article(differentId ? -2 : -1);
+      let winnerNew: Article[] = [];
+      mock.beforeHeadPut(async () => {
+        const winner = await mergeNewArticlesWithChanges(
+          mock.bucket,
+          winnerMeta,
+          [winnerArticle],
+          [],
+          legacyOptions,
+        );
+        winnerNew = winner.newArticles;
+      });
+      await expect(
+        mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
+      ).rejects.toBeInstanceOf(LegacyArticleWriteConflictError);
+      const stored = [
+        ...(JSON.parse(mock.store.get(HEAD)!.body) as Article[]),
+        ...(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body) as Article[]),
+      ];
+      expect(stored).toHaveLength(501);
+      expect(new Set(stored.map((a) => a.id)).size).toBe(501);
+      expect(winnerNew).toEqual([winnerArticle]);
+      expect(meta).toEqual(before);
+      expect(winnerMeta).toMatchObject({ articleCount: 501, pageCount: 1 });
+      const next = await mergeNewArticlesWithChanges(
+        mock.bucket,
+        winnerMeta,
+        [article(-1)],
+        [],
+        legacyOptions,
+      );
+      expect(next.newArticles).toEqual(differentId ? [article(-1)] : []);
+      expect(winnerMeta.articleCount).toBe(differentId ? 502 : 501);
+    },
+  );
+
+  it("fails immediately while the winning legacy cascade has not yet stored its overflow", async () => {
+    const mock = fakeBucket();
+    const articles = Array.from({ length: 500 }, (_, i) => article(i));
+    const meta = { ...metadata(), articleCount: 500, knownIds: articles.map((a) => a.id) };
+    const before = structuredClone(meta);
+    mock.seed(HEAD, articles);
+    mock.beforeHeadPut(async () => {
+      mock.seed(HEAD, [article(-2), ...articles.slice(0, 499)]);
+    });
+    await expect(
+      mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
+    ).rejects.toBeInstanceOf(LegacyArticleWriteConflictError);
+    expect(meta).toEqual(before);
+    expect(mock.writes).toEqual([HEAD]);
+    expect(mock.reads.every((key) => key === HEAD)).toBe(true);
+  });
+
+  it("does not leak caller metadata mutations when a legacy archive write fails", async () => {
+    const mock = fakeBucket();
+    const articles = Array.from({ length: 500 }, (_, i) => article(i));
+    const meta = { ...metadata(), articleCount: 500, knownIds: articles.map((a) => a.id) };
+    const before = structuredClone(meta);
+    mock.seed(HEAD, articles);
+    mock.fail((key) => key.endsWith("/p2.json"));
+    await expect(
+      mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
+    ).rejects.toThrow("Injected PUT failure");
+    expect(meta).toEqual(before);
+  });
+
+  it("unions actual latest IDs with stale nonempty knownIds before deciding new notifications", async () => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 2, knownIds: [article(0).id] };
+    mock.seed(HEAD, [article(-1), article(0)]);
+    expect(
+      await mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
+    ).toEqual({ newArticles: [] });
+    expect(mock.writes).toEqual([]);
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toEqual([article(-1), article(0)]);
+  });
+
+  it("deduplicates a repeated ID inside a legacy response and emits only one new-article notification", async () => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    const final = article(0, { title: "Last response occurrence" });
+    const result = await mergeNewArticlesWithChanges(
+      mock.bucket,
+      meta,
+      [article(0), final],
+      [],
+      legacyOptions,
+    );
+    expect(result.newArticles).toEqual([final]);
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toEqual([final]);
+    expect(meta.articleCount).toBe(1);
+  });
+
+  it("cannot overwrite a concurrently migrated v2 head with a legacy array", async () => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 500 };
+    const articles = Array.from({ length: 500 }, (_, i) => article(i));
+    mock.seed(HEAD, articles);
+    mock.beforeHeadPut(async () => {
+      await migrateFeedArticleStorage(mock.bucket, { ...meta });
+    });
+    const before = structuredClone(meta);
+    await expect(
+      mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], articles, legacyOptions),
+    ).rejects.toBeInstanceOf(LegacyArticleWriteConflictError);
+    expect(JSON.parse(mock.store.get(HEAD)!.body).version).toBe(2);
+    expect(await allArticles(mock.bucket)).toEqual(articles);
+    expect(meta).toEqual(before);
+    expect(mock.store.has(`feeds/${FEED}/articles/p2.json`)).toBe(false);
   });
 });

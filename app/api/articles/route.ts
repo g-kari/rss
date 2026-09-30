@@ -11,6 +11,8 @@ import {
 } from "@/lib/shared-feed";
 import { compileSearchQuery } from "@/lib/full-text-search";
 import { searchIndexedArticles } from "@/lib/article-search-index";
+import { searchLegacyArticles } from "@/lib/legacy-article-search";
+import { isArticleSearchIndexEnabled } from "@/lib/feed-rollout";
 import {
   applyKeywordFilter,
   applyKeywordFilterMap,
@@ -77,7 +79,8 @@ export async function GET(request: NextRequest) {
       return apiError("Invalid since", 400, { code: "INVALID_SINCE" });
     }
 
-    // D1 is a rebuildable search index; never scan the R2 corpus in a request.
+    // Keep compatible R2 search until the operator explicitly enables the ready D1 index.
+    // Once enabled, index errors fail closed and never fall back to a corpus scan.
     // Empty/unparseable queries still return [] without requiring index readiness.
     if (q !== null) {
       if (!compileSearchQuery(q)) return NextResponse.json([]);
@@ -86,6 +89,18 @@ export async function GET(request: NextRequest) {
         r2Get<Article[]>(env.RSS_DATA, savedArticlesKey(session.userId), []),
         readNormalizedReadState(env.RSS_DATA, session.userId),
       ]);
+      if (!isArticleSearchIndexEnabled(env)) {
+        const matched = await searchLegacyArticles({
+          bucket: env.RSS_DATA,
+          query: q,
+          subscriptions: subs,
+          savedArticles,
+          readState,
+        });
+        return NextResponse.json(matched, {
+          headers: { "Cache-Control": "private, max-age=30" },
+        });
+      }
       try {
         const matched = await searchIndexedArticles({
           db: env.ARTICLE_SEARCH,

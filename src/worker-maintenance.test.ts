@@ -98,23 +98,33 @@ describe("Worker maintenance boundary", () => {
       expect(ctx.waitUntil).not.toHaveBeenCalled();
     },
   );
-  it("keeps normal scheduled fetch followed by waitUntil prefetch", async () => {
-    const unpausedEnv = { ...env, RSS_FEED_WRITES_PAUSED: "false" };
-    await worker.scheduled({} as ScheduledController, unpausedEnv, ctx);
-    expect(mocks.fetchAll).toHaveBeenCalledWith({
-      RSS_DATA: env.RSS_DATA,
-      RATE_LIMIT: env.RATE_LIMIT,
-      FINDME_RSS: env.FINDME_RSS,
-      ARTICLE_SEARCH: env.ARTICLE_SEARCH,
-      RSS_FEED_WRITES_PAUSED: "false",
-    });
-    expect(mocks.prefetch).toHaveBeenCalledWith(
-      { RSS_DATA: env.RSS_DATA, RATE_LIMIT: env.RATE_LIMIT },
-      ctx,
-    );
-    expect(mocks.fetchAll.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.prefetch.mock.invocationCallOrder[0],
-    );
-    expect(ctx.waitUntil).toHaveBeenCalledWith(mocks.prefetch.mock.results[0].value);
-  });
+  it.each([undefined, "false", "true"])(
+    "forwards rollout gates to scheduled fetch (%s)",
+    async (rollout) => {
+      const unpausedEnv = {
+        ...env,
+        RSS_FEED_WRITES_PAUSED: "false",
+        RSS_ARTICLE_STORAGE_V2: rollout,
+        RSS_ARTICLE_SEARCH_INDEX: rollout,
+      };
+      await worker.scheduled({} as ScheduledController, unpausedEnv, ctx);
+      expect(mocks.fetchAll).toHaveBeenCalledWith({
+        RSS_DATA: env.RSS_DATA,
+        RATE_LIMIT: env.RATE_LIMIT,
+        FINDME_RSS: env.FINDME_RSS,
+        ARTICLE_SEARCH: env.ARTICLE_SEARCH,
+        RSS_FEED_WRITES_PAUSED: "false",
+        RSS_ARTICLE_STORAGE_V2: rollout,
+        RSS_ARTICLE_SEARCH_INDEX: rollout,
+      });
+      expect(mocks.prefetch).toHaveBeenCalledWith(
+        { RSS_DATA: env.RSS_DATA, RATE_LIMIT: env.RATE_LIMIT },
+        ctx,
+      );
+      expect(mocks.fetchAll.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.prefetch.mock.invocationCallOrder[0],
+      );
+      expect(ctx.waitUntil).toHaveBeenCalledWith(mocks.prefetch.mock.results[0].value);
+    },
+  );
 });

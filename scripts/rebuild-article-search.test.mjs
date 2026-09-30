@@ -616,12 +616,12 @@ test(
       await proxy.dispose();
     }
     const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
-    assert.ok(pkg.scripts.deploy.includes("migrate:search:remote"));
+    assert.ok(pkg.scripts["deploy:search"].includes("migrate:search:remote"));
     assert.ok(
-      pkg.scripts.deploy.indexOf("migrate:search:remote") <
-        pkg.scripts.deploy.indexOf("wrangler deploy"),
+      pkg.scripts["deploy:search"].indexOf("migrate:search:remote") <
+        pkg.scripts["deploy:search"].indexOf("wrangler deploy"),
     );
-    for (const name of ["dev", "predev", "build", "prebuild", "build:cf", "preview"])
+    for (const name of ["dev", "predev", "build", "prebuild", "build:cf", "preview", "deploy"])
       assert.ok(!pkg.scripts[name].includes("migrate:"), `${name} must not mutate schema`);
     console.log(
       "pipeline: default inspect; bounded backup; paused/verified prerequisites; automatic schema → storage → index; 601 ready; receipt resume preserves head; prerequisite failures stop before schema; schema failure stops before storage",

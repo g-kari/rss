@@ -46,15 +46,23 @@ import {
 } from "../lib/article-search-index";
 
 import { assertFeedWritesAllowed, isFeedWritesPaused } from "../lib/feed-write-maintenance";
+import { isArticleSearchIndexEnabled, isArticleStorageV2Enabled } from "../lib/feed-rollout";
+import { LegacyArticleWriteConflictError } from "../lib/shared-feed-legacy";
 
 type FetchEnv = Pick<
   CloudflareEnv,
-  "RSS_DATA" | "FINDME_RSS" | "RATE_LIMIT" | "ARTICLE_SEARCH" | "RSS_FEED_WRITES_PAUSED"
+  | "RSS_DATA"
+  | "FINDME_RSS"
+  | "RATE_LIMIT"
+  | "ARTICLE_SEARCH"
+  | "RSS_FEED_WRITES_PAUSED"
+  | "RSS_ARTICLE_STORAGE_V2"
+  | "RSS_ARTICLE_SEARCH_INDEX"
 >;
 
 /** One D1 budget for the whole invocation, shared by all feed workers (Paid plan). */
 function withMaintenanceBudget(env: FetchEnv): FetchEnv {
-  return env.ARTICLE_SEARCH
+  return isArticleSearchIndexEnabled(env) && env.ARTICLE_SEARCH
     ? {
         ...env,
         ARTICLE_SEARCH: withSearchIndexBudget(env.ARTICLE_SEARCH, createSearchIndexBudget()),
@@ -340,7 +348,7 @@ export async function fetchAndUpdateSharedFeed(
   // fetch into a feed error or roll back committed articles. The next refresh/cron
   // repairs an absent/stale index, including 304 and upstream cooldown branches.
   const repairSearchIndex = async (commit?: FeedArticleCommit): Promise<void> => {
-    if (!env.ARTICLE_SEARCH) return;
+    if (!isArticleSearchIndexEnabled(env) || !env.ARTICLE_SEARCH) return;
     try {
       await ensureFeedSearchIndex(env.ARTICLE_SEARCH, env.RSS_DATA, meta, commit);
     } catch (error) {
@@ -405,6 +413,7 @@ export async function fetchAndUpdateSharedFeed(
           meta,
           fetched,
           existingLatest ?? [],
+          { allowLegacyMigration: isArticleStorageV2Enabled(env) },
         );
         // Keep the body permit while writing the index: full article arrays must
         // not queue behind D1 outside the memory/concurrency gate.
@@ -418,6 +427,9 @@ export async function fetchAndUpdateSharedFeed(
     );
   } catch (e) {
     Object.assign(meta, priorFetchState);
+    // The winner may still be cascading legacy archives. Do not persist our stale
+    // counts/validators over its metadata or build an index from a partial cascade.
+    if (e instanceof LegacyArticleWriteConflictError) throw e;
     if (e instanceof RateLimitError) {
       applyFeedRateLimit(meta, e);
     } else {

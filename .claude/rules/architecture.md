@@ -15,7 +15,7 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
             ├─ /api/feeds/*           — フィード CRUD + refresh (R2)
             ├─ /api/feed-groups/*     — フィードグループ CRUD + 並べ替え (R2)
             ├─ /api/collections/*    — コレクション CRUD (R2)
-            ├─ /api/articles          — 記事一覧・保存 (R2)、全文検索 (D1 派生索引 + R2 選択取得)
+            ├─ /api/articles          — 記事一覧・保存 (R2)、全文検索 (既定は互換R2検索、明示有効化後はD1派生索引 + R2選択取得)
             ├─ /api/ai/*              — Workers AI (要約・翻訳)
             ├─ /api/content           — フルテキスト取得プロキシ
             ├─ /api/engagement        — エンゲージメント記録 (R2)
@@ -42,7 +42,7 @@ Cloudflare Workers (@opennextjs/cloudflare)
 Cloudflare Bindings
   ├─ RSS_DATA (R2)              — users/{userId}/* + feeds/{feedHash}/* (共有フィード)
   ├─ NEXT_INC_CACHE_R2_BUCKET (R2) — Next.js Incremental Cache (opennextjs 管理)
-  ├─ ARTICLE_SEARCH (D1)        — #1378 の派生検索索引（本番作成・binding・backfill は別途承認が必要）
+  ├─ ARTICLE_SEARCH (D1)        — #1378 の派生検索索引（bindingだけでは無効。RSS_ARTICLE_SEARCH_INDEX=trueで有効化）
   ├─ RATE_LIMIT (KV)            — レートリミット・クールダウン管理
   ├─ AI                         — Workers AI モデル
   ├─ IMAGES                     — Cloudflare Images binding (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部利用の可能性あり、削除前要検証 / 次回 OpenNext メジャー更新時に削除可否を再評価)
@@ -1222,3 +1222,7 @@ git commit -m "compat: AGENTS.md → CLAUDE.md symlink で Codex 対応"
 2. 存在しなければ `ln -s CLAUDE.md AGENTS.md`
 3. `git add AGENTS.md && git commit` — symlink はバイナリ追加でなく参照として commit される
 4. `CLAUDE.md` の内容を維持し続けるだけでよい (メンテナンス負荷ゼロ)
+
+## 記事保存・検索の段階的切り替え
+
+`src/lib/feed-rollout.ts` が明示的な有効化を判定する。`RSS_ARTICLE_STORAGE_V2` が未設定/false/不正なら取り込みは `shared-feed-legacy.ts` の旧形式writerを使用する。すでにv2のheadは常にv2 writerで扱い、形式を戻さない。`RSS_ARTICLE_SEARCH_INDEX` が未設定/false/不正なら `legacy-article-search.ts` による従来の全文検索を使用し、D1同期もしない。両フラグは独立し、`RSS_FEED_WRITES_PAUSED` による保守停止が優先される。通常のCloudflare build/deployではSQL・データ移行をしない。

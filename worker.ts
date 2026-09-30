@@ -28,6 +28,8 @@ export default {
       RATE_LIMIT: env.RATE_LIMIT,
       ARTICLE_SEARCH: env.ARTICLE_SEARCH,
       RSS_FEED_WRITES_PAUSED: env.RSS_FEED_WRITES_PAUSED,
+      RSS_ARTICLE_STORAGE_V2: env.RSS_ARTICLE_STORAGE_V2,
+      RSS_ARTICLE_SEARCH_INDEX: env.RSS_ARTICLE_SEARCH_INDEX,
     });
     // #803 Phase 2: RSS 取得後に top-N feed の最新記事 content/OGP を prefetch
     // (subrequest 上限 1000 件を考慮して topN=50 / maxArticlesPerFeed=3 で約 300 件 / 実行)

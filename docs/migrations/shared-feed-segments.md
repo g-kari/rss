@@ -5,6 +5,8 @@ D1 index population and deployment require separate operator approval.
 
 ## Stored format and public compatibility
 
+Normal ingestion remains on the legacy writer until `RSS_ARTICLE_STORAGE_V2=true` is explicitly configured. Missing/false/invalid values do not convert old heads. Already-v2 heads continue using the v2 writer regardless of the flag, so disabling it cannot downgrade a migrated feed. The explicit maintenance conversion API is unaffected by this runtime rollout gate. Complete the backup/pause/drain procedure before enabling conversion; an ETag guard is not a replacement for stopping old writers.
+
 - `feeds/{feedHash}/articles/latest.json` is the atomic commit record. Legacy values are an
   `Article[]`; v2 values contain `version: 2`, a UUID `revision`, newest `articles`, immutable
   `segments`, `nextSegmentId`, bounded `knownIds`, and `articleLocations`.

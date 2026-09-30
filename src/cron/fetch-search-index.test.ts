@@ -21,6 +21,8 @@ const database = {} as D1Database;
 const env = {
   RSS_DATA: bucket,
   ARTICLE_SEARCH: database,
+  RSS_ARTICLE_STORAGE_V2: "true",
+  RSS_ARTICLE_SEARCH_INDEX: "true",
   RATE_LIMIT: {} as KVNamespace,
   FINDME_RSS: {} as Fetcher,
 };

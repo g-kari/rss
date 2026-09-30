@@ -1,5 +1,15 @@
 # Migration commands
 
+## Normal Cloudflare deployment stays available
+
+The default Worker configuration keeps the existing article storage and full-text search paths. UI, recommendation and ingestion-memory improvements are active immediately. A missing D1 database does not make normal search unavailable, and a D1 binding alone does not activate indexed search or its cron maintenance.
+
+- `RSS_ARTICLE_STORAGE_V2=true` opts feed ingestion into converting legacy arrays to v2 storage. Missing, false or invalid values keep legacy writes. An already-v2 head always stays v2, including after the flag is removed; this prevents a destructive format downgrade
+- `RSS_ARTICLE_SEARCH_INDEX=true` opts requests and ingestion into the prepared D1 search index. Enable it only after all relevant feed indexes are ready. Before activation, legacy full-text search remains available using bounded body concurrency; it still scans the corpus and therefore does not yet deliver the D1 I/O reduction
+- `RSS_FEED_WRITES_PAUSED` is independent and takes precedence over both flags. Do not activate storage conversion on a mixed deployment with old writers still running
+
+Leave the two rollout flags unset for the first ordinary Cloudflare Workers Builds deployment. No SQL or data migration runs during normal build/deploy. This lets the compatible code and maintenance guard land before an explicitly planned storage/index transition.
+
 ## One-command per-feed migration
 
 SQL is part of the maintenance pipeline; operators do not need to run individual SQL files. The schema wrapper validates the selected migration directory and pattern before any SQL, then verifies migration versions, required columns and FTS objects before storage conversion can proceed.
@@ -16,8 +26,8 @@ One-time preparation:
 1. Use the existing authorized Wrangler login, create the dedicated D1 database once, and copy `config/search-index.remote.example.jsonc` to a private operator configuration. Fill its verified real account/database IDs and correct R2 bucket
 2. Set the same database ID and `migrations_dir` on the production `ARTICLE_SEARCH` binding. The directory must resolve to this checkout’s `migrations/article-search`, with the default `*.sql` pattern and `d1_migrations` table. If the private configuration is outside this checkout, use an absolute migration directory; relative paths resolve beside that configuration. The retired root `migrations` directory is rejected. Provisioning and configuration are operator steps, outside this pipeline
 3. Inspect the selected feed and prepare a bounded private backup. Raise byte/object budgets explicitly if needed
-4. For the first rollout, deploy the guard-bearing code with `RSS_FEED_WRITES_PAUSED=true` already effective from that first deployment. Old code ignores this flag. Verify the deployed [writer maintenance guard](migrations/feed-writer-maintenance.md) actually blocks writes, then drain all old/in-flight writers. On subsequent runs, activate and verify the existing guard before draining. `--writers-paused` only records this operator assertion; it does not stop writers
-5. Apply the pipeline. Verify `ready: true` and representative search results before resuming writers or approving the final merge/deployment. Keep writers paused on any failure
+4. Deploy the compatible guard-bearing code with both rollout flags unset. When ready for migration, set `RSS_FEED_WRITES_PAUSED=true`, verify the deployed [writer maintenance guard](migrations/feed-writer-maintenance.md) actually blocks writes, then drain all old/in-flight writers. Old code ignores the pause flag. `--writers-paused` only records this operator assertion; it does not stop writers
+5. Apply the pipeline. Verify `ready: true` and representative search results for every relevant feed. Set both rollout flags to `true` only after this verification, then resume writers. Keep writers paused on any failure
 
 ```sh
 # Inspect only; no R2 or D1 writes
@@ -34,6 +44,8 @@ The apply sequence is strictly `verify backup → check indexability → validat
 
 ## Explicit deployment integration
 
-`npm run deploy` runs `build:cf`, then `migrate:search:remote`, then the actual `wrangler deploy`; a schema failure stops deployment. Ordinary startup, `dev`, `build`, `build:cf` and `preview` do not apply schema. Deployment schema application does not replace the per-feed backup/storage/backfill workflow above.
+`npm run deploy` preserves the normal build-and-deploy flow and does not apply schema. Ordinary startup, `dev`, `build`, `build:cf` and `preview` also do not migrate. The opt-in `npm run deploy:search` command applies and verifies the existing `ARTICLE_SEARCH` schema, then runs `wrangler deploy`; use it as a Cloudflare Workers Builds **Deploy command**, after its normal `build:cf` Build command, only once that dedicated binding exists. A schema failure stops that opt-in deployment. It does not provision D1 or run the per-feed backup/storage/backfill workflow.
 
-The Cloudflare project's actual configured deployment command has **not been verified**. Automatic deployment must use `npm run deploy`, or explicitly run the schema step before its existing deployment command. Merely running `build:cf` does not run migrations. Confirm the real deployment configuration rather than assuming this repository change updates it.
+The Cloudflare project's actual configured commands and token permissions have **not been verified**. Changing package scripts does not change its dashboard settings. [Workers Builds' documented default token](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#api-token) includes Workers, KV and R2 permissions, but not D1. D1 creation/schema automation requires an already-authorized token with the necessary D1 permission; this code does not create credentials or expand their scope.
+
+[Wrangler automatic provisioning](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning) can create an ID-less D1 binding during upload/deploy and retain the association across builds. This is not sufficient by itself for a schema-before-first-deploy command: the database must exist before SQL runs. A future provisioning-aware Cloudflare command must sequence inactive version upload, verified database resolution, schema and final deployment, and handle uncertain provisioning safely. No such account configuration or automatic initial provisioning has been performed by this change.

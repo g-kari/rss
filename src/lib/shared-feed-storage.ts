@@ -8,6 +8,8 @@ import type {
 } from "../types";
 import { compareByDateDesc } from "./article-utils";
 import { r2Put } from "./r2";
+import { LegacyArticleWriteConflictError, mergeLegacyArticles } from "./shared-feed-legacy";
+export { LegacyArticleWriteConflictError } from "./shared-feed-legacy";
 import { KNOWN_IDS_MAX, MAX_PAGES, PAGE_SIZE } from "./shared-feed-constants";
 
 interface ArticleHead {
@@ -569,18 +571,47 @@ async function publishPreparedCommit(
 }
 
 /**
- * Segment PUTs precede the conditional head commit. Failure leaves the previous snapshot fully
- * readable. Concurrent writers retry against the winner; unreferenced objects are harmless.
+ * V2 segment PUTs precede the conditional head commit. Failure leaves the previous snapshot
+ * readable; concurrent writers retry against the winner. Opting out of legacy migration uses
+ * the original array/pN compatibility writer only while the actual head remains legacy.
  */
 export async function mergeNewArticlesWithChanges(
   bucket: R2Bucket,
   meta: SharedFeedMeta,
   fetchedArticles: Article[],
   _existingLatest: Article[],
+  options: { allowLegacyMigration?: boolean } = {},
 ): Promise<{ newArticles: Article[]; commit?: FeedArticleCommit }> {
   if (fetchedArticles.length === 0) return { newArticles: [] };
   for (let attempt = 0; attempt < COMMIT_ATTEMPTS; attempt++) {
     const snapshot = await readFeedArticleSnapshot(bucket, meta.feedHash, meta);
+    // Inspect the actual object, not stale meta.articleRevision or the caller's cached latest.
+    // Existing v2 heads always stay on the v2 path, even when new migrations are disabled.
+    if (options.allowLegacyMigration === false && snapshot.legacy) {
+      const attemptMeta = { ...meta, knownIds: meta.knownIds?.slice() };
+      const newArticles = await mergeLegacyArticles(
+        bucket,
+        attemptMeta,
+        fetchedArticles,
+        snapshot.latest,
+        async (latest) => {
+          if (snapshot.exists && !snapshot.etag) {
+            throw new Error(`Missing legacy article head ETag: ${meta.feedHash}`);
+          }
+          const result = await bucket.put(latestKey(meta.feedHash), JSON.stringify(latest), {
+            onlyIf: snapshot.exists
+              ? { etagMatches: snapshot.etag }
+              : new Headers({ "If-None-Match": "*" }),
+            httpMetadata: { contentType: "application/json" },
+          });
+          if (result === null) throw new LegacyArticleWriteConflictError(meta.feedHash);
+        },
+      );
+      delete attemptMeta.articleRevision;
+      Object.assign(meta, attemptMeta);
+      delete meta.articleRevision;
+      return { newArticles };
+    }
     const prepared = await prepareCommit(bucket, meta.feedHash, snapshot, fetchedArticles);
     if (!prepared) {
       if (!snapshot.legacy) applyArticleSnapshotMetadata(meta, snapshot);

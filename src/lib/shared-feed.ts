@@ -28,6 +28,7 @@ export {
   isArticleMutated,
   mergeNewArticles,
   mergeNewArticlesWithChanges,
+  LegacyArticleWriteConflictError,
   migrateFeedArticleStorage,
 } from "./shared-feed-storage";
 

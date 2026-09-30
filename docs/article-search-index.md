@@ -10,6 +10,8 @@ Applying migration 0003 intentionally makes previously indexed feeds unready unt
 
 ## Request behavior
 
+This section applies after explicit `RSS_ARTICLE_SEARCH_INDEX=true` activation. With that flag unset, false or invalid, requests retain legacy full-text search, using dual-format R2 readers and at most four concurrent article object reads. Merely adding `ARTICLE_SEARCH` does not enable request/index-maintenance access to D1. This preserves search availability during a normal deployment before database setup and backfill. See [migration commands](migration-commands.md) for the separate rollout gates.
+
 `GET /api/articles?q=...` parses the same AST as the client search evaluator. It reads subscriptions, saved articles, read state, small feed metadata and HEAD revision metadata. It never walks every article page or segment in the request.
 
 - Normalization is shared with `full-text-search.ts`: JavaScript lowercase; content HTML stripping; raw summary; joined category/language/metadata fields; the same default-field separators
@@ -43,8 +45,8 @@ Production D1 creation, binding changes, data migration and deployment require s
 
 1. Create a dedicated D1 database and add its real ID as `ARTICLE_SEARCH` in the production Wrangler configuration
 2. Use `migrations_dir = "migrations/article-search"`. Never apply the root retired migrations to this binding
-3. Apply the search migrations and backfill existing feeds before exposing the new query route. Until a user's complete subscription set is indexed, their shared-feed search returns the explicit 503 described above
-4. Deploy the append-storage writer and index synchronization together. Refresh/cron invokes index maintenance after committed writes, including no-change repair paths
+3. Apply the search migrations and backfill existing feeds before setting `RSS_ARTICLE_SEARCH_INDEX=true`. Legacy search remains active until then. Once enabled, an incomplete subscription set returns the explicit 503 described above
+4. Activate `RSS_ARTICLE_STORAGE_V2=true` only after the storage migration safety steps. With the search flag enabled, refresh/cron invokes index maintenance after committed writes, including no-change repair paths
 5. Observe `[articles-search]` failures and index-maintenance logs; repair/rebuild affected feeds. D1 is derived and can be dropped/rebuilt without losing RSS article data
 
 For isolated local verification (the dummy database ID is local-only):

@@ -12,6 +12,10 @@ interface CacheStorage {
 type AiModelId = Parameters<Ai["run"]>[0];
 
 interface CloudflareEnv extends Partial<SearchIndexEnv> {
+  /** Opt in only after writer drain and verified storage migration preparation. */
+  RSS_ARTICLE_STORAGE_V2?: string;
+  /** Opt in only after the D1 binding, schema and all relevant feed indexes are ready. */
+  RSS_ARTICLE_SEARCH_INDEX?: string;
   /** Operator-controlled feed-writer pause. Unset/"false" allows writes; other values pause. */
   RSS_FEED_WRITES_PAUSED?: string;
   RSS_DATA: R2Bucket;
