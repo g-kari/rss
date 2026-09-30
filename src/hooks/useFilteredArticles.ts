@@ -292,9 +292,9 @@ export function useFilteredArticles({
   const readBeforeForState = effectiveUnreadOnly ? readBeforeTimestamp : null;
   const historyOrderForState = isHistoryFeed ? historyOrder : EMPTY_STR_ARRAY;
 
-  const structuralFiltered = useMemo(
-    () =>
-      filterByStructure(articles, {
+  const { structuralFiltered, recommendationSources } = useMemo(
+    () => {
+      const options: Parameters<typeof filterByStructure>[1] = {
         feedId,
         feedFilterMap,
         readIds: EMPTY_SET,
@@ -332,7 +332,26 @@ export function useFilteredArticles({
         collectionArticleIds,
         haystackCache: haystackCacheRef.current,
         contentHaystackCache: contentHaystackCacheRef.current,
-      }),
+      };
+      const structuralFiltered = filterByStructure(articles, options);
+      // The reader intentionally retains active articles across privacy/content filter
+      // changes. Recommendations must not inherit that exception. Re-check only those
+      // active articles, rather than running every expensive predicate twice for all items.
+      const activeArticles = structuralFiltered.filter((article) =>
+        options.activeIds.has(article.id),
+      );
+      if (activeArticles.length === 0)
+        return { structuralFiltered, recommendationSources: structuralFiltered };
+      const strictActiveIds = new Set(
+        filterByStructure(activeArticles, { ...options, activeIds: EMPTY_SET }).map(
+          (article) => article.id,
+        ),
+      );
+      const recommendationSources = structuralFiltered.filter(
+        (article) => !options.activeIds.has(article.id) || strictActiveIds.has(article.id),
+      );
+      return { structuralFiltered, recommendationSources };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避
     [
       articles,
@@ -503,6 +522,7 @@ export function useFilteredArticles({
   // react-state-ref.md § 派生「複数 state を return する hook は戻り値全体を useMemo で wrap」適用。
   return useMemo<FilterState>(
     () => ({
+      recommendationSources,
       filtered: deduplicated,
       visible,
       hasMore,
@@ -541,6 +561,7 @@ export function useFilteredArticles({
       duplicateInfo,
     }),
     [
+      recommendationSources,
       deduplicated,
       visible,
       hasMore,
@@ -582,6 +603,8 @@ export function useFilteredArticles({
 }
 
 export interface FilterState {
+  /** Content/view filters applied, before read-state filters; local recommendation evidence. */
+  recommendationSources?: Article[];
   filtered: Article[];
   visible: Article[];
   hasMore: boolean;

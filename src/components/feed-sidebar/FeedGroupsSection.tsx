@@ -210,7 +210,7 @@ function FeedGroupsSectionImpl({
             className={isDragOver ? "ring-2 ring-inset ring-text-muted rounded-sm" : undefined}
           >
             <div
-              className={`w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative transition-colors ${isSelected ? "bg-surface-subtle" : ""}`}
+              className={`w-full px-4 pt-1.5 pb-0.5 flex items-center gap-1 group relative transition-colors ${isSelected ? "selection-current" : ""}`}
             >
               <button
                 onClick={() => void onToggleCollapse?.(group.id, !isCollapsed)}
@@ -263,7 +263,7 @@ function FeedGroupsSectionImpl({
                   <span
                     className={`text-[11px] font-medium tracking-[0.05em] truncate ${
                       isSelected
-                        ? "text-text-strong"
+                        ? "text-selection-accent"
                         : isMuted
                           ? "text-text-faint italic"
                           : "text-text-default"

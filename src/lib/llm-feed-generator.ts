@@ -10,7 +10,12 @@
 
 import { parseHTML } from "linkedom/worker";
 import { isValidFeedUrl, isAbsoluteHttpUrl, tryParseBase } from "./url";
-import { fetchFollowSafeRedirects, RSS_USER_AGENT } from "./fetch";
+import {
+  fetchFollowSafeRedirects,
+  readResponseText,
+  FEED_MAX_BYTES,
+  RSS_USER_AGENT,
+} from "./fetch";
 import { sanitizeLogUrl } from "./log-sanitize";
 import type { SelectorConfig } from "../types";
 import type { ParsedFeed, ParsedItem } from "./xml-parser";
@@ -223,12 +228,18 @@ export async function inferFeedFromUrl(
     const headers: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
     if (cookie) headers["Cookie"] = cookie;
     const res = await fetchFollowSafeRedirects(url, { headers }, FETCH_TIMEOUT_MS);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      void res.body?.cancel().catch(() => {});
+      return null;
+    }
 
     const ct = res.headers.get("content-type") ?? "";
-    if (!ct.includes("html")) return null;
+    if (!ct.includes("html")) {
+      void res.body?.cancel().catch(() => {});
+      return null;
+    }
 
-    const html = await res.text();
+    const html = await readResponseText(res, FEED_MAX_BYTES, FETCH_TIMEOUT_MS);
     const links = extractLinkStructure(html, url);
     const selectors = await inferSelectors(links, url, ai, excludeSelectors);
     if (!selectors) return null;

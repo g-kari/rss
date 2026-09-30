@@ -15,7 +15,7 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
             ├─ /api/feeds/*           — フィード CRUD + refresh (R2)
             ├─ /api/feed-groups/*     — フィードグループ CRUD + 並べ替え (R2)
             ├─ /api/collections/*    — コレクション CRUD (R2)
-            ├─ /api/articles          — 記事一覧・保存 (R2)
+            ├─ /api/articles          — 記事一覧・保存 (R2)、全文検索 (D1 派生索引 + R2 選択取得)
             ├─ /api/ai/*              — Workers AI (要約・翻訳)
             ├─ /api/content           — フルテキスト取得プロキシ
             ├─ /api/engagement        — エンゲージメント記録 (R2)
@@ -42,6 +42,7 @@ Cloudflare Workers (@opennextjs/cloudflare)
 Cloudflare Bindings
   ├─ RSS_DATA (R2)              — users/{userId}/* + feeds/{feedHash}/* (共有フィード)
   ├─ NEXT_INC_CACHE_R2_BUCKET (R2) — Next.js Incremental Cache (opennextjs 管理)
+  ├─ ARTICLE_SEARCH (D1)        — #1378 の派生検索索引（本番作成・binding・backfill は別途承認が必要）
   ├─ RATE_LIMIT (KV)            — レートリミット・クールダウン管理
   ├─ AI                         — Workers AI モデル
   ├─ IMAGES                     — Cloudflare Images binding (OpenNext 推奨設定 `6582e81f` で導入、実コード参照 0 件 / @opennextjs/cloudflare 内部利用の可能性あり、削除前要検証 / 次回 OpenNext メジャー更新時に削除可否を再評価)
@@ -167,6 +168,7 @@ src/
     ThreePaneLayout.tsx      # 3ペイン CSS Grid レイアウトコンテナ（sidebarWidth / listWidth / listFocusMode props）
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
+    ArticleRecommendations.tsx # フィルター済み未読記事の理由付き推薦・取り消し・調整 UI（ブラウザ内）
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
     SnoozeModal.tsx          # 記事スヌーズ設定モーダル（1時間後・明日の朝・来週など）
@@ -281,6 +283,7 @@ src/
     useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
     useEngagement.ts         # エンゲージメント記録 (/api/engagement)
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
+    useRecommendationDismissals.ts # ユーザー別の記事推薦非表示（localStorage、30日・最大200件、取り消し可能）
     useOgpCache.ts           # /api/ogp fetch (OGP 画像キャッシュ)
     useImageDownload.ts      # 記事画像一括ダウンロード
     usePushNotifications.ts  # Web Push サブスクリプション管理
@@ -419,6 +422,7 @@ src/
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
+    article-recommendations.ts # 既存記事・保存/いいね/閲覧から未読3件を理由付きで選ぶローカル順位付け
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     feed-groups.ts           # フィードグループ R2 読み書き（readFeedGroups / writeFeedGroups）
     collections.ts           # コレクション R2 読み書き（readCollections / writeCollections）
@@ -522,10 +526,10 @@ src/
 1. Cloudflare Cron Trigger が 30 分毎に `scheduled` ハンドラーを起動
 2. `buildFeedUserMap(env)` が全ユーザーの `subscriptions.json` を走査して `feedHash → userId[]` マップを構築
 3. 各 feedHash に対して RSS を 1 度だけ fetch（共有フィード）
-4. `fast-xml-parser` で RSS 2.0 / Atom をパース
-5. `mergeNewArticles` で `guid` ベースの dedup → `feeds/{feedHash}/articles/latest.json` を更新（500件超えは `p{N}.json` にカスケード）
-6. `feeds/{feedHash}/meta.json` の `lastFetchedAt` / `articleCount` を更新
-7. 購読中の各ユーザーに Web Push 通知を送信
+4. RSS/XML と selector HTML は実測 10 MiB 上限。ネットワーク 20 並列に対し本文読込・解析・保存は 2 並列
+5. `mergeNewArticlesWithChanges` が immutable segment を先に保存し、最新 500 件と参照一覧を持つ v2 head を ETag CAS で commit（履歴カスケードなし）
+6. R2 成功後に `ARTICLE_SEARCH` の変更 object を同期。索引失敗は R2 を壊さず、200 記事単位の再開可能な rebuild で修復。D1 は実行全体で 800 query 上限（Paid 向け）
+7. `meta.json` を更新。記事配列や knownIds をバッチ結果に残さず、件数・タイトルだけで Web Push 通知を集計
 
 ### フィードグループ操作
 
@@ -572,13 +576,14 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 
 ```
 feeds/{feedHash}/meta.json               # SharedFeedMeta（feedHash・url・title・siteUrl・lastFetchedAt・fetchError・consecutiveErrors・lastErrorAt・rateLimitedUntil・lastModified・etag・cacheControl・nextFetchEarliestAt・articleCount・pageCount・knownIds・cssSelectors・failedSelectors・oversizeAlert）
-feeds/{feedHash}/articles/latest.json   # Article[]（最新 PAGE_SIZE=500 件、publishedAt 降順）
-feeds/{feedHash}/articles/p{N}.json     # Article[]（過去ページ、N=2〜）
+feeds/{feedHash}/articles/latest.json   # v2 head（最新 500 件・immutable segment 参照・bounded ID locator・revision）。旧 Article[] も読取可能
+feeds/{feedHash}/articles/segments/{revision}-{N}.json # immutable Article[]（通常 500 件以下）
+feeds/{feedHash}/articles/p{N}.json     # 旧 Article[]（移行後も参照・バックアップ用に保持）
 ```
 
 `feedHash` = `sha256(feedUrl).slice(0, 16)`（`computeFeedHash` で計算）。
 フィード記事データはユーザー間で共有され、複数ユーザーが同じフィードを購読しても記事フェッチは 1 度だけ行われる。
-詳細は `src/lib/shared-feed.ts` の `mergeNewArticles` / `cascadeOverflow` を参照。
+保存・論理 page=N の読み取りは `src/lib/shared-feed-storage.ts` を参照。移行・rollback は `docs/migrations/shared-feed-segments.md`、D1 の準備と再開可能な backfill は `docs/article-search-index.md` を参照。v2 head への移行後に旧 Worker へ単純 revert してはならない。
 
 ### サーバーサイドセッション（認証）
 

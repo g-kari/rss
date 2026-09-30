@@ -51,6 +51,7 @@ export const CardArticleItem = memo(function CardArticleItem({
   return (
     <div
       role="article"
+      aria-current={isSelected ? "true" : undefined}
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
@@ -64,8 +65,8 @@ export const CardArticleItem = memo(function CardArticleItem({
         isDeleting ? "animate-fade-out" : isNew ? "animate-fade-up" : ""
       } ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
-          ? "border-text-strong bg-surface-elevated"
-          : "border-border-default hover:border-text-muted bg-surface-elevated"
+          ? "selection-current border-selection-accent"
+          : "border-border-default hover:border-text-muted bg-surface-elevated hover:bg-surface-hover"
       }`}
       style={isNew ? { animationDelay: `${Math.min(index, 20) * 25}ms` } : undefined}
     >

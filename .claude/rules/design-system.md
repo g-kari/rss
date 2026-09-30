@@ -17,8 +17,10 @@ paths: "src/components/**/*.tsx,app/globals.css"
 | ---------------------- | ------------------ | ------------------ | ------------------------------------------------------------------- |
 | `surface-base`         | stone-50           | zinc-950           | メイン背景                                                          |
 | `surface-elevated`     | white              | zinc-900           | サイドバー・カード                                                  |
-| `surface-subtle`       | stone-100          | zinc-800           | 選択済みアイテム                                                    |
+| `surface-subtle`       | stone-100          | zinc-800           | 中立の補助面                                                        |
 | `surface-hover`        | stone-50           | zinc-800/50        | ホバー状態                                                          |
+| `selection-surface`    | teal-50 (#f0fdfa)  | #102c2b            | フィード・記事・タブの現在位置の背景                                |
+| `selection-accent`     | teal-700 (#0f766e) | teal-300 (#5eead4) | 現在位置の側線・下線・ナビ文字 (選択背景上 5.25:1 / 10.02:1)        |
 | `border-default`       | stone-200          | zinc-800           | 主ボーダー                                                          |
 | `border-subtle`        | stone-100          | zinc-800/50        | 薄ボーダー                                                          |
 | `text-strong`          | stone-800          | zinc-200           | 見出し・選択中                                                      |
@@ -75,7 +77,7 @@ paths: "src/components/**/*.tsx,app/globals.css"
 - `document.documentElement.dataset.theme = 'dark' | 'light'` で切り替え
 - `localStorage('rss-theme')` で永続化
 - 初回アクセス時は `prefers-color-scheme` に従う
-- `FeedSidebar` のフッターに太陽/月アイコンボタン
+- `FeedSidebar` のフッター「その他のメニュー」からライト/ダークを切り替え
 
 ## タイポグラフィ
 
@@ -137,19 +139,35 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 ## コンポーネントパターン
 
-### 選択状態の切り替え
+### interaction state の共通ルール
+
+- current / selected: `selection-current` の薄い専用背景 + 3px 側線。ナビゲーションの文字には `text-selection-accent` を付ける
+- active tab: `selection-tab-current` + `text-selection-accent`。背景に加えて 3px 下線を常時表示し、drag-over の ring と両立する
+- unread: `accent-dot` の丸いドットとタイトルの `font-medium`。現在位置とは独立したコンテンツ状態
+- read: `text-text-muted` + `font-normal`。選択中でも既読・未読の表現を残す
+- hover: 非選択時だけ中立の `surface-hover`。現在位置の側線・下線は変えない
+- focus-visible: 既存の `ring-2 ring-ink` を維持。現在位置は box-shadow を使わないため focus / 一括選択 ring と競合しない
+- disabled: native `disabled` + opacity / cursor 表現。メニュー矢印ナビゲーションでは飛ばす。通知切替のように処理中も focus を保つ項目は `aria-disabled` + callback guard を使う
+
+`selection-current` / `selection-tab-current` の側線・下線は border 疑似要素で描画し、余白を動かさない。色だけに依存せず、forced-colors でも現在位置を示せる。定義は `app/globals.css` に集約する。
 
 ```tsx
-className={`... ${isSelected ? 'bg-surface-subtle text-text-strong' : 'hover:bg-surface-hover text-text-muted hover:text-text-strong'}`}
-```
-
-### 選択記事のインジケーター (ArticleList)
-
-```tsx
+// フィード / 特殊ビュー / タグ / コレクション
 isSelected
-  ? "bg-surface-elevated shadow-[inset_2px_0_0_0_var(--color-text-strong)]"
-  : "hover:bg-surface-hover";
+  ? "selection-current text-selection-accent"
+  : "text-text-muted hover:text-text-strong hover:bg-surface-hover";
+
+// 記事一覧 (compact / list / card / magazine / gallery 共通)
+isSelected ? "selection-current" : "hover:bg-surface-hover";
 ```
+
+現在位置の ARIA 表現はナビゲーションに `aria-current="page"`、記事に `aria-current="true"`、タブに `aria-selected` を使う。「すべて」はフィード / グループ / タグ / コレクションのいずれも選択されていない場合だけ current にする。
+
+### サイドバーの階層
+
+高頻度のフィード追加・検索・ビュー切替と主要ナビゲーションを常時表示する。フッターはプロフィール / 設定 / その他に絞り、統計・通知・テーマ・Help・入出力・Feed Health・リリースノート・ログアウトは「その他のメニュー」から到達できるようにする。
+
+メニューは portal で sidebar の overflow clipping を避け、画面内の高さに収まるスクロール領域と 44px の操作行を確保する。Escape / 外側タップ / resize で閉じ、モーダルを開くアクションの前にトリガーへ focus を戻す。
 
 ### 未読バッジ (ドット)
 

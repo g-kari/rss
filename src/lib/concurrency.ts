@@ -50,3 +50,42 @@ function normalizeConcurrency(concurrency: number, itemCount: number): number {
   if (!Number.isFinite(concurrency)) return 1;
   return Math.min(Math.max(1, Math.floor(concurrency)), itemCount);
 }
+
+export interface ConcurrencyLimiter {
+  <T>(fn: () => Promise<T>): Promise<T>;
+}
+
+/** バッチ単位の FIFO リミッター。ネットワーク待ちとメモリを使う処理を別々に制限する。 */
+export function createConcurrencyLimiter(concurrency: number): ConcurrencyLimiter {
+  const limit = normalizeConcurrency(concurrency, Number.MAX_SAFE_INTEGER);
+  let active = 0;
+  const waiting: Array<() => void> = [];
+  return async <T>(fn: () => Promise<T>): Promise<T> => {
+    if (active >= limit) {
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    } else {
+      active++;
+    }
+    try {
+      return await fn();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else active--;
+    }
+  };
+}
+
+/** Rotate a bounded-maintenance batch fairly across cycles without persistent state. */
+export function rotateBatchStart<T>(items: T[], cycle: number): T[] {
+  if (items.length < 2) return [...items];
+  let stride = Math.floor(items.length / 2) + 1;
+  const gcd = (left: number, right: number): number => {
+    while (right) [left, right] = [right, left % right];
+    return left;
+  };
+  while (gcd(stride, items.length) !== 1) stride++;
+  const offset =
+    ((((Math.floor(cycle) % items.length) * stride) % items.length) + items.length) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}

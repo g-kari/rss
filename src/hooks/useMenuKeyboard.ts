@@ -22,7 +22,7 @@ export function useMenuKeyboard(
       menuRef.current.querySelectorAll<HTMLElement>(
         '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]',
       ),
-    );
+    ).filter((item) => !item.matches(':disabled, [aria-disabled="true"]'));
   }, []);
 
   // メニュー開時に最初の項目にフォーカス

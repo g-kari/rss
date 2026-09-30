@@ -16,6 +16,7 @@ export default {
       RSS_DATA: env.RSS_DATA,
       FINDME_RSS: env.FINDME_RSS,
       RATE_LIMIT: env.RATE_LIMIT,
+      ARTICLE_SEARCH: env.ARTICLE_SEARCH,
     });
     // #803 Phase 2: RSS 取得後に top-N feed の最新記事 content/OGP を prefetch
     // (subrequest 上限 1000 件を考慮して topN=50 / maxArticlesPerFeed=3 で約 300 件 / 実行)

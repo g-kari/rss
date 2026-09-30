@@ -11,7 +11,7 @@ interface CacheStorage {
 
 type AiModelId = Parameters<Ai["run"]>[0];
 
-interface CloudflareEnv {
+interface CloudflareEnv extends Partial<SearchIndexEnv> {
   RSS_DATA: R2Bucket;
   /** レートリミット用 KV namespace */
   RATE_LIMIT: KVNamespace;

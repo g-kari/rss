@@ -27,7 +27,7 @@ export default function TagsSection({ sortedTags, selectedTag, onSelectTag }: Pr
             onClick={() => onSelectTag(isSelected ? null : tag)}
             className={`w-full px-4 py-1.5 flex items-center justify-between gap-2 text-left transition-colors ${
               isSelected
-                ? "bg-surface-subtle text-text-strong"
+                ? "selection-current text-selection-accent"
                 : "hover:bg-surface-hover text-text-muted hover:text-text-strong"
             }`}
             title={tag}

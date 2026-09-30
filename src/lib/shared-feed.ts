@@ -3,8 +3,9 @@
  *
  * R2 キー構造:
  *   feeds/{feedHash}/meta.json              — SharedFeedMeta
- *   feeds/{feedHash}/articles/latest.json   — Article[] (最新 PAGE_SIZE 件)
- *   feeds/{feedHash}/articles/p{N}.json     — Article[] (古いページ、N >= 2)
+ *   feeds/{feedHash}/articles/latest.json   — v2 head (最新 PAGE_SIZE 件 + segment refs)
+ *   feeds/{feedHash}/articles/p{N}.json     — legacy Article[] (N >= 2)
+ *   feeds/{feedHash}/articles/segments/*    — immutable Article[] (最大 PAGE_SIZE 件)
  *   users/{userId}/subscriptions.json       — UserSubscription[]
  */
 
@@ -13,17 +14,24 @@ import { r2Get, r2Put, sha256Hex, feedLastFetchedKey, userKey } from "./r2";
 import { compareByDateDesc } from "./article-utils";
 import { pMap } from "./concurrency";
 
-/** 1 ページあたりの記事数 */
-export const PAGE_SIZE = 500;
+import { readLatestArticles, repairFeedArticleMetadata } from "./shared-feed-storage";
+export { PAGE_SIZE, MAX_PAGES, KNOWN_IDS_MAX } from "./shared-feed-constants";
+export {
+  readLatestArticles,
+  readArticlePage,
+  readFeedArticleSnapshot,
+  readFeedArticleRevision,
+  repairFeedArticleMetadata,
+  iterateFeedArticleBatches,
+  readArticleObject,
+  readFeedArticleObject,
+  isArticleMutated,
+  mergeNewArticles,
+  mergeNewArticlesWithChanges,
+} from "./shared-feed-storage";
 
 /** 1 ユーザーあたりの最大フィード購読数 */
 export const MAX_FEEDS_PER_USER = 1000;
-
-/** ページネーションの最大ページ数（1 フィードあたり最大 PAGE_SIZE × MAX_PAGES 件） */
-export const MAX_PAGES = 500;
-
-/** フィードの既知 ID 追跡リストの上限（重複チェック用、古いものから切り詰め） */
-export const KNOWN_IDS_MAX = 10_000;
 
 /** ユーザーに返す記事の最大件数 */
 export const MAX_USER_ARTICLES = 10_000;
@@ -51,14 +59,6 @@ export async function computeArticleId(feedUrl: string, guid: string): Promise<s
 
 function metaKey(feedHash: string): string {
   return `feeds/${feedHash}/meta.json`;
-}
-
-function latestKey(feedHash: string): string {
-  return `feeds/${feedHash}/articles/latest.json`;
-}
-
-function pageKey(feedHash: string, page: number): string {
-  return `feeds/${feedHash}/articles/p${page}.json`;
 }
 
 function subsKey(userId: string): string {
@@ -124,262 +124,9 @@ export async function getOrCreateFeedMeta(
 
 // ── 記事ページ読み書き ───────────────────────────────────────────
 
-/** latest.json を読む */
-export async function readLatestArticles(bucket: R2Bucket, feedHash: string): Promise<Article[]> {
-  return r2Get<Article[]>(bucket, latestKey(feedHash), []);
-}
-
-/** 特定ページを読む (page >= 2) */
-export async function readArticlePage(
-  bucket: R2Bucket,
-  feedHash: string,
-  page: number,
-): Promise<Article[]> {
-  return r2Get<Article[]>(bucket, pageKey(feedHash, page), []);
-}
-
 /** 日付降順ソート (publishedAt 優先、null は createdAt にフォールバック) */
 function sortByDate(articles: Article[]): Article[] {
   return [...articles].sort(compareByDateDesc);
-}
-
-/** id ベースで重複を除去する（先に出現した方を優先） */
-function deduplicateById(articles: Article[]): Article[] {
-  const seen = new Set<string>();
-  return articles.filter((a) => {
-    if (seen.has(a.id)) return false;
-    seen.add(a.id);
-    return true;
-  });
-}
-
-/**
- * カスケード中の 1 ページ分の書き込みと次ページの先読みを並列実行する。
- * 続きの overflow が残っていて次ページが maxPages 内なら PUT(N) と GET(N+1) を
- * Promise.all で並列実行し、R2 のラウンドトリップを 1 回節約する。
- */
-async function flushPageAndPrefetchNext(
-  bucket: R2Bucket,
-  feedHash: string,
-  pageNum: number,
-  page: Article[],
-  hasMoreOverflow: boolean,
-  nextPage: number,
-  maxPages: number,
-): Promise<Article[] | null> {
-  if (hasMoreOverflow && nextPage <= maxPages) {
-    const [, nextExisting] = await Promise.all([
-      r2Put(bucket, pageKey(feedHash, pageNum), page),
-      r2Get<Article[]>(bucket, pageKey(feedHash, nextPage), []),
-    ]);
-    return nextExisting;
-  }
-  await r2Put(bucket, pageKey(feedHash, pageNum), page);
-  return null;
-}
-
-/**
- * Issue #131: maxPages を超過して残った overflow を末尾ページに追記する。
- * silent drop よりも整合性を優先するため、PAGE_SIZE 超過状態で保存される。
- * 警告ログを出して運用監視できるようにする。
- */
-async function appendOverflowToFinalPage(
-  bucket: R2Bucket,
-  feedHash: string,
-  overflow: Article[],
-  maxPages: number,
-  pageSize: number,
-): Promise<void> {
-  const lastKey = pageKey(feedHash, maxPages);
-  const existing = await r2Get<Article[]>(bucket, lastKey, []);
-  const merged = sortByDate(deduplicateById([...overflow, ...existing]));
-  await r2Put(bucket, lastKey, merged);
-  console.warn(
-    `[shared-feed] feedHash=${feedHash} exceeded MAX_PAGES=${maxPages}. ` +
-      `Appended ${overflow.length} articles to p${maxPages} ` +
-      `(page now holds ${merged.length} items, exceeds PAGE_SIZE=${pageSize}).`,
-  );
-}
-
-/**
- * overflow を pageNum ページに先頭挿入し、溢れたぶんを次ページへカスケードする。
- * overflow は pageNum ページの既存コンテンツより「新しい」記事（すでにソート済み）。
- * 戻り値: 実際に書き込んだ最大ページ番号。
- *
- * Issue #131: MAX_PAGES を超過した場合、残った overflow を末尾ページ (p{MAX_PAGES}) に
- * 追記してデータ喪失を防ぐ。PAGE_SIZE を超過した状態で保存されるが、silent drop よりも
- * 整合性を優先する。警告ログで運用監視できるようにする。
- */
-export async function cascadeOverflow(
-  bucket: R2Bucket,
-  feedHash: string,
-  overflow: Article[],
-  pageNum: number,
-  options?: { maxPages?: number; pageSize?: number },
-): Promise<{ lastWrittenPage: number; oversized: boolean }> {
-  const maxPages = options?.maxPages ?? MAX_PAGES;
-  const pageSize = options?.pageSize ?? PAGE_SIZE;
-
-  let currentOverflow = overflow;
-  let currentPage = pageNum;
-  let lastWrittenPage = pageNum - 1;
-
-  // 先読み: 最初のページを取得
-  let prefetched: Article[] | null =
-    currentOverflow.length > 0 && currentPage <= maxPages
-      ? await r2Get<Article[]>(bucket, pageKey(feedHash, currentPage), [])
-      : null;
-
-  while (currentOverflow.length > 0 && currentPage <= maxPages) {
-    const existing = prefetched ?? [];
-
-    // overflow (新しい) + existing (古い) を結合して重複排除・ソート
-    const merged = sortByDate(deduplicateById([...currentOverflow, ...existing]));
-
-    if (merged.length <= pageSize) {
-      await r2Put(bucket, pageKey(feedHash, currentPage), merged);
-      lastWrittenPage = currentPage;
-      currentOverflow = [];
-      break;
-    }
-
-    const page = merged.slice(0, pageSize);
-    currentOverflow = merged.slice(pageSize);
-    const nextPage = currentPage + 1;
-
-    prefetched = await flushPageAndPrefetchNext(
-      bucket,
-      feedHash,
-      currentPage,
-      page,
-      currentOverflow.length > 0,
-      nextPage,
-      maxPages,
-    );
-
-    lastWrittenPage = currentPage;
-    currentPage = nextPage;
-  }
-
-  if (currentOverflow.length > 0) {
-    await appendOverflowToFinalPage(bucket, feedHash, currentOverflow, maxPages, pageSize);
-    return { lastWrittenPage: maxPages, oversized: true };
-  }
-
-  return { lastWrittenPage, oversized: false };
-}
-
-/**
- * 既存記事 `ex` に対して取得済み記事 `incoming` をマージすると内容が変わるかを判定する。
- * `createdAt` は mergeNewArticles 内で ex の値が保持されるため比較対象外。
- *
- * Issue #97: 実変更がない場合に R2 PUT を発行しないために使う。
- */
-export function isArticleMutated(ex: Article, incoming: Article): boolean {
-  const keys = Object.keys(incoming) as (keyof Article)[];
-  for (const key of keys) {
-    if (key === "createdAt") continue;
-    const av = incoming[key];
-    const ev = ex[key];
-    if (Array.isArray(av) || Array.isArray(ev)) {
-      if (!Array.isArray(av) || !Array.isArray(ev)) return true;
-      if (av.length !== ev.length) return true;
-      if (JSON.stringify(av) !== JSON.stringify(ev)) return true;
-    } else if (av !== ev) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * 新着記事を共有フィードストレージにマージして書き込む。
- * meta の articleCount / pageCount を更新する（呼び出し元が writeFeedMeta する）。
- * 戻り値: 真に新規だった Article の配列。
- */
-export async function mergeNewArticles(
-  bucket: R2Bucket,
-  meta: SharedFeedMeta,
-  fetchedArticles: Article[],
-  existingLatest: Article[],
-): Promise<Article[]> {
-  if (fetchedArticles.length === 0) return [];
-
-  const latest = existingLatest;
-
-  // knownIds が存在する場合はそれを重複チェックに使う（全ページ横断の既知 ID）
-  // 存在しない場合は latest の ID のみでチェック（後方互換）
-  let knownIdsSet: Set<string>;
-  if (meta.knownIds?.length) {
-    knownIdsSet = new Set(meta.knownIds);
-  } else {
-    knownIdsSet = new Set<string>();
-    for (const article of latest) knownIdsSet.add(article.id);
-  }
-
-  // 真に新規の記事（既知 ID に存在しない）
-  const brandNew = fetchedArticles.filter((a) => !knownIdsSet.has(a.id));
-
-  if (brandNew.length === 0) {
-    // タイトル・サマリー等の更新のみ（ID は同じ）
-    const existingMap = new Map<string, Article>();
-    for (const article of latest) existingMap.set(article.id, article);
-    let changed = false;
-    for (const a of fetchedArticles) {
-      const ex = existingMap.get(a.id);
-      if (ex && isArticleMutated(ex, a)) {
-        // createdAt は保持して他フィールドを上書き
-        existingMap.set(a.id, { ...ex, ...a, createdAt: ex.createdAt });
-        changed = true;
-      }
-    }
-    if (changed) {
-      await r2Put(bucket, latestKey(meta.feedHash), sortByDate([...existingMap.values()]));
-    }
-    return [];
-  }
-
-  // latest + 新規記事をマージしてソート
-  const merged = sortByDate([...latest, ...brandNew]);
-
-  if (merged.length <= PAGE_SIZE) {
-    await r2Put(bucket, latestKey(meta.feedHash), merged);
-  } else {
-    const newLatest = merged.slice(0, PAGE_SIZE);
-    const overflow = merged.slice(PAGE_SIZE);
-    await r2Put(bucket, latestKey(meta.feedHash), newLatest);
-    const { lastWrittenPage: maxPage, oversized } = await cascadeOverflow(
-      bucket,
-      meta.feedHash,
-      overflow,
-      2,
-    );
-    meta.pageCount = Math.max(meta.pageCount, maxPage - 1); // pageCount は p2以降の数
-    if (oversized) meta.oversizeAlert = true;
-  }
-
-  // knownIds を更新: latest ページ ID を末尾に置いて切り詰め時に必ず残るようにする
-  // historical / overflowNewIds / latestPageIds は互いに disjoint のため dedup 不要
-  const latestPageIds = new Set<string>();
-  for (let i = 0; i < merged.length && i < PAGE_SIZE; i++) {
-    latestPageIds.add(merged[i].id);
-  }
-  let prevKnown: string[];
-  if (meta.knownIds) {
-    prevKnown = meta.knownIds;
-  } else {
-    prevKnown = [];
-    for (const article of latest) prevKnown.push(article.id);
-  }
-  const historical = prevKnown.filter((id) => !latestPageIds.has(id));
-  const overflowNewIds: string[] = [];
-  for (const article of brandNew) {
-    if (!latestPageIds.has(article.id)) overflowNewIds.push(article.id);
-  }
-  meta.knownIds = [...historical, ...overflowNewIds, ...latestPageIds].slice(-KNOWN_IDS_MAX);
-
-  meta.articleCount = (meta.articleCount ?? 0) + brandNew.length;
-  return brandNew;
 }
 
 // ── UserSubscription CRUD ────────────────────────────────────────
@@ -437,7 +184,15 @@ export async function getUserFeeds(bucket: R2Bucket, userId: string): Promise<Fe
   const subs = await readUserSubscriptions(bucket, userId);
   if (subs.length === 0) return [];
 
-  const metas = await pMap(subs, (s) => readFeedMeta(bucket, s.feedHash), R2_CONCURRENCY);
+  const metas = await pMap(
+    subs,
+    async (s) => {
+      const meta = await readFeedMeta(bucket, s.feedHash);
+      if (meta) await repairFeedArticleMetadata(bucket, meta);
+      return meta;
+    },
+    R2_CONCURRENCY,
+  );
   const feeds: Feed[] = [];
   for (let i = 0; i < subs.length; i++) {
     const sub = subs[i];

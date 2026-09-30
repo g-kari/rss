@@ -267,6 +267,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   return (
     <div
       role="article"
+      aria-current={isSelected ? "true" : undefined}
       aria-setsize={totalCount ?? -1}
       aria-posinset={index + 1}
       aria-labelledby={`article-title-${article.id}`}
@@ -279,8 +280,8 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
         isNew ? "animate-fade-up" : ""
       } border ${isBulkSelected ? "ring-2 ring-ink ring-offset-1" : ""} ${
         isSelected
-          ? "border-text-strong bg-surface-elevated"
-          : "border-border-default hover:border-text-muted bg-surface-elevated"
+          ? "selection-current border-selection-accent"
+          : "border-border-default hover:border-text-muted bg-surface-elevated hover:bg-surface-hover"
       }`}
     >
       <span id={`article-hint-${article.id}`} className="sr-only">
@@ -296,7 +297,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
         <h3
           id={`article-title-${article.id}`}
           className={`text-[12px] leading-snug line-clamp-3 mt-0.5 ${
-            isRead ? "text-text-muted" : "text-text-strong"
+            isRead ? "text-text-muted font-normal" : "text-text-strong font-medium"
           }`}
         >
           {highlightText(article.title || "(タイトルなし)", query)}
