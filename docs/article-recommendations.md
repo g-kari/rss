@@ -4,7 +4,7 @@ The all-articles list includes a small, collapsible “いま読むおすすめ�
 
 ## Scope and ranking
 
-- Uses only articles already loaded by the reader; adds no API calls, AI requests, analytics, notifications, or server storage
+- Ranking itself uses only articles already loaded by the reader, with no AI or analytics. Optional daily notifications are a separate opt-in server feature; feedback checks notification consent before any synchronization
 - Keeps existing NSFW, keyword, muted-feed, snooze, view, group, tag, and collection constraints
 - Reader exceptions that retain an active article are explicitly excluded from recommendation evidence and candidates when that article fails content/privacy filters
 - Bulk read flags and the effective read/TTL cutoff exclude read articles; they never train interests
@@ -16,7 +16,7 @@ The all-articles list includes a small, collapsible “いま読むおすすめ�
 
 ## Feedback
 
-“興味なし” hides only that article. It does not infer dislike of a theme or change read state. The account-scoped browser record expires after 30 days and holds at most 200 unique IDs. Undo and reset are available. Invalid/future-dated records are ignored. Writes read the latest stored state, and other-tab changes are observed. Feedback is not synced to a server or other devices.
+“興味なし” hides only that article. It does not infer dislike of a theme or change read state. The account-scoped browser record expires after 30 days and holds at most 200 unique IDs. Undo and reset are available. Invalid/future-dated records are ignored. Writes read the latest stored state, and other-tab changes are observed. Feedback stays local by default. Explicitly enabling daily recommendation notifications also opts into syncing article IDs and dismissal timestamps (see [daily recommendation push](recommendation-push.md)); reading history remains local.
 
 ## Validation
 

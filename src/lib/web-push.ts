@@ -12,6 +12,7 @@
  */
 
 import type { PushSubscriptionRecord } from "../types";
+import { parseRetryAfter } from "./retry-after";
 import { DEFAULT_FETCH_TIMEOUT_MS } from "./fetch";
 import { base64urlToBytes } from "./auth";
 import { isValidHttpsUrl } from "./url";
@@ -197,12 +198,17 @@ export interface PushPayload {
   title: string;
   body: string;
   url: string;
+  tag?: string;
+  renotify?: boolean;
 }
 
 export interface PushResult {
   ok: boolean;
   /** true = 404/410 → サブスクリプションを削除すべき */
   gone: boolean;
+  /** Only explicit temporary HTTP rejections may be retried. Network errors are ambiguous. */
+  retryable?: boolean;
+  retryAfterMs?: number;
 }
 
 /**
@@ -258,7 +264,17 @@ export async function sendPush(
 
   // 404 / 410 = サブスクリプション失効
   if (res.status === 404 || res.status === 410) return { ok: false, gone: true };
-  return { ok: res.ok, gone: false };
+  const retryable = res.status === 429 || res.status >= 500;
+  return {
+    ok: res.ok,
+    gone: false,
+    ...(retryable
+      ? {
+          retryable,
+          retryAfterMs: parseRetryAfter(res.headers.get("Retry-After"), { fallbackMs: 30 * 60000 }),
+        }
+      : {}),
+  };
 }
 
 /**

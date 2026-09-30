@@ -13,18 +13,33 @@ import {
   type WorkersAiModelId,
   DEFAULT_AI_MODEL,
   LARGE_MODEL_IDS,
+  CHAT_COMPLETION_MODEL_IDS,
+  REASONING_MODEL_IDS,
 } from "./ai-models";
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 20;
 // KV eventual consistency により ~1-3 req の burst 許容あり (architecture.md § KV burst 許容仕様)
-// 実効上限 = AI_MAX_CALLS_70B + burst ≈ 5+3 = 8 (#934 案 A)。
+// 実効上限 = AI_MAX_CALLS_LARGE + burst ≈ 5+3 = 8 (#934 案 A)。
 // 旧値 3 は 8B の 20 と非対称に厳しく、burst 込み実効上限 6 + 正常リトライも阻害しうるため 5 に調整。
-// 70B は課金コストが高いため最小限の引き上げに留める (推奨レンジ 5-7 の最保守値)。
+// 70B / Qwen 3.8 / GLM 5.3 は課金コストが高いため、同じ保守的な制限を適用。
 // Cloudflare AI 課金計画に応じて調整可。
-const AI_MAX_CALLS_70B = 5;
+const AI_MAX_CALLS_LARGE = 5;
 
 type AiMessage = { role: "system" | "user"; content: string };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Accept only generated text, never reasoning/tool calls or arbitrary objects. */
+function getAiResponseText(response: unknown): string {
+  if (!isRecord(response)) return "";
+  if (typeof response.response === "string") return response.response;
+  const choice = Array.isArray(response.choices) ? response.choices[0] : undefined;
+  if (!isRecord(choice) || !isRecord(choice.message)) return "";
+  return typeof choice.message.content === "string" ? choice.message.content : "";
+}
 
 function isAiError(err: unknown): err is { status: number; headers?: Record<string, string> } {
   return (
@@ -41,8 +56,8 @@ function isAiError(err: unknown): err is { status: number; headers?: Record<stri
  *
  * ## 処理フロー
  * 1. リクエストボディから url を取得
- * 2. url ベース SHA-256 で R2 キャッシュを確認 (ヒット時は AI 呼び出しをスキップ、#698 で url ベースに変更)
- * 3. スライディングウィンドウ レートリミット（60 秒間に最大 10 回、AI 実行分のみカウント）
+ * 2. url + model ベース SHA-256 で R2 キャッシュを確認 (ヒット時は AI 呼び出しをスキップ)
+ * 3. スライディングウィンドウ レートリミット（60 秒間に通常 20 回 / 高コスト 5 回、AI 実行分のみ）
  * 4. /api/content と共有する Cloudflare Cache から記事コンテンツを取得
  * 5. Workers AI を呼び出して結果を取得
  * 6. 結果を R2 キャッシュに保存（fire-and-forget）
@@ -71,13 +86,17 @@ export async function runAiJob(
 
   const url = body.url;
 
-  const model: WorkersAiModelId = isWorkersAiModelId(body.model) ? body.model : DEFAULT_AI_MODEL;
+  if (body.model !== undefined && !isWorkersAiModelId(body.model)) {
+    return apiError("Unsupported AI model", 400, { code: "INVALID_MODEL" });
+  }
+  const model: WorkersAiModelId = body.model ?? DEFAULT_AI_MODEL;
 
-  const is70b = LARGE_MODEL_IDS.has(model);
+  const isLargeModel = LARGE_MODEL_IDS.has(model);
 
   // #698: cache key を url ベースに変更 (cross-user poisoning 対策)
   // 攻撃者は自身が制御する url の cache しか書けないため、被害ユーザーの cache を汚染できない
-  const cached = await getAiCacheByUrl(env.RSS_DATA, url, cacheType);
+  // 同じ記事でも選択モデルの結果だけを返す。生成モデル不明の旧キャッシュは再利用しない。
+  const cached = await getAiCacheByUrl(env.RSS_DATA, url, cacheType, model);
   if (cached) return NextResponse.json({ result: cached });
 
   // AI エンドポイントは課金が発生するため KV 障害時も fail-closed にする（Issue #463）
@@ -85,7 +104,7 @@ export async function runAiJob(
     env.RATE_LIMIT,
     aiRateLimitKey(session.userId),
     AI_WINDOW_MS,
-    is70b ? AI_MAX_CALLS_70B : AI_MAX_CALLS,
+    isLargeModel ? AI_MAX_CALLS_LARGE : AI_MAX_CALLS,
     { failClosed: true },
   );
   if (limited) return limited;
@@ -118,11 +137,19 @@ export async function runAiJob(
 
   let result: string;
   try {
-    const response = (await env.AI.run(model as AiModelId, {
+    const response: unknown = await env.AI.run(model as AiModelId, {
       messages: buildMessages(plain),
-      max_tokens: 2048,
-    })) as { response?: string };
-    result = response.response ?? "";
+      ...(CHAT_COMPLETION_MODEL_IDS.has(model)
+        ? { max_completion_tokens: 2048 }
+        : { max_tokens: 2048 }),
+      ...(REASONING_MODEL_IDS.has(model) ? { reasoning_effort: "low" } : {}),
+      // Gemma 4 defaults to thinking without effort levels. Article tasks need the
+      // bounded completion budget for visible text, not an intermediate reasoning trace.
+      ...(model === "@cf/google/gemma-4-26b-a4b-it"
+        ? { chat_template_kwargs: { enable_thinking: false } }
+        : {}),
+    });
+    result = getAiResponseText(response);
   } catch (err) {
     console.error("[runAiJob] AI.run failed:", err);
     if (isAiError(err)) {
@@ -154,7 +181,7 @@ export async function runAiJob(
     });
   }
 
-  if (!result) {
+  if (!result.trim()) {
     console.warn("[runAiJob] AI returned empty response, treating as AI_ERROR", { url, model });
     return apiError("AI処理中にエラーが発生しました", 502, {
       code: "AI_ERROR",
@@ -162,7 +189,7 @@ export async function runAiJob(
     });
   }
 
-  ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType));
+  ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType, model));
 
   return NextResponse.json({ result });
 }

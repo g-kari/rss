@@ -286,6 +286,33 @@ export interface PushConfig {
   timezone?: string;
   /** フィードエラー通知の有効/無効。デフォルト有効（未設定時は有効扱い） */
   errorNotificationsEnabled?: boolean;
+  /** Daily article digest is opt-in, separate from new-article notifications. */
+  recommendationEnabled?: boolean;
+  /** Local IANA-timezone wall clock, in half-hour steps (00:00–23:30). */
+  recommendationTime?: string;
+  /** Synced only after opting into daily recommendation notifications. */
+  recommendationDismissals?: RecommendationDismissal[];
+}
+
+export interface RecommendationDismissal {
+  articleId: string;
+  dismissedAt: number;
+}
+
+export interface RecommendationPushSeen {
+  articleId: string;
+  link: string;
+  at: number;
+}
+
+/** Bounded per-user outbox. Attempted means delivery is uncertain: never auto-retry. */
+export interface RecommendationPushState {
+  day: string;
+  plannedAt: number;
+  articleIds: string[];
+  endpoints: Record<string, "attempted" | "sent" | "retry" | "gone">;
+  retryAfter?: Record<string, number>;
+  seen: RecommendationPushSeen[];
 }
 
 /**

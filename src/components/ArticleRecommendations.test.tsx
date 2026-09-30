@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import ArticleRecommendations from "./ArticleRecommendations";
+import { OgpCacheProvider } from "../contexts/OgpCacheContext";
 import type { Article, Feed } from "../types";
 
 const NOW = Date.parse("2026-09-30T12:00:00Z");
@@ -98,5 +99,101 @@ describe("ArticleRecommendations", () => {
     render(<ArticleRecommendations {...props} articles={articles.slice(1)} />);
     expect(screen.queryByRole("button", { name: "記事 aを読む" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /を読む$/ })).toHaveLength(2);
+  });
+});
+
+describe("ArticleRecommendations thumbnails", () => {
+  const imageArticle = { ...articles[0], ogImage: "https://images.example/article.jpg" };
+  function only(article: Article) {
+    return { ...props, candidates: [article], articles: [article] };
+  }
+
+  it("renders the feed thumbnail through the existing image proxy with decorative semantics", () => {
+    render(<ArticleRecommendations {...only(imageArticle)} />);
+    const read = screen.getByRole("button", { name: "記事 aを読む" });
+    const image = read.querySelector("img");
+    expect(image).toHaveAttribute(
+      "src",
+      "/api/image-proxy?url=https%3A%2F%2Fimages.example%2Farticle.jpg",
+    );
+    expect(image).toHaveAttribute("alt", "");
+    expect(image).toHaveAttribute("loading", "lazy");
+    expect(image).toHaveClass("w-16", "h-12", "flex-shrink-0");
+    fireEvent.click(read);
+    expect(props.onSelectArticle).toHaveBeenCalledWith(imageArticle);
+  });
+
+  it("keeps a fixed-size placeholder for missing/unsafe images, without an empty image request", () => {
+    for (const ogImage of [
+      undefined,
+      "javascript:alert(1)",
+      "data:image/svg+xml,<svg/>",
+      "http://127.0.0.1/image.png",
+    ]) {
+      const { unmount } = render(<ArticleRecommendations {...only({ ...articles[0], ogImage })} />);
+      const read = screen.getByRole("button", { name: "記事 aを読む" });
+      expect(read.querySelector("img")).toBeNull();
+      const placeholder = read.querySelector('[aria-hidden="true"]');
+      expect(placeholder).toHaveClass("w-16", "h-12", "flex-shrink-0");
+      expect(placeholder?.querySelector("svg")).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it("replaces a failed image without shifting layout, then retries when the URL changes", () => {
+    const { rerender } = render(<ArticleRecommendations {...only(imageArticle)} />);
+    const read = screen.getByRole("button", { name: "記事 aを読む" });
+    fireEvent.error(read.querySelector("img")!);
+    expect(read.querySelector("img")).toBeNull();
+    expect(read.querySelector('[aria-hidden="true"]')).toHaveClass("w-16", "h-12");
+    rerender(
+      <ArticleRecommendations
+        {...only({ ...imageArticle, ogImage: "https://images.example/new.jpg" })}
+      />,
+    );
+    expect(read.querySelector("img")).toHaveAttribute("src", expect.stringContaining("new.jpg"));
+  });
+});
+
+describe("ArticleRecommendations thumbnail resolution", () => {
+  function withCache(article: Article, image: string) {
+    return (
+      <OgpCacheProvider
+        value={{
+          ogpCache: { [article.link!]: image },
+          getEntry: () => undefined,
+          cacheOgpEntry: () => {},
+        }}
+      >
+        <ArticleRecommendations {...props} candidates={[article]} articles={[article]} />
+      </OgpCacheProvider>
+    );
+  }
+
+  it("uses the shared OGP cache ahead of feed images and reacts to cache updates", () => {
+    const article = { ...articles[0], ogImage: "https://images.example/feed.jpg" };
+    const { rerender } = render(withCache(article, "https://images.example/ogp.jpg"));
+    const read = screen.getByRole("button", { name: "記事 aを読む" });
+    expect(read.querySelector("img")).toHaveAttribute("src", expect.stringContaining("ogp.jpg"));
+    rerender(withCache(article, "https://images.example/new-ogp.jpg"));
+    expect(read.querySelector("img")).toHaveAttribute(
+      "src",
+      expect.stringContaining("new-ogp.jpg"),
+    );
+  });
+
+  it("uses the existing YouTube fallback and does not double-wrap an already proxied URL", () => {
+    const article = { ...articles[0], link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" };
+    const { rerender } = render(withCache(article, ""));
+    const read = screen.getByRole("button", { name: "記事 aを読む" });
+    expect(read.querySelector("img")).toHaveAttribute(
+      "src",
+      expect.stringContaining("i.ytimg.com"),
+    );
+    const proxied = "/api/image-proxy?url=https%3A%2F%2Fimages.example%2Fcached.jpg";
+    rerender(withCache(article, proxied));
+    expect(read.querySelector("img")).toHaveAttribute("src", proxied);
+    rerender(withCache(article, "/api/image-proxy?url=javascript%3Aalert(1)"));
+    expect(read.querySelector("img")).toBeNull();
   });
 });

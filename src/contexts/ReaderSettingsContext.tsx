@@ -3,6 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { FontFamily, FontSize } from "../types";
 import type { Theme } from "../hooks/useThemePreference";
+import type { AiProviderPreference } from "../lib/ai-preferences";
 import type { AutoReadThreshold, WorkersAiModelId } from "../hooks/useAutoReadSettings";
 import type {
   LineHeight,
@@ -81,6 +82,9 @@ export interface ReaderSettings {
   onChangeImageDlFolder: (v: string) => void;
   imageDlFolderNsfw: string;
   onChangeImageDlFolderNsfw: (v: string) => void;
+  aiProvider: AiProviderPreference;
+  onChangeAiProvider: (v: AiProviderPreference) => void;
+  aiUserId: string | null;
   aiModel: WorkersAiModelId;
   onChangeAiModel: (v: WorkersAiModelId) => void;
 }

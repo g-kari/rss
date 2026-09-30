@@ -7,6 +7,11 @@ import {
   type ArticleRecommendationOptions,
 } from "../lib/article-recommendations";
 import { useRecommendationDismissals } from "../hooks/useRecommendationDismissals";
+import { useOgpCacheContext } from "../contexts/OgpCacheContext";
+import { resolveThumbnail } from "../lib/article-utils";
+import { isProxiedImageUrl } from "../lib/image-proxy-url";
+import { isValidPublicUrl } from "../lib/url";
+import { ArticleThumbnail } from "./article-items/shared";
 
 interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now" | "limit"> {
   userId: string;
@@ -17,6 +22,16 @@ interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now
 /** Account key also isolates disclosure/undo state when the signed-in user changes. */
 export default function ArticleRecommendations(props: Props) {
   return <RecommendationContent key={props.userId} {...props} />;
+}
+
+/** Reject unsafe or stale cache values before generating an image request. */
+function safeThumbnail(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  if (isProxiedImageUrl(value)) {
+    const original = new URLSearchParams(value.slice(value.indexOf("?") + 1)).get("url");
+    return original && isValidPublicUrl(original) ? value : undefined;
+  }
+  return isValidPublicUrl(value) ? value : undefined;
 }
 
 function RecommendationContent({
@@ -41,6 +56,7 @@ function RecommendationContent({
   const headingId = useId();
   const contentId = useId();
   const { dismissedIds, dismiss, restore, reset } = useRecommendationDismissals(userId);
+  const { ogpCache } = useOgpCacheContext();
   useEffect(() => {
     if (lastDismissed) undoRef.current?.focus();
   }, [lastDismissed]);
@@ -120,41 +136,53 @@ function RecommendationContent({
           </p>
         )}
         <ul className="px-2">
-          {recommendations.map(({ article, feedTitle, reasons }) => (
-            <li key={article.id} className="border-t border-border-subtle px-2 py-2">
-              <button
-                type="button"
-                onClick={() => onSelectArticle(article)}
-                aria-label={`${article.title}を読む`}
-                className="block min-h-11 w-full min-w-0 text-left text-[13px] font-medium leading-relaxed text-text-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <span className="line-clamp-2 break-words">{article.title}</span>
-              </button>
-              <p className="mt-0.5 truncate text-[11px] text-text-muted">{feedTitle}</p>
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 pt-1 text-[11px] leading-relaxed text-text-muted">
-                  {reasons.map((reason, index) => (
-                    <span key={reason}>
-                      {index > 0 && " · "}
-                      {reason}
-                    </span>
-                  ))}
-                </p>
+          {recommendations.map(({ article, feedTitle, reasons }) => {
+            const thumb = safeThumbnail(resolveThumbnail(article, ogpCache));
+            return (
+              <li key={article.id} className="border-t border-border-subtle px-2 py-2">
                 <button
                   type="button"
-                  aria-label={`${article.title}に興味なし`}
-                  title="この記事だけをおすすめから30日間非表示"
-                  onClick={() => {
-                    dismiss(article.id);
-                    setLastDismissed(article.id);
-                  }}
-                  className="min-h-11 flex-shrink-0 px-1 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+                  onClick={() => onSelectArticle(article)}
+                  aria-label={`${article.title}を読む`}
+                  className="flex items-start gap-2 min-h-11 w-full min-w-0 text-left text-[13px] font-medium leading-relaxed text-text-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
-                  興味なし
+                  <ArticleThumbnail
+                    key={thumb ?? "no-image"}
+                    thumb={thumb}
+                    className="w-16 h-12 flex-shrink-0 rounded object-cover bg-surface-subtle"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 break-words">{article.title}</span>
+                    <span className="mt-0.5 block truncate text-[11px] font-normal text-text-muted">
+                      {feedTitle}
+                    </span>
+                  </span>
                 </button>
-              </div>
-            </li>
-          ))}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 pt-1 text-[11px] leading-relaxed text-text-muted">
+                    {reasons.map((reason, index) => (
+                      <span key={reason}>
+                        {index > 0 && " · "}
+                        {reason}
+                      </span>
+                    ))}
+                  </p>
+                  <button
+                    type="button"
+                    aria-label={`${article.title}に興味なし`}
+                    title="この記事だけをおすすめから30日間非表示"
+                    onClick={() => {
+                      dismiss(article.id);
+                      setLastDismissed(article.id);
+                    }}
+                    className="min-h-11 flex-shrink-0 px-1 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    興味なし
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
         <div role="status" className="px-4 text-[11px] text-text-muted">
           {lastDismissed && dismissedIds.has(lastDismissed) && (

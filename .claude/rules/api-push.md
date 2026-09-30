@@ -140,7 +140,7 @@ Web Push エンドポイントの登録を解除する。5 秒クールダウン
 ```json
 // 200 OK
 {
-  "disabledFeeds": ["feedHash1", "feedHash2"],
+  "disabledFeeds": { "feedHash1": true, "feedHash2": true },
   "silentStart": "22:00",
   "silentEnd": "08:00",
   "timezone": "Asia/Tokyo"
@@ -163,7 +163,7 @@ Web Push エンドポイントの登録を解除する。5 秒クールダウン
 
 ```json
 {
-  "disabledFeeds": ["feedHash1"],
+  "disabledFeeds": { "feedHash1": true },
   "silentStart": "22:00",
   "silentEnd": "08:00",
   "timezone": "Asia/Tokyo"
@@ -189,3 +189,15 @@ Web Push エンドポイントの登録を解除する。5 秒クールダウン
 | `400`      | `INVALID_DISABLED_FEEDS`      | disabledFeeds が object でない              |
 | `400`      | `INVALID_ERROR_NOTIFICATIONS` | errorNotificationsEnabled が boolean でない |
 | `401`      | —                             | 未認証                                      |
+
+## 日次おすすめ設定（GET / PUT /api/push/config）
+
+GET は `recommendationEnabled`（既定 false）、`recommendationTime`（既定 `09:00`）、`recommendationDismissals`（有効時のみ記事 ID + dismissedAt epoch ms、無効時 []）も返す。PUT は同名フィールドを更新。時刻は `00:00`〜`23:30` の30分刻み、有効化時は有効なIANA `timezone` が必須。`recommendationDismissals` は有効時のみマージする。最大200件・30日、未来の日時や不正値は保存しない。無関係な設定は保持する。
+
+400 `INVALID_RECOMMENDATION_CONFIG` は型・時刻・有効化時timezone不正、同意なしfeedback送信。設定保存はR2 ETag CASで競合時に再読込する。
+
+## POST /api/push/recommendations/dismissals
+
+認証ユーザー自身のfeedbackを更新。リクエストは `{ add?: [{articleId: string, dismissedAt: number}], remove?: string[], reset?: boolean }`。各配列最大200件、reset後にadd/removeを適用。成功200 `{recommendationDismissals: [...]}`。400 `INVALID_RECOMMENDATION_FEEDBACK` は型/件数不正、409 `RECOMMENDATION_SYNC_DISABLED` は通知未opt-in。履歴や記事本文は受信しない。共通認証/CSRF検証を適用。
+
+通知の推薦フィールドを含むPUT、および新規feedback POSTは `X-RSS-Account-Id` ヘッダー（画面のUserProfile.id）が必須。サーバー自身のprofile.jsonで検証し、不一致/欠損は409 `ACCOUNT_CHANGED`。GETと既存設定PUTもヘッダーがあれば検証し、認証リトライで別アカウントへfeedbackが混入することを防ぐ。

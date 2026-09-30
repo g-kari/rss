@@ -208,11 +208,9 @@ self.addEventListener("message", (e) => {
 
 /** push イベント: サーバーからの通知を受け取り OS 通知を表示する */
 self.addEventListener("push", (e) => {
-  if (!e.data) return;
-
   let data = { title: "RSS Reader", body: "新着記事があります", url: "/" };
   try {
-    data = { ...data, ...e.data.json() };
+    data = { ...data, ...e.data?.json() };
   } catch {
     // パース失敗時はデフォルト値を使用
   }
@@ -222,8 +220,8 @@ self.addEventListener("push", (e) => {
       body: data.body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
-      tag: "rss-new-articles",
-      renotify: true,
+      tag: typeof data.tag === "string" && data.tag.trim() ? data.tag : "rss-new-articles",
+      renotify: typeof data.renotify === "boolean" ? data.renotify : true,
       data: { url: data.url },
     }),
   );
@@ -238,7 +236,10 @@ self.addEventListener("notificationclick", (e) => {
   let url = "/";
   try {
     const parsed = new URL(rawUrl, self.location.origin);
-    if (parsed.origin === self.location.origin) {
+    if (
+      parsed.origin === self.location.origin &&
+      (parsed.protocol === "https:" || parsed.protocol === "http:")
+    ) {
       url = parsed.href;
     }
   } catch {
@@ -246,17 +247,26 @@ self.addEventListener("notificationclick", (e) => {
   }
 
   e.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        try {
-          if (new URL(client.url).origin === self.location.origin) {
-            return client.focus();
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(async (windowClients) => {
+        for (const client of windowClients) {
+          try {
+            if (new URL(client.url).origin !== self.location.origin) continue;
+          } catch {
+            // URL パース失敗は無視
+            continue;
           }
-        } catch {
-          // URL パース失敗は無視
+          try {
+            // 既存タブでも通知の遷移先を開く（おすすめ通知などの query を反映する）。
+            const navigated = await client.navigate(url);
+            if (navigated) return await navigated.focus();
+          } catch (err) {
+            // 閉じられたタブ等は次のクライアント、なければ新しいウィンドウにフォールバック。
+            console.warn("[sw] notification navigation/focus failed", err);
+          }
         }
-      }
-      return self.clients.openWindow(url);
-    }),
+        return self.clients.openWindow(url);
+      }),
   );
 });

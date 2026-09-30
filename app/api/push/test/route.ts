@@ -1,7 +1,8 @@
+import { removeExpiredPushSubscriptions } from "@/lib/push-config";
 import { NextResponse } from "next/server";
 import { withSession, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
-import { r2Get, r2Put, userPushKey, pushTestCooldownKey } from "@/lib/r2";
+import { r2Get, userPushKey, pushTestCooldownKey } from "@/lib/r2";
 import { sendPushToAll } from "@/lib/web-push";
 import type { PushConfig } from "@/types";
 
@@ -49,8 +50,12 @@ export async function POST(request: Request) {
 
     // 期限切れサブスクリプションを削除
     if (expired > 0) {
-      config.subscriptions = remaining;
-      await r2Put(env.RSS_DATA, pushKey, config);
+      const active = new Set(remaining.map((sub) => sub.endpoint));
+      await removeExpiredPushSubscriptions(
+        env.RSS_DATA,
+        session.userId,
+        config.subscriptions.filter((sub) => !active.has(sub.endpoint)).map((sub) => sub.endpoint),
+      );
     }
 
     return NextResponse.json({ sent, expired, remaining: remaining.length });

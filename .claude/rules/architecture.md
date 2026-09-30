@@ -35,7 +35,7 @@ paths: "src/**/*.ts,src/**/*.tsx,app/**/*.ts,app/**/*.tsx,src/cron/**/*.ts"
 Cloudflare Workers (@opennextjs/cloudflare)
   ├─ worker.ts              → Custom Worker entry point (wrangler.toml `main = "./worker.ts"`)
   │                             ├─ fetch: .open-next/worker.js (Next.js handler) を delegate
-  │                             └─ scheduled: fetchAllFeeds + runCronPrefetch (Cron Trigger handler)
+  │                             └─ scheduled: fetchAllFeeds + runRecommendationPush + runCronPrefetch (Cron Trigger handler)
   ├─ .open-next/worker.js   → Next.js Route Handlers / SSR (ビルド時生成)
   └─ .open-next/assets/     → 静的アセット (Cloudflare Assets)
 
@@ -53,6 +53,7 @@ Cloudflare Bindings
 
 Cron Trigger (wrangler.toml: */30 * * * *)
   └─ worker.ts#scheduled() → src/cron/fetch.ts#fetchAllFeeds(env) — R2 の全フィードを buildFeedUserMap で集約して RSS 取得・更新
+                          + src/cron/recommendations.ts#runRecommendationPush — opt-in日次未読おすすめ、R2 CAS outbox
                           + src/lib/cron-prefetch.ts#runCronPrefetch(env, ctx) — top-N feed の content/OGP を waitUntil で事前 fetch
                             (内部で src/lib/engagement-aggregator.ts#aggregateGlobalTopFeeds を呼び出し、全ユーザーの engagement 履歴からグローバル人気度スコアで top-N feed を集約)
 ```
@@ -119,6 +120,7 @@ app/
       subscribe/route.ts     # POST /api/push/subscribe
       unsubscribe/route.ts   # POST /api/push/unsubscribe
       test/route.ts          # POST /api/push/test — Push 通知テスト送信
+      recommendations/dismissals/route.ts # POST — opt-in時だけ記事の興味なしを同期（undo/reset対応）
       config/route.ts        # GET / PUT /api/push/config — Push 通知設定（disabledFeeds / サイレント時間帯）
     clip/route.ts            # POST /api/clip — SingleFile 拡張からの HTML 受け取り・本文抽出・キャッシュ保存
     health/route.ts          # GET /api/health
@@ -168,6 +170,7 @@ src/
     ThreePaneLayout.tsx      # 3ペイン CSS Grid レイアウトコンテナ（sidebarWidth / listWidth / listFocusMode props）
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
+    user-settings/RecommendationNotificationSettings.tsx # opt-in日次通知と30分刻み時刻UI
     ArticleRecommendations.tsx # フィルター済み未読記事の理由付き推薦・取り消し・調整 UI（ブラウザ内）
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
@@ -272,7 +275,8 @@ src/
     useReadStateTags.ts          # タグ管理（tagIds の追加・削除）
     useReadingHistory.ts     # 閲覧履歴管理
     useArticleContent.ts     # /api/content fetch + LRU キャッシュ
-    useArticleAi.ts          # /api/ai/* fetch
+    useArticleAi.ts          # 要約・翻訳の実行先切替 / provider・model・user 別キャッシュ / /api/ai/* fetch
+    useAiPreferences.ts      # ブラウザ内・アカウント別の AI 実行先とモデル設定
     useSpeechSynthesis.ts    # 記事読み上げ（Web Speech API: speak / pause / resume / stop）
     usePiperTts.ts           # 記事読み上げ（Piper wasm engine: piper-plus — synthesize → 自前 BufferSource 再生、TtsAdapter 実装、`enabled` option でリソース節約）
     useTtsEngineSetting.ts   # TTS engine 切替設定（"web-speech" / "piper"）の localStorage 永続化 + storage event 別タブ同期
@@ -283,7 +287,8 @@ src/
     useContentLinkPreviews.ts # 記事本文内リンクのプレビュー取得
     useEngagement.ts         # エンゲージメント記録 (/api/engagement)
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
-    useRecommendationDismissals.ts # ユーザー別の記事推薦非表示（localStorage、30日・最大200件、取り消し可能）
+    useRecommendationDismissals.ts # 記事推薦非表示（30日・200件、既定local、通知opt-in時だけ同期）
+    useRecommendationPushSettings.ts # 日次おすすめ時刻・同意設定の保存とアカウント分離
     useOgpCache.ts           # /api/ogp fetch (OGP 画像キャッシュ)
     useImageDownload.ts      # 記事画像一括ダウンロード
     usePushNotifications.ts  # Web Push サブスクリプション管理
@@ -422,6 +427,9 @@ src/
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
     recommendation.ts        # フィード推薦ロジック
+    push-config.ts          # PushConfig ETag CAS更新・失効endpointだけを削除
+    recommendation-push.ts  # タイムゾーン日付・通知候補/feedbackの安全な純粋関数
+    recommendation-dismissals-client.ts # 端末の有界feedbackとundo/reset同期待ちを保持
     article-recommendations.ts # 既存記事・保存/いいね/閲覧から未読3件を理由付きで選ぶローカル順位付け
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     shared-feed-storage.ts   # 追記型記事保存・CAS commit・論理ページ・明示的な旧形式移行
@@ -498,6 +506,7 @@ src/
     sw-cache.ts              # Service Worker キャッシュ管理
     type-guards.ts           # TypeScript 型ガード関数
     ai-models.ts             # Workers AI モデル定数・`isWorkersAiModelId` 型ガード
+    ai-preferences.ts        # AI 実行先設定の検証・読み取り・キャッシュキー分離
     article-ui-helpers.ts    # React 依存テキストハイライト関数（クライアント専用）
     dev-log.ts               # 開発環境専用 `devError` ラッパー
     log-sanitize.ts          # ログ出力用 URL サニタイズ（sanitizeLogUrl — CRLF 除去 + 最大長 truncate、ログインジェクション対策）
@@ -510,6 +519,7 @@ src/
     gallery-masonry-layout.ts # 画像ギャラリーの列レイアウト計算 (`computeMasonryLayout`) と scroll 巻き戻り補正 (`computeScrollAnchorDelta`) アルゴリズム
     piper-voices.ts          # piper-plus TTS engine で利用可能な voice 定義と配信方式 (R2 セルフホスト vs HuggingFace 直 fetch) のガイド
   cron/
+    recommendations.ts       # 30分cronを再利用する日次おすすめoutboxと端末別配信
     fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env)
 ```
 
@@ -608,7 +618,8 @@ users/{userId}/profile.json             # UserProfile（id・sub・email・name�
 users/{userId}/read-state.json          # ReadState（readIds・bookmarkIds・readingListIds・likeIds・snoozedUntil・notes・tagIds・globalFilter・readBeforeTimestamp・ttlDays）
 users/{userId}/engagement.json          # EngagementLog（entries: EngagementEntry[]、最大 5,000 件）
 users/{userId}/recommendations.json     # RecommendationCache（recommendations・generatedAt・dismissedIds・topics）
-users/{userId}/push.json                # PushConfig（subscriptions: PushSubscriptionRecord[] / disabledFeeds: Record<feedHash, boolean> / silentStart / silentEnd / timezone）
+users/{userId}/push.json                # PushConfig（subscriptions: PushSubscriptionRecord[] / disabledFeeds: Record<feedHash, boolean> / silentStart / silentEnd / timezone / recommendationEnabled / recommendationTime / recommendationDismissals）
+users/{userId}/recommendation-push.json # RecommendationPushState（ローカル日付・予定記事ID・endpoint hash別結果/backoff・30日200件の送信予約履歴）
 users/{userId}/saved.json               # 手動保存記事（/api/articles/save）
 users/{userId}/dbsc-session.json        # DbscSession（DBSC 登録済み公開鍵・検証日時）
 users/{userId}/dbsc-challenge-{sessionId}.json  # DBSC チャレンジ（challenge・expiresAt、検証後削除）

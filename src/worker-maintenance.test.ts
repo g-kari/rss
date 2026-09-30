@@ -1,9 +1,15 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ delegate: vi.fn(), fetchAll: vi.fn(), prefetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  delegate: vi.fn(),
+  fetchAll: vi.fn(),
+  prefetch: vi.fn(),
+  recommendations: vi.fn(),
+}));
 vi.mock("../.open-next/worker.js", () => ({ default: { fetch: mocks.delegate } }));
 vi.mock("./cron/fetch", () => ({ fetchAllFeeds: mocks.fetchAll }));
+vi.mock("./cron/recommendations", () => ({ runRecommendationPush: mocks.recommendations }));
 vi.mock("./lib/cron-prefetch", () => ({ runCronPrefetch: mocks.prefetch }));
 import worker from "../worker";
 
@@ -25,10 +31,22 @@ beforeEach(() => {
   mocks.delegate.mockImplementation(async () => new Response("delegated", { status: 202 }));
   mocks.fetchAll.mockResolvedValue(undefined);
   mocks.prefetch.mockResolvedValue(undefined);
+  mocks.recommendations.mockResolvedValue(undefined);
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Worker maintenance boundary", () => {
+  it("keeps existing prefetch running if recommendation setup fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.recommendations.mockRejectedValueOnce(new Error("R2 unavailable"));
+    await worker.scheduled(
+      {} as ScheduledController,
+      { ...env, RSS_FEED_WRITES_PAUSED: "false" },
+      ctx,
+    );
+    expect(mocks.prefetch).toHaveBeenCalledOnce();
+    log.mockRestore();
+  });
   it.each([
     ["POST", "/api/feeds"],
     ["POST", "/api/feeds/import"],
@@ -54,6 +72,7 @@ describe("Worker maintenance boundary", () => {
       expect(mocks.delegate).not.toHaveBeenCalled();
       expect(mocks.fetchAll).not.toHaveBeenCalled();
       expect(mocks.prefetch).not.toHaveBeenCalled();
+      expect(mocks.recommendations).not.toHaveBeenCalled();
       expect(fetch).not.toHaveBeenCalled();
       expect(ctx.waitUntil).not.toHaveBeenCalled();
     },
@@ -95,6 +114,7 @@ describe("Worker maintenance boundary", () => {
       );
       expect(mocks.fetchAll).not.toHaveBeenCalled();
       expect(mocks.prefetch).not.toHaveBeenCalled();
+      expect(mocks.recommendations).not.toHaveBeenCalled();
       expect(ctx.waitUntil).not.toHaveBeenCalled();
     },
   );

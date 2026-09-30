@@ -9,7 +9,7 @@ import { translateHtmlInBrowser } from "../lib/translate-html";
 import { summarizeInBrowser } from "../lib/browser-summarizer";
 import { toPlainText } from "../lib/html";
 import { DEFAULT_AI_MODEL } from "../lib/ai-models";
-import { STORAGE_KEYS, storageGet } from "../lib/storage";
+import { aiResultCacheKey, type AiPreferences } from "../lib/ai-preferences";
 import {
   buildFetchErrorMessage,
   formatHttpErrorMessage,
@@ -40,6 +40,11 @@ export interface AiOperationResult {
   provider?: TranslationProvider;
 }
 
+export interface AiRunOptions {
+  /** Used by automatic actions when the existing browser-only guard is enabled. */
+  browserOnly?: boolean;
+}
+
 interface ArticleAiState {
   aiResult: string | null;
   /** AI 要約のプロバイダー (#697) — UI で「Chrome 要約 / Workers AI」バッジ表示に使用 */
@@ -47,7 +52,12 @@ interface ArticleAiState {
   aiLoading: boolean;
   aiError: AiError | null;
   /** AI 要約を実行する（LRU キャッシュ優先）。html を渡すとブラウザ Summarizer API を試行する。 */
-  doRunAi: (url: string, articleId?: string, html?: string) => Promise<void>;
+  doRunAi: (
+    url: string,
+    articleId?: string,
+    html?: string,
+    options?: AiRunOptions,
+  ) => Promise<void>;
   resetAi: () => void;
   translateResult: AiOperationResult | null;
   translateLoading: boolean;
@@ -57,7 +67,12 @@ interface ArticleAiState {
    * `html` を渡すと Chrome Translator API が使える環境で HTML 構造を保持したまま翻訳し、
    * そうでない環境では従来の Workers AI (`/api/ai/translate`) の plain text 翻訳にフォールバックする。
    */
-  doTranslate: (url: string, articleId?: string, html?: string) => Promise<void>;
+  doTranslate: (
+    url: string,
+    articleId?: string,
+    html?: string,
+    options?: AiRunOptions,
+  ) => Promise<void>;
   resetTranslate: () => void;
 }
 
@@ -89,6 +104,12 @@ function encodeForCache(result: AiOperationResult): string {
   return JSON.stringify(result);
 }
 
+const DEFAULT_PREFERENCES: AiPreferences = {
+  provider: "auto",
+  model: DEFAULT_AI_MODEL,
+  userId: null,
+};
+
 /**
  * AI 操作（要約・翻訳など）の状態とロジックを管理するプライベートフック。
  *
@@ -101,11 +122,18 @@ export function useAiOperation(
   lruCache: LruCache,
   errorMessage: string,
   localProcessor?: (input: string) => Promise<AiOperationResult | null>,
+  preferences: AiPreferences = DEFAULT_PREFERENCES,
+  articleContext = "",
 ) {
   const [result, setResult] = useState<AiOperationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AiError | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { provider, model, userId } = preferences;
+  const runContext = JSON.stringify([provider, model, userId, articleContext]);
+  const currentContextRef = useRef(runContext);
+  currentContextRef.current = runContext;
+  const mountedRef = useRef(true);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -115,18 +143,21 @@ export function useAiOperation(
     setLoading(false);
   }, []);
 
-  const run = useCallback(
-    async (url: string, currentArticleId?: string, localInput?: string) => {
-      if (!url.trim()) return;
+  // Changing source/model/account cancels pending work and removes the old result.
+  // Cleanup also prevents a late local failure from issuing a server call after unmount.
+  useEffect(() => {
+    mountedRef.current = true;
+    reset();
+    return () => {
+      mountedRef.current = false;
+      reset();
+    };
+  }, [runContext, reset]);
 
-      // LRU キャッシュヒット時はネットワークコールなし
-      if (currentArticleId) {
-        const cached = lruCache.get(currentArticleId);
-        if (cached) {
-          setResult(decodeCached(cached));
-          return;
-        }
-      }
+  const run = useCallback(
+    async (url: string, currentArticleId?: string, localInput?: string, options?: AiRunOptions) => {
+      // A pending content fetch may invoke an old callback after the selection changes.
+      if (!url.trim() || !mountedRef.current || currentContextRef.current !== runContext) return;
 
       // 既存のリクエストをキャンセルして新しいコントローラーを作成
       abortRef.current?.abort();
@@ -135,25 +166,53 @@ export function useAiOperation(
 
       setLoading(true);
       setError(null);
+      setResult(null);
+
+      const effectiveProvider = provider === "auto" && options?.browserOnly ? "browser" : provider;
+      const cacheKey = currentArticleId
+        ? aiResultCacheKey({ provider: effectiveProvider, model, userId }, currentArticleId, url)
+        : null;
+      if (cacheKey) {
+        const cached = lruCache.get(cacheKey);
+        if (cached) {
+          const decoded = decodeCached(cached);
+          if (effectiveProvider === "auto" || decoded.provider === effectiveProvider) {
+            setResult(decoded);
+            setLoading(false);
+            return;
+          }
+        }
+      }
 
       // クライアント側処理を試行（Chrome Translator API 等）
-      if (localProcessor && localInput) {
+      if (effectiveProvider !== "workers-ai" && localProcessor && localInput) {
         try {
           const local = await localProcessor(localInput);
           if (controller.signal.aborted) return;
           if (local !== null && local.text.length > 0) {
-            if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(local));
+            if (cacheKey) lruCache.set(cacheKey, encodeForCache(local));
             setResult(local);
             setLoading(false);
             return;
           }
         } catch (err) {
-          devError("[useArticleAi] browser localProcessor failed, falling back to server AI", err);
+          devError("[useArticleAi] browser localProcessor failed", err);
         }
       }
 
+      if (controller.signal.aborted) return;
+      if (effectiveProvider === "browser") {
+        setError({
+          type: "unknown",
+          message:
+            "Chrome 内蔵 AI で処理できませんでした。利用条件・モデルや言語パックの準備を確認するか、設定の「AI の実行先」をクラウドに変更してください。",
+          retryable: true,
+        });
+        setLoading(false);
+        return;
+      }
+
       try {
-        const model = storageGet(STORAGE_KEYS.AI_MODEL) ?? DEFAULT_AI_MODEL;
         const res = await apiFetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -179,7 +238,7 @@ export function useAiOperation(
             isHtml: false,
             provider: "workers-ai",
           };
-          if (currentArticleId) lruCache.set(currentArticleId, encodeForCache(entry));
+          if (cacheKey) lruCache.set(cacheKey, encodeForCache(entry));
           setResult(entry);
         } else if (data.error) {
           // 2xx でも API が明示的に処理失敗を返した場合は、同じ入力での再試行で
@@ -189,7 +248,7 @@ export function useAiOperation(
           setError({ type: "unknown", message: errorMessage, retryable: false });
         }
       } catch (err) {
-        if (isAbortError(err)) return;
+        if (controller.signal.aborted || isAbortError(err)) return;
         setError({
           type: "network",
           message: formatHttpErrorMessage("network", { fallback: errorMessage }),
@@ -200,7 +259,7 @@ export function useAiOperation(
         if (!controller.signal.aborted) setLoading(false);
       }
     },
-    [endpoint, lruCache, errorMessage, localProcessor],
+    [endpoint, lruCache, errorMessage, localProcessor, provider, model, userId, runContext],
   );
 
   return { result, loading, error, run, reset };
@@ -221,18 +280,25 @@ async function processTranslateHtml(html: string): Promise<AiOperationResult | n
   return { text: translated, isHtml: true, provider: "browser" };
 }
 
-export function useArticleAi(articleId: string | undefined): ArticleAiState {
+export function useArticleAi(
+  articleId: string | undefined,
+  preferences: AiPreferences,
+): ArticleAiState {
   const ai = useAiOperation(
     "/api/ai/summarize",
     aiLruCache,
     "AI の処理に失敗しました",
     processSummarizeLocal,
+    preferences,
+    articleId,
   );
   const translate = useAiOperation(
     "/api/ai/translate",
     aiTranslateLruCache,
     "翻訳の処理に失敗しました",
     processTranslateHtml,
+    preferences,
+    articleId,
   );
 
   // 記事が変わったら進行中のリクエストをキャンセルして AI 状態を自動リセットする

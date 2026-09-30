@@ -11,6 +11,7 @@ import FeedManagementTabPanel from "./user-settings/FeedManagementTabPanel";
 import ImportExportTabPanel from "./user-settings/ImportExportTabPanel";
 
 interface Props {
+  userId: string;
   onClose: () => void;
   feeds: Feed[];
   articles: Article[];
@@ -32,6 +33,7 @@ interface Props {
  * 各タブの実装は src/components/user-settings/ 配下のコンポーネントに委譲。
  */
 export default function UserSettingsModal({
+  userId,
   onClose,
   feeds,
   articles,
@@ -86,6 +88,8 @@ export default function UserSettingsModal({
     onChangeImageDlFolder,
     imageDlFolderNsfw,
     onChangeImageDlFolderNsfw,
+    aiProvider,
+    onChangeAiProvider,
     aiModel,
     onChangeAiModel,
   } = useReaderSettings();
@@ -202,6 +206,7 @@ export default function UserSettingsModal({
       />
 
       <AiNotificationTabPanel
+        userId={userId}
         hidden={activeTab !== "ai-notifications"}
         autoTranslate={autoTranslate}
         toggleAutoTranslate={toggleAutoTranslate}
@@ -209,6 +214,8 @@ export default function UserSettingsModal({
         toggleAutoSummarize={toggleAutoSummarize}
         autoAiBrowserOnly={autoAiBrowserOnly}
         toggleAutoAiBrowserOnly={toggleAutoAiBrowserOnly}
+        aiProvider={aiProvider}
+        onChangeAiProvider={onChangeAiProvider}
         aiModel={aiModel}
         onChangeAiModel={onChangeAiModel}
       />

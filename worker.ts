@@ -1,6 +1,7 @@
 // @ts-ignore `.open-next/worker.js` はビルド時に生成される
 import { default as handler } from "./.open-next/worker.js";
 import { fetchAllFeeds } from "./src/cron/fetch";
+import { runRecommendationPush } from "./src/cron/recommendations";
 import { runCronPrefetch } from "./src/lib/cron-prefetch";
 import { feedWriteMaintenanceResponse, isFeedWritesPaused } from "./src/lib/feed-write-maintenance";
 
@@ -31,6 +32,15 @@ export default {
       RSS_ARTICLE_STORAGE_V2: env.RSS_ARTICLE_STORAGE_V2,
       RSS_ARTICLE_SEARCH_INDEX: env.RSS_ARTICLE_SEARCH_INDEX,
     });
+    // Recommendations share the existing 30-minute schedule; no browser needs to stay open.
+    try {
+      await runRecommendationPush(env, Date.now());
+    } catch (error) {
+      console.error(
+        "[recommendation-push] scheduled run failed",
+        error instanceof Error ? error.message : "unknown failure",
+      );
+    }
     // #803 Phase 2: RSS 取得後に top-N feed の最新記事 content/OGP を prefetch
     // (subrequest 上限 1000 件を考慮して topN=50 / maxArticlesPerFeed=3 で約 300 件 / 実行)
     // 失敗は無視 (本体の RSS 取得を阻害しない、ctx.waitUntil で非同期実行)

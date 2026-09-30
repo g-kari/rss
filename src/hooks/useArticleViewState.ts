@@ -14,7 +14,7 @@ import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useArticleFilter } from "../contexts/ArticleFilterContext";
 import { isStoredContentJapanese } from "../lib/article-utils";
 import { useArticleContent } from "./useArticleContent";
-import { useArticleAi } from "./useArticleAi";
+import { useArticleAi, type AiRunOptions } from "./useArticleAi";
 import { useImageDownload } from "./useImageDownload";
 import { usePopupLock } from "./usePopupLock";
 import { useArticleNote } from "./useArticleNote";
@@ -68,6 +68,9 @@ export function useArticleViewState({
     autoTranslate,
     autoSummarize,
     autoAiBrowserOnly,
+    aiProvider,
+    aiModel,
+    aiUserId,
     contentWidth,
     imageDlFolder,
     imageDlFolderNsfw,
@@ -89,7 +92,7 @@ export function useArticleViewState({
     translateError,
     doTranslate,
     resetTranslate,
-  } = useArticleAi(article?.id);
+  } = useArticleAi(article?.id, { provider: aiProvider, model: aiModel, userId: aiUserId });
 
   const {
     summaryRating,
@@ -115,44 +118,47 @@ export function useArticleViewState({
   }, [article?.id]);
 
   const handleRunAi = useCallback(
-    (link: string, id: string) => {
+    (link: string, id: string, options?: AiRunOptions) => {
       if (storedContent) {
-        void doRunAi(link, id, storedContent);
+        void doRunAi(link, id, storedContent, options);
         return;
       }
       void fetchFullContent((content) => {
-        void doRunAi(link, id, content);
+        void doRunAi(link, id, content, options);
       });
     },
     [storedContent, doRunAi, fetchFullContent],
   );
 
-  const handleTranslate = useCallback(() => {
-    if (!article?.link) return;
-    if (translateResult) {
-      resetTranslate();
-      return;
-    }
-    if (translateLoading || fetching) return;
-    const link = article.link;
-    const id = article.id;
-    if (storedContent) {
-      doTranslate(link, id, storedContent);
-      return;
-    }
-    void fetchFullContent((content) => {
-      doTranslate(link, id, content);
-    });
-  }, [
-    article,
-    translateResult,
-    translateLoading,
-    fetching,
-    storedContent,
-    resetTranslate,
-    doTranslate,
-    fetchFullContent,
-  ]);
+  const handleTranslate = useCallback(
+    (options?: AiRunOptions) => {
+      if (!article?.link) return;
+      if (translateResult) {
+        resetTranslate();
+        return;
+      }
+      if (translateLoading || fetching) return;
+      const link = article.link;
+      const id = article.id;
+      if (storedContent) {
+        doTranslate(link, id, storedContent, options);
+        return;
+      }
+      void fetchFullContent((content) => {
+        doTranslate(link, id, content, options);
+      });
+    },
+    [
+      article,
+      translateResult,
+      translateLoading,
+      fetching,
+      storedContent,
+      resetTranslate,
+      doTranslate,
+      fetchFullContent,
+    ],
+  );
 
   // --- Content processing ---
   const {
@@ -229,7 +235,9 @@ export function useArticleViewState({
 
   // --- Keyboard shortcuts + auto-translate + auto-summarize ---
   // #700: ブラウザネイティブ AI の利用可否を mount 時に診断 (auto-trigger 判定用)
-  const { translatorAvailable, summarizerAvailable } = useBrowserAiAvailability();
+  const { translatorAvailable, summarizerAvailable } = useBrowserAiAvailability(
+    aiProvider !== "workers-ai",
+  );
 
   useArticleViewShortcuts({
     article,
@@ -244,7 +252,8 @@ export function useArticleViewState({
     mainRef,
     autoTranslate,
     autoSummarize,
-    autoAiBrowserOnly,
+    autoAiBrowserOnly: aiProvider === "auto" && autoAiBrowserOnly,
+    aiPreferenceKey: JSON.stringify([aiProvider, aiModel, aiUserId]),
     translatorAvailable,
     summarizerAvailable,
     translateResult,

@@ -937,3 +937,95 @@ test.describe("parseFeed — Atom の複数著者 (#1332)", () => {
     expect(result.items[0].author).toBe("単著者");
   });
 });
+
+test.describe("parseFeed — ネストした description / XHTML の本文保持", () => {
+  const html =
+    '<p>破壊の<strong>手応え</strong>を保つ</p><p>溶岩、氷、泥の順番</p><img src="https://example.com/texture.jpg" />';
+
+  function rss(body: string): string {
+    return `<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>テスト</title><item><guid>article-1</guid><link>https://example.com/article</link>${body}</item></channel></rss>`;
+  }
+
+  for (const field of ["description", "content:encoded"]) {
+    test(`RSS 2.0: 生 HTML の ${field} を object の文字列化で壊さない`, () => {
+      const item = parseFeed(rss(`<${field}>${html}</${field}>`)).items[0];
+      expect(item.summary).toBe("破壊の手応えを保つ\n\n溶岩、氷、泥の順番");
+      expect(item.content).toContain("<strong>手応え</strong>");
+      expect(item.content).toContain("texture.jpg");
+      expect(item.ogImage).toBe("https://example.com/texture.jpg");
+      expect(item.content).not.toContain("[object Object]");
+    });
+  }
+
+  test("テキストと子要素が混在しても元の順番と空白を維持する", () => {
+    const item = parseFeed(
+      rss("<description>before <b>bold</b> between <i>italic</i> after</description>"),
+    ).items[0];
+    expect(item.summary).toBe("before bold between italic after");
+    expect(item.content).toBe("before <b>bold</b> between <i>italic</i> after");
+  });
+
+  test("RSS 1.0: RDF の description に含まれる段落と画像を保持する", () => {
+    const item = parseFeed(`<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+      <channel><title>RDF</title></channel>
+      <item rdf:about="https://example.com/article"><description>${html}</description></item>
+    </rdf:RDF>`).items[0];
+    expect(item.summary).toBe("破壊の手応えを保つ\n\n溶岩、氷、泥の順番");
+    expect(item.content).toContain("<strong>手応え</strong>");
+    expect(item.ogImage).toBe("https://example.com/texture.jpg");
+  });
+
+  for (const field of ["content", "summary"]) {
+    test(`Atom: ${field} type=xhtml の子要素を保持する`, () => {
+      const item = parseFeed(`<feed xmlns="http://www.w3.org/2005/Atom"><title>Atom</title>
+        <entry><id>article-1</id><link href="https://example.com/article" />
+          <${field} type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">${html}</div></${field}>
+        </entry></feed>`).items[0];
+      expect(item.summary).toBe("破壊の手応えを保つ\n\n溶岩、氷、泥の順番");
+      expect(item.content).toContain("<strong>手応え</strong>");
+      expect(item.ogImage).toBe("https://example.com/texture.jpg");
+    });
+  }
+
+  test("属性のみの空ノードは [object Object] を生成しない", () => {
+    const item = parseFeed(rss('<description xml:lang="ja" />')).items[0];
+    expect(item.summary).toBe("");
+    expect(item.content).toBe("");
+  });
+
+  test("同じ feed の CDATA・エスケープ済み HTML・属性付きテキストを二重デコードしない", () => {
+    const xml = `<rss><channel><title>Mixed</title>
+      <item><description>${html}</description></item>
+      <item><description>&lt;p&gt;escaped &amp;amp; &amp;lt;literal&amp;gt;&lt;/p&gt;</description></item>
+      <item><description><![CDATA[<p>CDATA &amp; &lt;literal&gt;</p>]]></description></item>
+      <item><description xml:lang="ja">text &amp; more</description></item>
+      <item><description>0</description></item>
+    </channel></rss>`;
+    const items = parseFeed(xml).items;
+    expect(items[0].content).toContain("<strong>手応え</strong>");
+    expect(items[1].content).toBe("<p>escaped &amp; &lt;literal&gt;</p>");
+    expect(items[2].content).toBe("<p>CDATA &amp; &lt;literal&gt;</p>");
+    expect(items[3].content).toBe("text & more");
+    expect(items[4].content).toBe("0");
+  });
+
+  test("同名の子要素・混在 CDATA も元の順番で保持する", () => {
+    const item = parseFeed(
+      rss(
+        "<description><![CDATA[before ]]><p>first</p><hr /><p>last</p><![CDATA[ after]]></description>",
+      ),
+    ).items[0];
+    expect(item.content).toBe("before <p>first</p><hr /><p>last</p> after");
+  });
+
+  test("復元した HTML にも既存の安全化とリンク変換を適用する", () => {
+    const item = parseFeed(
+      rss(
+        '<description><p onclick="bad()">safe</p><script>alert(1)</script><a href="/next">next</a><img src="https://example.com/safe.jpg" onerror="bad()" /></description>',
+      ),
+    ).items[0];
+    expect(item.content).toContain("<p>safe</p>");
+    expect(item.content).toContain('href="https://example.com/next"');
+    expect(item.content).not.toMatch(/<script|onclick|onerror/);
+  });
+});

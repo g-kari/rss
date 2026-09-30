@@ -23,11 +23,12 @@ export interface BrowserAiAvailability {
  * モデル DL 完了等で実行中に状態が変わることがあるが、その場合はユーザーが明示的に
  * 設定変更 (= 再 mount) するかページリロードで再診断される設計。
  */
-export function useBrowserAiAvailability(): BrowserAiAvailability {
+export function useBrowserAiAvailability(enabled = true): BrowserAiAvailability {
   const [translatorAvailable, setTranslatorAvailable] = useState<boolean | null>(null);
   const [summarizerAvailable, setSummarizerAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     diagnoseTranslatorAvailability().then((diag) => {
       if (!cancelled) setTranslatorAvailable(diag.available);
@@ -38,7 +39,7 @@ export function useBrowserAiAvailability(): BrowserAiAvailability {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return { translatorAvailable, summarizerAvailable };
 }

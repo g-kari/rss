@@ -9,11 +9,14 @@ import {
   diagnoseSummarizerAvailability,
   type SummarizerUnavailableReason,
 } from "../../lib/browser-summarizer";
+import { isAiProviderPreference, type AiProviderPreference } from "../../lib/ai-preferences";
 import { AI_MODELS, type WorkersAiModelId } from "../../lib/ai-models";
 import { useToast } from "@/contexts/ToastContext";
 import { useDebounce } from "../../hooks/useDebounce";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
+import RecommendationNotificationSettings from "./RecommendationNotificationSettings";
+import type { RecommendationPushSettings } from "../../hooks/useRecommendationPushSettings";
 import { SettingRow, ToggleSwitch } from "./shared";
 
 // Intl.supportedValuesOf("timeZone") はセッション不変な ~440 件の timezone 配列を返す。
@@ -38,6 +41,7 @@ const TIMEZONE_OPTIONS = TIMEZONES.map((tz) => (
 ));
 
 interface AiNotificationTabPanelProps {
+  userId: string;
   hidden: boolean;
   autoTranslate: boolean;
   toggleAutoTranslate: () => void;
@@ -46,11 +50,14 @@ interface AiNotificationTabPanelProps {
   /** #700: ON でブラウザ AI 不可なら auto-translate / auto-summarize skip (Workers AI フォールバック防止) */
   autoAiBrowserOnly: boolean;
   toggleAutoAiBrowserOnly: () => void;
+  aiProvider: AiProviderPreference;
+  onChangeAiProvider: (v: AiProviderPreference) => void;
   aiModel: WorkersAiModelId;
   onChangeAiModel: (v: WorkersAiModelId) => void;
 }
 
 export default function AiNotificationTabPanel({
+  userId,
   hidden,
   autoTranslate,
   toggleAutoTranslate,
@@ -58,6 +65,8 @@ export default function AiNotificationTabPanel({
   toggleAutoSummarize,
   autoAiBrowserOnly,
   toggleAutoAiBrowserOnly,
+  aiProvider,
+  onChangeAiProvider,
   aiModel,
   onChangeAiModel,
 }: AiNotificationTabPanelProps) {
@@ -73,9 +82,18 @@ export default function AiNotificationTabPanel({
   } | null>(null);
 
   useEffect(() => {
-    diagnoseTranslatorAvailability().then(setTranslatorDiag);
-    diagnoseSummarizerAvailability().then(setSummarizerDiag);
-  }, []);
+    if (hidden || aiProvider === "workers-ai") return;
+    let cancelled = false;
+    diagnoseTranslatorAvailability().then((value) => {
+      if (!cancelled) setTranslatorDiag(value);
+    });
+    diagnoseSummarizerAvailability().then((value) => {
+      if (!cancelled) setSummarizerDiag(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hidden, aiProvider]);
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [silentStart, setSilentStart] = useState("");
@@ -84,12 +102,21 @@ export default function AiNotificationTabPanel({
   const [errorNotificationsEnabled, setErrorNotificationsEnabled] = useState(true);
   const [pushConfigLoading, setPushConfigLoading] = useState(false);
   const silentHoursLoaded = useRef(false);
+  const savedSilentHours = useRef("");
+  const [recommendationConfig, setRecommendationConfig] =
+    useState<RecommendationPushSettings | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const controller = new AbortController();
+    silentHoursLoaded.current = false;
+    setRecommendationConfig(null);
     setPushEnabled(true);
-    apiFetch("/api/push/config")
+    apiFetch("/api/push/config", {
+      signal: controller.signal,
+      headers: { "X-RSS-Account-Id": userId },
+    })
       .then((r) =>
         r.ok
           ? (r.json() as Promise<{
@@ -97,22 +124,35 @@ export default function AiNotificationTabPanel({
               silentEnd: string | null;
               timezone: string | null;
               errorNotificationsEnabled: boolean;
+              recommendationEnabled?: boolean;
+              recommendationTime?: string;
             }>)
           : null,
       )
       .then((data) => {
-        if (!data) return;
+        if (!data || controller.signal.aborted) return;
         setSilentStart(data.silentStart ?? "");
         setSilentEnd(data.silentEnd ?? "");
         setTimezone(data.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
         setErrorNotificationsEnabled(data.errorNotificationsEnabled ?? true);
+        setRecommendationConfig({
+          recommendationEnabled: data.recommendationEnabled === true,
+          recommendationTime: data.recommendationTime ?? "09:00",
+        });
+        savedSilentHours.current = JSON.stringify([
+          data.silentStart ?? "",
+          data.silentEnd ?? "",
+          data.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "",
+        ]);
         // config ロード完了後から自動保存を有効化
         silentHoursLoaded.current = true;
       })
       .catch((err) => {
-        devError("[AiNotificationTabPanel] push config fetch failed", err);
+        if (!controller.signal.aborted)
+          devError("[AiNotificationTabPanel] push config fetch failed", err);
       });
-  }, []);
+    return () => controller.abort();
+  }, [userId]);
 
   const saveSilentHours = useCallback(
     async (start: string, end: string, tz: string) => {
@@ -125,10 +165,11 @@ export default function AiNotificationTabPanel({
         };
         const res = await apiFetch("/api/push/config", {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-RSS-Account-Id": userId },
           body: JSON.stringify(body),
         });
         if (res.ok) {
+          savedSilentHours.current = JSON.stringify([start, end, tz]);
           toast.success("サイレント時間帯を保存しました");
         } else {
           toast.error("保存に失敗しました");
@@ -140,7 +181,7 @@ export default function AiNotificationTabPanel({
         setPushConfigLoading(false);
       }
     },
-    [toast],
+    [toast, userId],
   );
 
   const handleSaveSilentHours = () => saveSilentHours(silentStart, silentEnd, timezone);
@@ -151,7 +192,7 @@ export default function AiNotificationTabPanel({
     try {
       await apiFetch("/api/push/config", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-RSS-Account-Id": userId },
         body: JSON.stringify({ errorNotificationsEnabled: next }),
       });
     } catch (err) {
@@ -160,7 +201,7 @@ export default function AiNotificationTabPanel({
       setErrorNotificationsEnabled(!next);
       toast.error("保存に失敗しました");
     }
-  }, [errorNotificationsEnabled, toast]);
+  }, [errorNotificationsEnabled, toast, userId]);
 
   // サイレント時間帯フィールドの変更を 1000ms デバウンスして自動保存
   const debouncedSilentStart = useDebounce(silentStart, 1000);
@@ -170,6 +211,13 @@ export default function AiNotificationTabPanel({
   useEffect(() => {
     // config ロード完了前（初期空文字列フェーズ）は自動保存しない
     if (!silentHoursLoaded.current) return;
+    // Do not autosave a hydration result or a previous account's debounced fields.
+    const fields = JSON.stringify([debouncedSilentStart, debouncedSilentEnd, debouncedTimezone]);
+    if (
+      fields === savedSilentHours.current ||
+      fields !== JSON.stringify([silentStart, silentEnd, timezone])
+    )
+      return;
     saveSilentHours(debouncedSilentStart, debouncedSilentEnd, debouncedTimezone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSilentStart, debouncedSilentEnd, debouncedTimezone]);
@@ -182,6 +230,30 @@ export default function AiNotificationTabPanel({
       hidden={hidden}
     >
       <div className="flex flex-col gap-5 px-5 py-4">
+        <SettingRow label="AI の実行先">
+          <select
+            aria-label="AI の実行先"
+            value={aiProvider}
+            onChange={(event) => {
+              if (isAiProviderPreference(event.target.value))
+                onChangeAiProvider(event.target.value);
+            }}
+            className="min-w-0 max-w-full text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+          >
+            <option value="auto">自動（Chrome 優先）</option>
+            <option value="browser">Chrome 内蔵 AI のみ</option>
+            <option value="workers-ai">クラウド（Workers AI）</option>
+          </select>
+        </SettingRow>
+        <p className="text-[11px] text-text-muted pl-28 -mt-2" aria-live="polite">
+          {aiProvider === "auto"
+            ? "要約・翻訳は Chrome 内蔵 AI を優先し、使えないときに選択したクラウドモデルを使います。"
+            : aiProvider === "browser"
+              ? "手動・自動の要約と翻訳を Chrome 内蔵 AI で処理します。使えない場合はエラーを表示し、クラウドには送信しません。"
+              : "手動・自動の要約と翻訳は選択した Workers AI モデルで処理します。Chrome 内蔵 AI は使用しません。"}{" "}
+          このブラウザのアカウントごとに保存します。
+        </p>
+
         <SettingRow label="自動翻訳">
           <ToggleSwitch
             checked={autoTranslate}
@@ -198,76 +270,43 @@ export default function AiNotificationTabPanel({
           />
         </SettingRow>
 
-        <SettingRow label="ブラウザ AI のみ使う">
-          <ToggleSwitch
-            checked={autoAiBrowserOnly}
-            onChange={() => toggleAutoAiBrowserOnly()}
-            ariaLabel={
-              autoAiBrowserOnly
-                ? "ブラウザ AI のみ使う設定を OFF にする"
-                : "ブラウザ AI のみ使う設定を ON にする"
-            }
-          />
-        </SettingRow>
-        <p className="text-[11px] text-text-muted pl-28 -mt-2">
-          ON のとき、ブラウザネイティブ AI (Chrome 翻訳・要約)
-          が使えない記事では自動翻訳・自動要約を行わず Workers AI
-          へのフォールバックを防ぎますわ。手動の AI / 翻訳ボタンは影響を受けません。
-        </p>
+        {aiProvider === "auto" && (
+          <>
+            <SettingRow label="自動処理は端末のみ">
+              <ToggleSwitch
+                checked={autoAiBrowserOnly}
+                onChange={() => toggleAutoAiBrowserOnly()}
+                ariaLabel={
+                  autoAiBrowserOnly
+                    ? "ブラウザ AI のみ使う設定を OFF にする"
+                    : "ブラウザ AI のみ使う設定を ON にする"
+                }
+              />
+            </SettingRow>
+            <p className="text-[11px] text-text-muted pl-28 -mt-2">
+              ON のときは、Chrome AI が使えない記事の自動翻訳・自動要約を省略します。手動の
+              AI・翻訳ボタンには適用しません。
+            </p>
+          </>
+        )}
 
-        {(translatorDiag || summarizerDiag) && (
-          <div className="flex flex-col gap-1.5 pl-28">
+        {aiProvider !== "workers-ai" && (translatorDiag || summarizerDiag) && (
+          <div className="flex flex-col gap-1.5 pl-28 text-[11px] text-text-muted">
             {translatorDiag && (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-text-muted">
-                  翻訳プロバイダ:{" "}
-                  {translatorDiag.available ? (
-                    <span className="text-text-default">Chrome 翻訳 &#x2713;</span>
-                  ) : (
-                    <span className="text-text-default">Workers AI (フォールバック)</span>
-                  )}
-                </span>
-                {!translatorDiag.available && translatorDiag.reason && (
-                  <span className="text-[10px] text-text-faint">
-                    {translatorDiag.reason === "not-chromium" &&
-                      "ご利用のブラウザでは端末上の翻訳が使えないため、サーバー側 (Workers AI) で翻訳します"}
-                    {translatorDiag.reason === "chrome-too-old" &&
-                      "Chrome のバージョンが古いため、サーバー側で翻訳します（Chrome 138 以上にアップデートすると端末上で翻訳できます）"}
-                    {translatorDiag.reason === "flag-disabled" &&
-                      "Chrome 翻訳はオプトインが必要なため、サーバー側で翻訳します（Chrome 138 未満では chrome://flags/#translation-api を有効化してください）"}
-                    {translatorDiag.reason === "not-available" &&
-                      "言語パックが未インストールのため、サーバー側で翻訳します（Chrome の設定から言語を追加すると端末上で翻訳できます）"}
-                  </span>
-                )}
-              </div>
+              <span>
+                Chrome 翻訳: {translatorDiag.available ? "利用できます" : "現在利用できません"}
+              </span>
             )}
             {summarizerDiag && (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-text-muted">
-                  要約プロバイダ:{" "}
-                  {summarizerDiag.available ? (
-                    <span className="text-text-default">Chrome 要約 &#x2713;</span>
-                  ) : (
-                    <span className="text-text-default">Workers AI (フォールバック)</span>
-                  )}
-                </span>
-                {!summarizerDiag.available && summarizerDiag.reason && (
-                  <span className="text-[10px] text-text-faint">
-                    {summarizerDiag.reason === "not-chromium" &&
-                      "ご利用のブラウザでは端末上の要約が使えないため、サーバー側 (Workers AI) で要約します"}
-                    {summarizerDiag.reason === "chrome-too-old" &&
-                      "Chrome のバージョンが古いため、サーバー側で要約します（Chrome 138 以上にアップデートすると端末上で要約できます）"}
-                    {summarizerDiag.reason === "flag-disabled" &&
-                      "Chrome 要約 API が無効化されています。chrome://flags/#summarization-api-for-gemini-nano を Enabled にして再起動してください。chrome://on-device-internals でモデル DL 状況も確認できます"}
-                    {summarizerDiag.reason === "model-downloading" &&
-                      "Chrome がモデル (約 22GB) をダウンロード中です。完了までサーバー側で要約します。chrome://on-device-internals で進捗を確認できます"}
-                    {summarizerDiag.reason === "requires-user-activation" &&
-                      "Chrome 要約 API は初回ダウンロード時にユーザー操作が必要です。AI 要約ボタンを再度クリックしてください"}
-                    {summarizerDiag.reason === "model-unavailable" &&
-                      "ご利用環境では端末上の要約が使えないため、サーバー側 (Workers AI) で要約します（要件: Chrome 138+ / 22GB 空き / GPU 4GB VRAM か CPU 16GB RAM 4 コア）"}
-                  </span>
-                )}
-              </div>
+              <span>
+                Chrome 要約: {summarizerDiag.available ? "利用できます" : "現在利用できません"}
+              </span>
+            )}
+            {(!translatorDiag?.available || !summarizerDiag?.available) && (
+              <span>
+                Chrome
+                の対応状況、モデル・言語パックの準備を確認してください。初回は手動ボタンからの操作が必要な場合があります。
+              </span>
             )}
           </div>
         )}
@@ -275,9 +314,10 @@ export default function AiNotificationTabPanel({
         <SettingRow label="Workers AI モデル">
           <select
             aria-label="Workers AI モデル"
+            disabled={aiProvider === "browser"}
             value={aiModel}
             onChange={(e) => onChangeAiModel(e.target.value as WorkersAiModelId)}
-            className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+            className="min-w-0 max-w-full text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted disabled:opacity-50"
           >
             {AI_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -288,8 +328,9 @@ export default function AiNotificationTabPanel({
         </SettingRow>
         <div className="flex flex-col gap-1 pl-28">
           <span className="text-[11px] text-text-muted">
-            AI 要約・翻訳で使用する Workers AI モデルを選択します。70B は高精度ですが 1 分間 3
-            回の制限があります。
+            クラウドで要約・翻訳するときのモデルです。Cloudflare
+            の利用料金が発生する場合があり、一部は有料アクセスが必要です。大型モデルは 1 分間 5
+            回までです。
           </span>
         </div>
 
@@ -298,6 +339,13 @@ export default function AiNotificationTabPanel({
             <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
               Push 通知設定
             </span>
+            <RecommendationNotificationSettings
+              key={userId}
+              userId={userId}
+              config={recommendationConfig}
+              timezone={timezone}
+              onTimezoneChange={setTimezone}
+            />
             <SettingRow label="フィードエラー通知">
               <ToggleSwitch
                 checked={errorNotificationsEnabled}
@@ -338,12 +386,15 @@ export default function AiNotificationTabPanel({
             {TIMEZONES.length > 0 && (
               <SettingRow label="タイムゾーン">
                 <select
-                  aria-label="サイレント時間帯 タイムゾーン"
+                  aria-label="Push 通知 タイムゾーン"
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted"
+                  className="min-w-0 max-w-full text-[13px] bg-surface-subtle border border-border-default rounded-md px-2 py-1 text-text-default focus:outline-none focus:ring-1 focus:ring-text-muted disabled:opacity-50"
                 >
                   <option value="">未設定</option>
+                  {timezone && !TIMEZONES.includes(timezone) && (
+                    <option value={timezone}>{timezone}</option>
+                  )}
                   {TIMEZONE_OPTIONS}
                 </select>
               </SettingRow>

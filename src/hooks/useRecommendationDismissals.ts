@@ -1,117 +1,208 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { loadJsonArray, saveJson, STORAGE_KEYS } from "../lib/storage";
+import { saveJson } from "../lib/storage";
+import { apiFetch } from "../lib/api-fetch";
+import { useSyncedRef } from "./useSyncedRef";
+import {
+  applyDismissalChanges,
+  currentDismissals,
+  dismissalStorageKey,
+  DISMISSAL_TTL_MS,
+  loadDismissals,
+  loadDismissalChanges,
+  mergeDismissalChanges,
+  saveDismissalChanges,
+  RECOMMENDATION_CONFIG_EVENT,
+  recommendationConfigStorageKey,
+  type DismissalChanges,
+  type RecommendationDismissal,
+  type RecommendationConfigChange,
+} from "../lib/recommendation-dismissals-client";
 
-interface Dismissal {
-  articleId: string;
-  dismissedAt: number;
-}
-
-const DISMISSAL_TTL_MS = 30 * 86400000;
-const MAX_DISMISSALS = 200;
-
-function isDismissal(value: unknown): value is Dismissal {
-  if (typeof value !== "object" || value === null) return false;
-  const entry = value as Record<string, unknown>;
-  return (
-    typeof entry.articleId === "string" &&
-    entry.articleId.length > 0 &&
-    entry.articleId.length <= 256 &&
-    typeof entry.dismissedAt === "number" &&
-    Number.isFinite(entry.dismissedAt)
-  );
-}
-
-function currentDismissals(entries: Dismissal[], now: number): Dismissal[] {
-  const seen = new Set<string>();
-  return entries
-    .filter((entry) => {
-      const age = now - entry.dismissedAt;
-      if (age < 0 || age >= DISMISSAL_TTL_MS || seen.has(entry.articleId)) return false;
-      seen.add(entry.articleId);
-      return true;
-    })
-    .slice(0, MAX_DISMISSALS);
-}
-
-/** Bounded, reversible, account-scoped feedback. It never changes topic preferences. */
+/** Bounded, reversible, account-scoped feedback; cloud sync requires explicit opt-in. */
 export function useRecommendationDismissals(userId: string) {
-  const [clockVersion, setClockVersion] = useState(0);
-  const storageKey = `${STORAGE_KEYS.ARTICLE_RECOMMENDATION_DISMISSALS}:${userId}`;
-  const initialEntries = useMemo(
-    () => loadJsonArray<Dismissal>(storageKey, [], isDismissal),
-    [storageKey],
-  );
-  const [state, setState] = useState(() => ({ storageKey, entries: initialEntries }));
-  // While the effect catches up to an account change, derive solely from that account's data.
-  const entries = state.storageKey === storageKey ? state.entries : initialEntries;
-  useEffect(() => {
-    setState((previous) =>
-      previous.storageKey === storageKey ? previous : { storageKey, entries: initialEntries },
-    );
-  }, [storageKey, initialEntries]);
-  const activeEntries = useMemo(
-    () => currentDismissals(entries, Date.now()),
-    // clockVersion changes only at an expiration boundary or window focus.
-    [entries, clockVersion],
-  );
+  const [version, setVersion] = useState(0);
+  const accountRef = useSyncedRef(userId);
+  const session = useMemo(() => {
+    const entries = loadDismissals(userId);
+    return {
+      userId,
+      entries,
+      pending: loadDismissalChanges(userId, entries.length ? { add: entries } : {}),
+      flush: () => {},
+    };
+  }, [userId]);
+  const activeEntries = useMemo(() => currentDismissals(session.entries), [session, version]);
   const dismissedIds = useMemo(
     () => new Set(activeEntries.map((entry) => entry.articleId)),
     [activeEntries],
   );
+
   useEffect(() => {
-    const refresh = () => setClockVersion((version) => version + 1);
-    window.addEventListener("focus", refresh);
+    const refresh = () => setVersion((value) => value + 1);
     const earliest = Math.min(
       ...activeEntries.map((entry) => entry.dismissedAt + DISMISSAL_TTL_MS),
     );
-    const timer =
-      activeEntries.length > 0
-        ? setTimeout(refresh, Math.min(2147483647, Math.max(1, earliest - Date.now() + 1)))
-        : undefined;
+    const timer = activeEntries.length
+      ? setTimeout(refresh, Math.min(2147483647, Math.max(1, earliest - Date.now() + 1)))
+      : undefined;
+    window.addEventListener("focus", refresh);
     return () => {
-      window.removeEventListener("focus", refresh);
       clearTimeout(timer);
+      window.removeEventListener("focus", refresh);
     };
   }, [activeEntries]);
+
   useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== storageKey && event.key !== null) return;
-      setState({ storageKey, entries: loadJsonArray<Dismissal>(storageKey, [], isDismissal) });
+    saveDismissalChanges(userId, session.pending);
+    let alive = true;
+    let enabled = false;
+    let generation = 0;
+    let configController: AbortController | undefined;
+    let mutationController: AbortController | undefined;
+    const valid = () => alive && accountRef.current === userId;
+    const refreshPending = () => {
+      session.pending = loadDismissalChanges(userId, session.pending);
+      return session.pending;
     };
+    const applyServer = (entries: RecommendationDismissal[]) => {
+      session.entries = applyDismissalChanges(entries, refreshPending());
+      saveJson(dismissalStorageKey(userId), session.entries);
+      setVersion((value) => value + 1);
+    };
+    const flush = async () => {
+      if (!valid() || !enabled || mutationController) return;
+      const changes = refreshPending();
+      if (!Object.keys(changes).length) return;
+      const sent = JSON.stringify(changes);
+      const controller = new AbortController();
+      mutationController = controller;
+      const requestGeneration = generation;
+      let saved = false;
+      try {
+        const response = await apiFetch("/api/push/recommendations/dismissals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-RSS-Account-Id": userId },
+          body: sent,
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          recommendationDismissals: RecommendationDismissal[];
+        };
+        if (!valid() || !enabled || controller.signal.aborted || requestGeneration !== generation)
+          return;
+        if (JSON.stringify(refreshPending()) === sent) {
+          session.pending = {};
+          saveDismissalChanges(userId, session.pending);
+        }
+        applyServer(data.recommendationDismissals ?? []);
+        saved = true;
+      } catch {
+        // Keep intentions locally. Retry on the next change, focus, online, or opt-in.
+      } finally {
+        if (mutationController === controller) mutationController = undefined;
+        if (saved && valid() && enabled) void flush();
+      }
+    };
+    session.flush = () => {
+      void flush();
+    };
+    const setEnabled = (next: boolean) => {
+      enabled = next;
+      if (!next) {
+        generation += 1;
+        mutationController?.abort();
+        mutationController = undefined;
+      }
+    };
+    const loadConfig = async () => {
+      setEnabled(false);
+      configController?.abort();
+      const controller = new AbortController();
+      configController = controller;
+      const requestGeneration = ++generation;
+      try {
+        const response = await apiFetch("/api/push/config", {
+          signal: controller.signal,
+          headers: { "X-RSS-Account-Id": userId },
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          recommendationEnabled?: boolean;
+          recommendationDismissals?: RecommendationDismissal[];
+        };
+        if (!valid() || controller.signal.aborted || requestGeneration !== generation) return;
+        setEnabled(data.recommendationEnabled === true);
+        if (enabled) {
+          applyServer(data.recommendationDismissals ?? []);
+          void flush();
+        }
+      } catch {
+        // A config read failure must never turn sync on.
+      }
+    };
+    const onConfigChange = (event: Event) => {
+      const data = (event as CustomEvent<RecommendationConfigChange>).detail;
+      if (data?.userId !== userId) return;
+      configController?.abort();
+      generation += 1;
+      setEnabled(false);
+      if (data.recommendationEnabled) void loadConfig();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === recommendationConfigStorageKey(userId)) {
+        // Pause immediately, including an already pending mutation, before rechecking opt-in.
+        setEnabled(false);
+        void loadConfig();
+        return;
+      }
+      if (event.key !== dismissalStorageKey(userId) && event.key !== null) return;
+      session.entries = loadDismissals(userId);
+      session.pending = loadDismissalChanges(userId, {});
+      setVersion((value) => value + 1);
+    };
+    const reload = () => {
+      void loadConfig();
+    };
+    window.addEventListener(RECOMMENDATION_CONFIG_EVENT, onConfigChange);
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [storageKey]);
+    window.addEventListener("focus", reload);
+    window.addEventListener("online", reload);
+    void loadConfig();
+    return () => {
+      alive = false;
+      session.flush = () => {};
+      configController?.abort();
+      mutationController?.abort();
+      window.removeEventListener(RECOMMENDATION_CONFIG_EVENT, onConfigChange);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", reload);
+      window.removeEventListener("online", reload);
+    };
+  }, [session, userId]);
 
   const update = useCallback(
-    (change: (entries: Dismissal[]) => Dismissal[]) => {
-      setState((previous) => {
-        const base = previous.storageKey === storageKey ? previous.entries : initialEntries;
-        // Read again at mutation time so another tab's feedback is not overwritten.
-        // If storage is blocked, loadJsonArray retains this tab's working state.
-        const latest = loadJsonArray<Dismissal>(storageKey, base, isDismissal);
-        const next = currentDismissals(change(currentDismissals(latest, Date.now())), Date.now());
-        saveJson(storageKey, next);
-        return { storageKey, entries: next };
-      });
+    (change: DismissalChanges) => {
+      if (accountRef.current !== userId) return;
+      session.entries = applyDismissalChanges(loadDismissals(userId, session.entries), change);
+      session.pending = mergeDismissalChanges(
+        loadDismissalChanges(userId, session.pending),
+        change,
+      );
+      saveDismissalChanges(userId, session.pending);
+      saveJson(dismissalStorageKey(userId), session.entries);
+      setVersion((value) => value + 1);
+      session.flush();
     },
-    [storageKey, initialEntries],
+    [session, userId],
   );
   const dismiss = useCallback(
-    (articleId: string) => {
-      update((previous) => [
-        { articleId, dismissedAt: Date.now() },
-        ...previous.filter((entry) => entry.articleId !== articleId),
-      ]);
-    },
+    (articleId: string) => update({ add: [{ articleId, dismissedAt: Date.now() }] }),
     [update],
   );
-  const restore = useCallback(
-    (articleId: string) =>
-      update((previous) => previous.filter((entry) => entry.articleId !== articleId)),
-    [update],
-  );
-  const reset = useCallback(() => update(() => []), [update]);
+  const restore = useCallback((articleId: string) => update({ remove: [articleId] }), [update]);
+  const reset = useCallback(() => update({ reset: true }), [update]);
   return { dismissedIds, dismiss, restore, reset };
 }
