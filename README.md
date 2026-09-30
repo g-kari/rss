@@ -559,23 +559,24 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 
 ### 主要依存ライブラリのライセンス
 
-| パッケージ              | ライセンス   |
-| ----------------------- | ------------ |
-| Next.js                 | MIT          |
-| React                   | MIT          |
-| Tailwind CSS            | MIT          |
-| @opennextjs/cloudflare  | MIT          |
-| @cloudflare/puppeteer   | Apache-2.0   |
-| @mozilla/readability    | Apache-2.0   |
-| fast-xml-parser         | MIT          |
-| linkedom                | ISC          |
-| highlight.js            | BSD-3-Clause |
-| katex                   | MIT          |
-| marked                  | MIT          |
-| @tanstack/react-virtual | MIT          |
-| piper-plus              | MIT          |
-| @piper-plus/g2p         | MIT          |
-| onnxruntime-web         | MIT          |
+| パッケージ                              | ライセンス   |
+| --------------------------------------- | ------------ |
+| Anime.js (ビジュアル演出・遅延読み込み) | MIT          |
+| Next.js                                 | MIT          |
+| React                                   | MIT          |
+| Tailwind CSS                            | MIT          |
+| @opennextjs/cloudflare                  | MIT          |
+| @cloudflare/puppeteer                   | Apache-2.0   |
+| @mozilla/readability                    | Apache-2.0   |
+| fast-xml-parser                         | MIT          |
+| linkedom                                | ISC          |
+| highlight.js                            | BSD-3-Clause |
+| katex                                   | MIT          |
+| marked                                  | MIT          |
+| @tanstack/react-virtual                 | MIT          |
+| piper-plus                              | MIT          |
+| @piper-plus/g2p                         | MIT          |
+| onnxruntime-web                         | MIT          |
 
 ### 音声素材ライセンス (TTS engine: Piper)
 

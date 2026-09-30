@@ -135,6 +135,7 @@ src/
   config/
     shortcuts.ts             # キーボードショートカット Single Source of Truth（ShortcutDef / ShortcutGroup / SHORTCUT_DEFS / KEYBOARD_SHORTCUTS）— useKeyboardNav と KeyboardShortcutsModal の両方が参照
   contexts/
+    VisualModeContext.tsx # 通常/ビジュアル表示の端末内設定、動きの制限・ページ可視性、html属性を共有
     ArticleFilterContext.tsx  # 記事フィルター状態の React Context（FilterState + onSaveFilter）
     FeedSidebarContext.tsx    # FeedSidebar 操作関数の React Context（on*** コールバック群を Props Drilling なしに提供）
     ReaderSettingsContext.tsx # リーダー表示設定の React Context（フォントサイズ・行間・テーマ等）
@@ -171,6 +172,8 @@ src/
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
     user-settings/RecommendationNotificationSettings.tsx # opt-in日次通知と30分刻み時刻UI
+    CinematicArticle.tsx # 既存画像・フィード説明だけの20秒ショット、手動再生と静止テキスト
+    VisualModeBar.tsx # 常設の表示切替バー、ダイアログ内でも通常表示へ戻せるスイッチ
     ImmersiveArticleMode.tsx # 明示起動の全画面・縦スワイプ推薦（10件区切り、保存/非表示、既読化なし）
     ArticleRecommendations.tsx # フィルター済み未読記事の理由付き推薦・取り消し・調整 UI（ブラウザ内）
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
@@ -189,7 +192,7 @@ src/
     AppViewPane.tsx          # 右ペイン (記事詳細) の MobilePane (as="main") + ErrorBoundary + ArticleView を集約（App.tsx Step 1q から分割、AppListPane と対称な薄いラッパー）
     AppSidebarPane.tsx       # 左ペイン (フィードサイドバー) の MobilePane + Skeleton + ErrorBoundary + FeedSidebarProvider + FeedSidebar を集約（App.tsx Step 1r から分割、3 ペイン全てが対称構造に統一）
     AppOverlays.tsx          # 3 ペイン手前 (z-order overlay) のグローバル UI 群を集約（A11y / OfflineBanner / ToastContainer / ConfirmModal / AppModals / NSFW アニメ / 新着バナー / FocusMode 関連 / ColumnResize / ArticleDetailOverlay）。App.tsx Step 1s から分割
-    AppProviders.tsx         # 4 段の React Context Provider (ToastProvider / TtsAdapterProvider / ReaderSettingsProvider / ArticleFilterProvider) を 1 つの集約コンポーネントに閉じ込め（App.tsx Step 1u から分割。Provider 順序や追加・変更時の影響範囲を 1 ファイルに局所化）
+    AppProviders.tsx         # 表示モードと4 段の React Context Provider (ToastProvider / TtsAdapterProvider / ReaderSettingsProvider / ArticleFilterProvider) を 1 つの集約コンポーネントに閉じ込め（App.tsx Step 1u から分割。Provider 順序や追加・変更時の影響範囲を 1 ファイルに局所化）
     FocusModeExitButton.tsx  # 記事一覧フォーカスモード解除ボタン（PC のみ右上に固定表示）— App.tsx から分割
     A11yHelpers.tsx          # アクセシビリティ補助 (skip-to-content link + aria-live announcement region)— App.tsx から分割
     SessionExpiredModal.tsx  # セッション期限切れ時の再ログインモーダルオーバーレイ
@@ -256,6 +259,7 @@ src/
     useCollections.ts        # /api/collections CRUD + 楽観的更新（create / rename / delete / addArticle / removeArticle）
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePresets.ts       # テーマプリセット (theme/fontSize/fontFamily/lineHeight/contentWidth) を `theme-preset.ts` 経由で localStorage 保存・復元する hook（DisplayTabPanel のプリセット保存/適用 UI で利用）
+    useCinematicPlayback.ts # Anime.js timelineを明示再生時だけ遅延読み込み、非表示停止と終了/変更時の破棄
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
     useFocusMode.ts          # フォーカスモード制御（focusMode / listFocusMode / window.history 連携 / \\ Shift+\\ Escape キー）— useUIState から分割
     useAutoReadMode.ts       # オートモード（自動全文取得 → 読み上げ → 次の記事へ）の状態管理

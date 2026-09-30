@@ -29,6 +29,8 @@ export const STORAGE_KEYS = {
   PINNED_FEED_IDS: "rss-pinned",
   LAYOUT: "rss-layout",
   THEME: "rss-theme",
+  VISUAL_MODE: "rss-visual-mode",
+  VISUAL_MOTION: "rss-visual-motion",
   FONT_SIZE: "rss-font-size",
   FONT_FAMILY: "rss-font-family",
   CONTENT_CACHE_PREFIX: "rss-content:",
