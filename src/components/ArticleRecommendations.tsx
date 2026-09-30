@@ -9,29 +9,20 @@ import {
 import { useRecommendationDismissals } from "../hooks/useRecommendationDismissals";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { resolveThumbnail } from "../lib/article-utils";
-import { isProxiedImageUrl } from "../lib/image-proxy-url";
-import { isValidPublicUrl } from "../lib/url";
+import { safeRecommendationThumbnail } from "../lib/immersive-articles";
+import ImmersiveArticleMode from "./ImmersiveArticleMode";
 import { ArticleThumbnail } from "./article-items/shared";
 
 interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now" | "limit"> {
   userId: string;
   enabled?: boolean;
   onSelectArticle: (article: Article) => void;
+  onToggleReadingList?: (id: string) => void;
 }
 
 /** Account key also isolates disclosure/undo state when the signed-in user changes. */
 export default function ArticleRecommendations(props: Props) {
   return <RecommendationContent key={props.userId} {...props} />;
-}
-
-/** Reject unsafe or stale cache values before generating an image request. */
-function safeThumbnail(value: unknown): string | undefined {
-  if (typeof value !== "string" || !value) return undefined;
-  if (isProxiedImageUrl(value)) {
-    const original = new URLSearchParams(value.slice(value.indexOf("?") + 1)).get("url");
-    return original && isValidPublicUrl(original) ? value : undefined;
-  }
-  return isValidPublicUrl(value) ? value : undefined;
 }
 
 function RecommendationContent({
@@ -47,10 +38,15 @@ function RecommendationContent({
   likeIds,
   historyIds,
   onSelectArticle,
+  onToggleReadingList,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
+  const [immersiveOpen, setImmersiveOpen] = useState(false);
   const [lastDismissed, setLastDismissed] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!enabled) setImmersiveOpen(false);
+  }, [enabled]);
   const undoRef = useRef<HTMLButtonElement>(null);
   const disclosureRef = useRef<HTMLButtonElement>(null);
   const headingId = useId();
@@ -103,127 +99,158 @@ function RecommendationContent({
     now,
   ]);
 
-  if (!enabled || (!recommendations.length && !dismissedIds.size)) return null;
+  if (!enabled || (!immersiveOpen && !recommendations.length && !dismissedIds.size)) return null;
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border-default bg-surface-elevated"
-    >
-      <div className="flex items-center justify-between gap-2 px-4 pt-2">
-        <h2 id={headingId} className="text-[12px] font-medium text-text-strong">
-          いま読むおすすめ
-        </h2>
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          ref={disclosureRef}
-          aria-expanded={expanded}
-          aria-controls={contentId}
-          aria-label={expanded ? "おすすめを折りたたむ" : "おすすめを表示"}
-          className="min-h-11 px-2 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
-          {expanded ? "折りたたむ" : `${recommendations.length}件を表示`}
-        </button>
-      </div>
-      <div id={contentId} hidden={!expanded}>
-        <p className="px-4 pb-1 text-[11px] leading-relaxed text-text-muted">
-          新着と、読んだ・保存した記事のテーマから
-        </p>
-        {recommendations.length === 0 && (
-          <p className="px-4 py-3 text-[12px] text-text-muted">
-            いま紹介できる未読記事はありません
+    <>
+      {immersiveOpen && (
+        <ImmersiveArticleMode
+          candidates={candidates}
+          articles={articles}
+          feeds={feeds}
+          readIds={readIds}
+          readBeforeTimestamp={readBeforeTimestamp}
+          bookmarkIds={bookmarkIds}
+          readingListIds={readingListIds}
+          likeIds={likeIds}
+          historyIds={historyIds}
+          dismissedIds={dismissedIds}
+          now={now}
+          onClose={() => setImmersiveOpen(false)}
+          onSelectArticle={onSelectArticle}
+          onToggleReadingList={onToggleReadingList}
+          onDismiss={dismiss}
+          onRestore={restore}
+        />
+      )}
+      <section
+        aria-labelledby={headingId}
+        className="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border-default bg-surface-elevated"
+      >
+        <div className="flex items-center justify-between gap-2 px-4 pt-2">
+          <h2 id={headingId} className="text-[12px] font-medium text-text-strong">
+            いま読むおすすめ
+          </h2>
+          <button
+            type="button"
+            onClick={() => setImmersiveOpen(true)}
+            className="min-h-11 rounded-lg border border-border-default px-2 text-[11px] text-text-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            ドパガキモード
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            ref={disclosureRef}
+            aria-expanded={expanded}
+            aria-controls={contentId}
+            aria-label={expanded ? "おすすめを折りたたむ" : "おすすめを表示"}
+            className="min-h-11 px-2 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            {expanded ? "折りたたむ" : `${recommendations.length}件を表示`}
+          </button>
+        </div>
+        <div id={contentId} hidden={!expanded}>
+          <p className="px-4 pb-1 text-[11px] leading-relaxed text-text-muted">
+            新着と、読んだ・保存した記事のテーマから
           </p>
-        )}
-        <ul className="px-2">
-          {recommendations.map(({ article, feedTitle, reasons }) => {
-            const thumb = safeThumbnail(resolveThumbnail(article, ogpCache));
-            return (
-              <li key={article.id} className="border-t border-border-subtle px-2 py-2">
-                <button
-                  type="button"
-                  onClick={() => onSelectArticle(article)}
-                  aria-label={`${article.title}を読む`}
-                  className="flex items-start gap-2 min-h-11 w-full min-w-0 text-left text-[13px] font-medium leading-relaxed text-text-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
-                >
-                  <ArticleThumbnail
-                    key={thumb ?? "no-image"}
-                    thumb={thumb}
-                    className="w-16 h-12 flex-shrink-0 rounded object-cover bg-surface-subtle"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 break-words">{article.title}</span>
-                    <span className="mt-0.5 block truncate text-[11px] font-normal text-text-muted">
-                      {feedTitle}
-                    </span>
-                  </span>
-                </button>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 pt-1 text-[11px] leading-relaxed text-text-muted">
-                    {reasons.map((reason, index) => (
-                      <span key={reason}>
-                        {index > 0 && " · "}
-                        {reason}
-                      </span>
-                    ))}
-                  </p>
+          {recommendations.length === 0 && (
+            <p className="px-4 py-3 text-[12px] text-text-muted">
+              いま紹介できる未読記事はありません
+            </p>
+          )}
+          <ul className="px-2">
+            {recommendations.map(({ article, feedTitle, reasons }) => {
+              const thumb = safeRecommendationThumbnail(resolveThumbnail(article, ogpCache));
+              return (
+                <li key={article.id} className="border-t border-border-subtle px-2 py-2">
                   <button
                     type="button"
-                    aria-label={`${article.title}に興味なし`}
-                    title="この記事だけをおすすめから30日間非表示"
-                    onClick={() => {
-                      dismiss(article.id);
-                      setLastDismissed(article.id);
-                    }}
-                    className="min-h-11 flex-shrink-0 px-1 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+                    onClick={() => onSelectArticle(article)}
+                    aria-label={`${article.title}を読む`}
+                    className="flex items-start gap-2 min-h-11 w-full min-w-0 text-left text-[13px] font-medium leading-relaxed text-text-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
                   >
-                    興味なし
+                    <ArticleThumbnail
+                      key={thumb ?? "no-image"}
+                      thumb={thumb}
+                      className="w-16 h-12 flex-shrink-0 rounded object-cover bg-surface-subtle"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 break-words">{article.title}</span>
+                      <span className="mt-0.5 block truncate text-[11px] font-normal text-text-muted">
+                        {feedTitle}
+                      </span>
+                    </span>
                   </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-        <div role="status" className="px-4 text-[11px] text-text-muted">
-          {lastDismissed && dismissedIds.has(lastDismissed) && (
-            <div className="flex flex-wrap items-center gap-x-2 py-1">
-              <span>おすすめから外しました</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 pt-1 text-[11px] leading-relaxed text-text-muted">
+                      {reasons.map((reason, index) => (
+                        <span key={reason}>
+                          {index > 0 && " · "}
+                          {reason}
+                        </span>
+                      ))}
+                    </p>
+                    <button
+                      type="button"
+                      aria-label={`${article.title}に興味なし`}
+                      title="この記事だけをおすすめから30日間非表示"
+                      onClick={() => {
+                        dismiss(article.id);
+                        setLastDismissed(article.id);
+                      }}
+                      className="min-h-11 flex-shrink-0 px-1 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+                    >
+                      興味なし
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div role="status" className="px-4 text-[11px] text-text-muted">
+            {lastDismissed && dismissedIds.has(lastDismissed) && (
+              <div className="flex flex-wrap items-center gap-x-2 py-1">
+                <span>おすすめから外しました</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    restore(lastDismissed);
+                    setLastDismissed(null);
+                    disclosureRef.current?.focus();
+                  }}
+                  ref={undoRef}
+                  className="min-h-11 underline hover:text-text-strong"
+                >
+                  元に戻す
+                </button>
+              </div>
+            )}
+          </div>
+          <details className="px-4 pb-2 text-[11px] leading-relaxed text-text-muted">
+            <summary className="min-h-11 cursor-pointer py-1">選び方・おすすめの調整</summary>
+            <p>
+              表示中の未読記事から最大3件。新しさ、閲覧履歴、保存・いいねした記事のテーマを参考に、配信元の偏りを抑えて選びます。履歴が少ないときは新着を優先します。
+            </p>
+            <p className="mt-1">
+              「興味なし」は、このブラウザでこの記事だけを30日間非表示にします。
+            </p>
+            {dismissedIds.size > 0 && (
               <button
                 type="button"
                 onClick={() => {
-                  restore(lastDismissed);
+                  reset();
                   setLastDismissed(null);
                   disclosureRef.current?.focus();
                 }}
-                ref={undoRef}
-                className="min-h-11 underline hover:text-text-strong"
+                className="min-h-11 text-left underline hover:text-text-strong"
               >
-                元に戻す
+                非表示にしたおすすめをリセット
               </button>
-            </div>
-          )}
+            )}
+          </details>
         </div>
-        <details className="px-4 pb-2 text-[11px] leading-relaxed text-text-muted">
-          <summary className="min-h-11 cursor-pointer py-1">選び方・おすすめの調整</summary>
-          <p>
-            表示中の未読記事から最大3件。新しさ、閲覧履歴、保存・いいねした記事のテーマを参考に、配信元の偏りを抑えて選びます。履歴が少ないときは新着を優先します。
-          </p>
-          <p className="mt-1">「興味なし」は、このブラウザでこの記事だけを30日間非表示にします。</p>
-          {dismissedIds.size > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                reset();
-                setLastDismissed(null);
-                disclosureRef.current?.focus();
-              }}
-              className="min-h-11 text-left underline hover:text-text-strong"
-            >
-              非表示にしたおすすめをリセット
-            </button>
-          )}
-        </details>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

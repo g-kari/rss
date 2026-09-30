@@ -57,7 +57,7 @@ export function rankArticleRecommendations(
     historyIds,
     readingListIds,
   } = options;
-  const limit = Math.max(0, Math.min(6, Math.floor(options.limit ?? 3)));
+  const limit = Math.max(0, Math.min(10, Math.floor(options.limit ?? 3)));
   if (!limit || !candidates.length) return [];
   const feedMap = new Map(feeds.map((feed) => [feed.id, feed]));
   const feedAffinity = new Map<string, number>();

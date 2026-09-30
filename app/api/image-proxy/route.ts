@@ -23,6 +23,16 @@ import {
 } from "@/lib/image-error-placeholder";
 import { isContentTypeConsistent } from "@/lib/image-proxy-security";
 import { MAX_IMAGE_BYTES } from "@/lib/validation";
+import {
+  isSvgImage,
+  MAX_SVG_BYTES,
+  sanitizeSvgImage,
+  SVG_IMAGE_RESPONSE_HEADERS,
+} from "@/lib/svg-image";
+
+// Keep raw SVG out of the general raster MIME policy (including downloads).
+// This route alone permits it, only after rebuilding the static image subset.
+const PROXY_IMAGE_CONTENT_TYPES = new Set([...ALLOWED_IMAGE_CONTENT_TYPES, "image/svg+xml"]);
 
 const IMAGE_CACHE_TTL_SEC = 30 * 24 * 60 * 60; // 30日
 const MAX_IMAGE_BYTES_NO_CL = 5 * 1024 * 1024; // 5MB
@@ -50,8 +60,13 @@ export async function GET(request: Request) {
       maxBytesNoContentLength: MAX_IMAGE_BYTES_NO_CL,
       acceptHeader: "image/*,*/*",
       defaultCacheContentType: "image/jpeg",
-      allowedContentTypes: ALLOWED_IMAGE_CONTENT_TYPES,
-      detectMimeType: detectImageMimeType,
+      allowedContentTypes: PROXY_IMAGE_CONTENT_TYPES,
+      detectMimeType: (bytes) =>
+        detectImageMimeType(bytes) ?? (isSvgImage(bytes) ? "image/svg+xml" : null),
+      sanitizeBody: (bytes, mime) => (mime === "image/svg+xml" ? sanitizeSvgImage(bytes) : bytes),
+      maxBytesForContentType: (mime) =>
+        mime === "image/svg+xml" ? MAX_SVG_BYTES : MAX_IMAGE_BYTES,
+      responseHeaders: (mime) => (mime === "image/svg+xml" ? SVG_IMAGE_RESPONSE_HEADERS : {}),
       isConsistentMime: isContentTypeConsistent,
       refererOverride: qiitaImgixRefererOverride,
       errorResponse: (reason, details) => errorImageSvg(reason, details as ImageErrorDetails),

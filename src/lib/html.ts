@@ -284,8 +284,43 @@ function sanitizeUse(m: string, attrs: string): string {
 
 /** <iframe> タグを src 検査して信頼済みドメインのみ保持する（sanitizeHtml 用コールバック） */
 function sanitizeIframe(m: string, attrs: string): string {
-  const src = attrs.match(/src\s*=\s*["']([^"']+)["']/i)?.[1] ?? "";
-  return isTrustedIframeSrc(src) ? m : "";
+  // Tokenize complete attributes so data-src and text inside title/style cannot
+  // masquerade as the browser's actual src. Like HTML, keep the first duplicate.
+  const parsed = new Map<string, string>();
+  for (const match of attrs.matchAll(
+    /([^\s=/"'<>`]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g,
+  )) {
+    const key = match[1].toLowerCase();
+    if (!parsed.has(key)) parsed.set(key, unescapeHtml(match[2] ?? match[3] ?? match[4] ?? ""));
+  }
+  let src = parsed.get("src") ?? "";
+  const lazySrc = parsed.get("data-src") ?? "";
+  const isPlaceholder =
+    !src || src === "about:blank" || /^data:image\/(?:gif|png);base64,[a-z\d+/=]*$/i.test(src);
+  if (isPlaceholder && isTrustedIframeSrc(lazySrc)) src = lazySrc;
+  if (!isTrustedIframeSrc(src)) return "";
+  if (src.startsWith("//")) src = `https:${src}`;
+  // Canonical attributes exclude srcdoc, publisher lazy-loader state and event
+  // handlers. Preserve an existing sandbox rather than loosening its policy.
+  const allowed = new Set([
+    "title",
+    "width",
+    "height",
+    "frameborder",
+    "allow",
+    "allowfullscreen",
+    "loading",
+    "referrerpolicy",
+    "sandbox",
+    "style",
+    "class",
+    "id",
+  ]);
+  let safeAttrs = ` src="${escapeHtml(src)}"`;
+  for (const [name, value] of parsed) {
+    if (allowed.has(name)) safeAttrs += ` ${name}="${escapeHtml(value)}"`;
+  }
+  return `<iframe${safeAttrs}>${/<\/iframe\b/i.test(m) || m.endsWith("/>") ? "</iframe>" : ""}`;
 }
 
 /**

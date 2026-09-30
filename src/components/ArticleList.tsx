@@ -32,6 +32,7 @@ import { useGalleryAutoRead } from "../hooks/useGalleryAutoRead";
 import { useGallerySwipeNav } from "../hooks/useGallerySwipeNav";
 import { useGalleryAutoScroll } from "../hooks/useGalleryAutoScroll";
 import { useArticleListItemProps } from "../hooks/useArticleListItemProps";
+import { useArticleListScroll } from "../hooks/useArticleListScroll";
 import { SPECIAL_FEED_IDS } from "../lib/storage";
 import { resolveThumbnail } from "../lib/article-utils";
 import ArticleListHeader from "./ArticleListHeader";
@@ -527,59 +528,17 @@ function ArticleList({
   const wasJustCleared = prevFilteredLengthRef.current > 0 && filtered.length === 0;
   prevFilteredLengthRef.current = filtered.length;
 
-  const prevScrollStateRef = useRef<{
-    id: string | null;
-    layout: string | null;
-    anchor: number | undefined;
-  }>({
-    id: null,
-    layout: null,
-    anchor: undefined,
+  useArticleListScroll({
+    selectedArticleId,
+    layout,
+    anchorTrigger,
+    scrollContainerRef,
+    flatItems,
+    displayItems: nonGalleryDisplayItems,
+    listVirtualizer,
+    cardVirtualizer,
+    magazineVirtualizer,
   });
-  const flatItemsRef = useSyncedRef(flatItems);
-  const visibleRef = useSyncedRef(visible);
-  const nonGalleryDisplayItemsRef = useSyncedRef(nonGalleryDisplayItems);
-  useEffect(() => {
-    if (!selectedArticleId) return;
-    // #684: anchorTrigger が変化したときは prev 一致でも強制再実行 (manual anchor)
-    const sameAsPrev =
-      selectedArticleId === prevScrollStateRef.current.id &&
-      layout === prevScrollStateRef.current.layout;
-    const isManualAnchor = anchorTrigger !== prevScrollStateRef.current.anchor;
-    if (sameAsPrev && !isManualAnchor) return;
-    prevScrollStateRef.current = { id: selectedArticleId, layout, anchor: anchorTrigger };
-    // 手動アンカー時は中央寄せ・通常の選択時は近接寄せ
-    const align = isManualAnchor ? "center" : "auto";
-    if (layout === "compact" || layout === "list") {
-      const idx = flatItemsRef.current.findIndex(
-        (item) => item.type === "article" && item.key === selectedArticleId,
-      );
-      if (idx >= 0) listVirtualizer.scrollToIndex(idx, { align });
-    } else if (layout === "card") {
-      const articleIdx = visibleRef.current.findIndex((a) => a.id === selectedArticleId);
-      if (articleIdx >= 0) cardVirtualizer.scrollToIndex(Math.floor(articleIdx / 2), { align });
-    } else if (layout === "magazine") {
-      const magazineIdx = nonGalleryDisplayItemsRef.current.findIndex(
-        (a, i) => i > 0 && a.id === selectedArticleId,
-      );
-      if (magazineIdx >= 1) magazineVirtualizer.scrollToIndex(magazineIdx - 1, { align });
-    } else {
-      const el = document.getElementById(`article-${selectedArticleId}`);
-      const container = scrollContainerRef.current;
-      if (el && container) {
-        const elRect = el.getBoundingClientRect();
-        const cRect = container.getBoundingClientRect();
-        const isVisible = elRect.bottom > cRect.top && elRect.top < cRect.bottom;
-        // 通常時: 見えていればスキップ / 手動アンカー時は常にセンタリング
-        if (isManualAnchor) {
-          el.scrollIntoView({ block: "center", behavior: "smooth" });
-        } else if (!isVisible) {
-          el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- listVirtualizer・cardVirtualizer・magazineVirtualizer・flatItemsRef・visibleRef・nonGalleryDisplayItemsRef は安定参照。記事選択・レイアウト変更・手動アンカー時のみスクロール
-  }, [selectedArticleId, layout, anchorTrigger]);
 
   // #883 Phase A.1: 一括選択 state + Shift+click ハンドラ
   const bulkSelection = useBulkArticleSelection();
@@ -733,6 +692,7 @@ function ArticleList({
             readBeforeTimestamp={recommendationContext.readBeforeTimestamp}
             bookmarkIds={bookmarkIds}
             readingListIds={readingListIds ?? EMPTY_STRING_SET}
+            onToggleReadingList={onToggleReadingList}
             onSelectArticle={onSelectArticle}
             enabled={
               !loading &&

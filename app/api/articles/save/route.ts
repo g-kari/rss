@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { withJsonBody, applyCooldown } from "@/lib/server-auth";
 import { apiError } from "@/lib/api-error";
 import { isValidFeedUrl } from "@/lib/url";
-import { r2Get, r2Put, sha256Hex, savedArticlesKey, saveArticleCooldownKey } from "@/lib/r2";
+import { r2Get, sha256Hex, savedArticlesKey, saveArticleCooldownKey } from "@/lib/r2";
 import { fetchPageOgpMeta } from "@/lib/ogp";
+import {
+  upsertSavedArticle,
+  SavedArticleLimitError,
+  SavedArticleConflictError,
+} from "@/lib/saved-articles";
 import type { Article } from "@/types";
 import { MAX_SAVED_ARTICLES } from "@/lib/validation";
 const FETCH_TIMEOUT_MS = 8_000;
@@ -55,8 +60,18 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    await r2Put(env.RSS_DATA, key, [article, ...saved]);
-
-    return NextResponse.json(article, { status: 201 });
+    try {
+      const result = await upsertSavedArticle(env.RSS_DATA, session.userId, article);
+      return NextResponse.json(result.article, { status: result.created ? 201 : 200 });
+    } catch (error) {
+      if (error instanceof SavedArticleLimitError)
+        return apiError("保存記事の上限に達しました", 422, { code: "SAVED_LIMIT_REACHED" });
+      if (error instanceof SavedArticleConflictError)
+        return apiError("ほかの保存と競合しました。再試行してください", 409, {
+          code: "SAVED_ARTICLE_CONFLICT",
+          retryable: true,
+        });
+      throw error;
+    }
   });
 }

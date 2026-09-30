@@ -71,7 +71,6 @@ export function useArticleListItemProps({
   onToggleReadingList,
   onContextMenu,
 }: Params) {
-  const ogpCacheRef = useSyncedRef(ogpCache);
   const onSelectArticleRef = useSyncedRef(onSelectArticle);
   const onToggleReadRef = useSyncedRef(onToggleRead);
   const onToggleBookmarkRef = useSyncedRef(onToggleBookmark);
@@ -125,7 +124,7 @@ export function useArticleListItemProps({
         isNew,
         hasNote: !!notes?.[article.id],
         feedName: feed ? feed.title || feed.url : "",
-        thumb: resolveThumbnail(article, ogpCacheRef.current),
+        thumb: resolveThumbnail(article, ogpCache),
         showFeedName,
         query,
         duplicateFeedNames: duplicateInfo?.get(article.id),
@@ -143,7 +142,8 @@ export function useArticleListItemProps({
       readBeforeMs,
       feedMap,
       progressMap,
-      ogpCacheRef,
+      // Thumbnail data must invalidate memoized gallery/card renderers when it arrives.
+      ogpCache,
       showFeedName,
       query,
       filteredCount,

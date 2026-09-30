@@ -15,6 +15,11 @@ export function useGracePeriod(currentId: string | null | undefined): string | n
   const [gracePeriodId, setGracePeriodId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevIdRef = useRef<string | null | undefined>(currentId);
+  // Keep the outgoing article during the selection render itself. Waiting for
+  // the effect removes it from unread results for one commit, then re-adds it
+  // as a "new" item and makes the list flicker/reorder on every next/previous.
+  const retainedId =
+    prevIdRef.current && prevIdRef.current !== currentId ? prevIdRef.current : gracePeriodId;
 
   useEffect(() => {
     const prev = prevIdRef.current;
@@ -34,5 +39,5 @@ export function useGracePeriod(currentId: string | null | undefined): string | n
     [],
   );
 
-  return gracePeriodId;
+  return retainedId;
 }

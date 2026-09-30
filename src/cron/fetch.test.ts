@@ -277,7 +277,7 @@ describe("bounded feed bodies", () => {
 
 describe("feed body concurrency", () => {
   it.each(["refresh", "cron"])(
-    "%s keeps network concurrency separate from the two body/parse slots",
+    "%s starts at most two upstream responses and consumes them without a queued body",
     async (mode) => {
       const hashes = Array.from({ length: 20 }, (_, i) => `feed-${i}`);
       vi.mocked(readUserSubscriptions).mockResolvedValue(
@@ -299,10 +299,13 @@ describe("feed body concurrency", () => {
       }));
       let reading = 0;
       let peak = 0;
-      let nextStream = 0;
+      let openResponses = 0;
+      let peakResponses = 0;
       const release: Array<() => void> = [];
-      const fetch = vi.fn(async () => {
-        const i = nextStream++;
+      const fetch = vi.fn(async (url: string) => {
+        const i = Number(new URL(url).pathname.split("-")[1]);
+        openResponses++;
+        peakResponses = Math.max(peakResponses, openResponses);
         let started = false;
         return new Response(
           new ReadableStream<Uint8Array>(
@@ -314,6 +317,7 @@ describe("feed body concurrency", () => {
                 peak = Math.max(peak, reading);
                 release.push(() => {
                   reading--;
+                  openResponses--;
                   controller.enqueue(new TextEncoder().encode(i % 2 ? HTML : XML));
                   controller.close();
                 });
@@ -325,7 +329,8 @@ describe("feed body concurrency", () => {
       });
       vi.stubGlobal("fetch", fetch);
       const run = mode === "refresh" ? fetchArticles(env, "user") : fetchAllFeeds(env);
-      await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(20));
+      await vi.waitFor(() => expect(reading).toBe(2));
+      expect(fetch).toHaveBeenCalledTimes(2);
       expect(reading).toBe(2);
       for (let i = 0; i < hashes.length; i++) {
         await vi.waitFor(() => expect(release.length).toBeGreaterThan(i));
@@ -333,12 +338,52 @@ describe("feed body concurrency", () => {
       }
       await run;
       expect(peak).toBe(2);
+      expect(peakResponses).toBe(2);
+      expect(openResponses).toBe(0);
+      expect(fetch).toHaveBeenCalledTimes(20);
       expect(reading).toBe(0);
       expect(parseFeed).toHaveBeenCalledTimes(10);
       expect(scrapeFeed).toHaveBeenCalledTimes(10);
       expect(writeFeedMeta).toHaveBeenCalledTimes(20);
+      expect(vi.mocked(writeFeedMeta).mock.calls.every(([, meta]) => !meta.fetchError)).toBe(true);
     },
   );
+});
+
+it("cancels stalled bodies, admits waiting feeds, and allows a successful forced retry", async () => {
+  vi.useFakeTimers();
+  const metas = Array.from({ length: 6 }, (_, i) => makeMeta(`feed-${i}`));
+  vi.mocked(readUserSubscriptions).mockResolvedValue(
+    metas.map(({ feedHash, url }) => ({ feedHash, url, subscribedAt: "2026-01-01T00:00:00Z" })),
+  );
+  vi.mocked(readFeedMeta).mockImplementation(
+    async (_bucket, hash) => metas.find((meta) => meta.feedHash === hash) ?? null,
+  );
+  const cancel = vi.fn();
+  let count = 0;
+  const fetch = vi.fn(async () => {
+    count++;
+    return count <= 2
+      ? new Response(new ReadableStream<Uint8Array>({ cancel }, { highWaterMark: 0 }))
+      : new Response(XML);
+  });
+  vi.stubGlobal("fetch", fetch);
+  const run = fetchArticles(env, "user");
+  await vi.advanceTimersByTimeAsync(0);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(cancel).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(15_000);
+  await run;
+  expect(cancel).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenCalledTimes(6);
+  expect(metas.filter((meta) => meta.fetchError)).toHaveLength(2);
+  expect(metas.filter((meta) => !meta.fetchError)).toHaveLength(4);
+  for (const meta of metas.filter((meta) => meta.fetchError)) {
+    const retry = await fetchAndUpdateSharedFeed(env, meta.feedHash, true);
+    expect(retry.meta?.fetchError).toBeNull();
+    expect(retry.meta?.consecutiveErrors).toBe(0);
+    expect(retry.newArticles).toHaveLength(1);
+  }
 });
 
 it("holds body permits until article storage finishes", async () => {
@@ -358,7 +403,8 @@ it("holds body permits until article storage finishes", async () => {
   const fetch = vi.fn(async () => new Response(XML));
   vi.stubGlobal("fetch", fetch);
   const run = fetchArticles(env, "user");
-  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+  await vi.waitFor(() => expect(finishStorage).toHaveLength(2));
+  expect(fetch).toHaveBeenCalledTimes(2);
   expect(parseFeed).toHaveBeenCalledTimes(2);
   expect(finishStorage).toHaveLength(2);
   for (let i = 0; i < 4; i++) {
