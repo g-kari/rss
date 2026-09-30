@@ -223,6 +223,7 @@ export default function UserSettingsModal({
       <FeedManagementTabPanel hidden={activeTab !== "feeds"} feeds={feeds} />
 
       <ImportExportTabPanel
+        userId={userId}
         hidden={activeTab !== "import-export"}
         articles={articles}
         setNote={setNote}

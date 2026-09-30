@@ -171,6 +171,7 @@ src/
     ToastContainer.tsx       # トースト通知コンテナ（右下スタック・3種別・自動消去・ポータル描画）
     RecommendationSection.tsx # フィード推薦セクション
     user-settings/RecommendationNotificationSettings.tsx # opt-in日次通知と30分刻み時刻UI
+    ImmersiveArticleMode.tsx # 明示起動の全画面・縦スワイプ推薦（10件区切り、保存/非表示、既読化なし）
     ArticleRecommendations.tsx # フィルター済み未読記事の理由付き推薦・取り消し・調整 UI（ブラウザ内）
     KeyboardShortcutsModal.tsx # キーボードショートカット一覧モーダル
     ReleaseNotesModal.tsx    # リリースノートモーダル
@@ -302,6 +303,7 @@ src/
     useSyncedRef.ts          # stale closure 回避用の最新値 ref ユーティリティ
     useColumnResize.ts       # カラム幅リサイズ操作と localStorage 永続化
     usePortalMenu.ts         # ポータルベースのドロップダウンメニュー位置管理
+    useArticleListScroll.ts # 次/前の記事の選択を最小移動で表示し、明示アンカーのみ中央寄せ
     useGracePeriod.ts        # 直前選択記事を 30 秒間フィルター対象外にする猶予期間管理
     useDebounce.ts           # デバウンスユーティリティ
     useAutoReadSettings.ts   # 自動既読閾値・自動翻訳・自動要約・autoAiBrowserOnly (#700) 設定（useUIState から分割）
@@ -322,7 +324,7 @@ src/
     useArticleNote.ts        # 記事ごとの個人メモ編集・自動保存（ReadState.notes と同期、最大 2000 文字）
     useArticleAiRatings.ts   # AI 要約・翻訳結果へのユーザー評価フィードバック管理
     useArticleViewState.ts   # ArticleView のフック・状態管理を集約（サブフックを合成）
-    useArticleViewContent.ts # 記事コンテンツ処理（processedContent・galleryImages・embedInfo・派生状態）
+    useArticleViewContent.ts # 記事コンテンツ処理と本文画像から共有サムネイルへの補完（processedContent・galleryImages・embedInfo・派生状態）
     useArticleViewTts.ts     # 記事 TTS（読み上げライフサイクル・Shift+P ショートカット・トグル）
     useArticleViewShortcuts.ts # 記事ビューキーボードショートカット（v/a/z/space）+ 自動翻訳トリガー
     useArticleViewProgress.ts  # 読書進捗バー・自動既読・スクロールハンドラー
@@ -430,6 +432,7 @@ src/
     push-config.ts          # PushConfig ETag CAS更新・失効endpointだけを削除
     recommendation-push.ts  # タイムゾーン日付・通知候補/feedbackの安全な純粋関数
     recommendation-dismissals-client.ts # 端末の有界feedbackとundo/reset同期待ちを保持
+    immersive-articles.ts # 推薦モードの厳密候補・10件バッチ・重複防止・既存本文抜粋・安全なサムネイル
     article-recommendations.ts # 既存記事・保存/いいね/閲覧から未読3件を理由付きで選ぶローカル順位付け
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     shared-feed-storage.ts   # 追記型記事保存・CAS commit・論理ページ・明示的な旧形式移行
@@ -480,6 +483,7 @@ src/
     read-state-merge.ts      # 読み取り状態マージ純粋関数（local ∪ server / snoozed は遅い方優先 / notes はサーバー優先）
     feed-group-drop.ts       # フィードグループへのドラッグ&ドロップ時の競合解決ロジック
     image-proxy-url.ts       # 画像プロキシ URL ビルダー / プロキシ済み判定
+    svg-image.ts             # 外部SVGをサイズ・複雑度制限付きの静的画像サブセットに再構成。実行要素・外部参照を除去しimage-only CSPを適用
     image-proxy-security.ts  # 画像プロキシリクエストの MIME / Content-Type / オリジン検証
     browser-ai-common.ts     # Summarizer / Translator 等 Chrome 組み込みブラウザ AI 共通ユーティリティ（BrowserAiAvailability 型・共通判定ロジックを集約、browser-summarizer.ts / browser-translator.ts から参照）
     browser-translator.ts    # ブラウザネイティブ翻訳 API（Translator）の利用可否判定・言語検出
@@ -520,7 +524,7 @@ src/
     piper-voices.ts          # piper-plus TTS engine で利用可能な voice 定義と配信方式 (R2 セルフホスト vs HuggingFace 直 fetch) のガイド
   cron/
     recommendations.ts       # 30分cronを再利用する日次おすすめoutboxと端末別配信
-    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env)
+    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env) — メタデータ確認20並列、fetch開始から本文解析・保存まで共有2並列
 ```
 
 ## データフロー
@@ -1237,3 +1241,19 @@ git commit -m "compat: AGENTS.md → CLAUDE.md symlink で Codex 対応"
 ## 記事保存・検索の段階的切り替え
 
 `src/lib/feed-rollout.ts` が明示的な有効化を判定する。`RSS_ARTICLE_STORAGE_V2` が未設定/false/不正なら取り込みは `shared-feed-legacy.ts` の旧形式writerを使用する。すでにv2のheadは常にv2 writerで扱い、形式を戻さない。`RSS_ARTICLE_SEARCH_INDEX` が未設定/false/不正なら `legacy-article-search.ts` による従来の全文検索を使用し、D1同期もしない。両フラグは独立し、`RSS_FEED_WRITES_PAUSED` による保守停止が優先される。通常のCloudflare build/deployではSQL・データ移行をしない。
+
+## SingleFile 私有保存 (2026-09-30)
+
+- `app/api/clip/route.ts`: 専用Bearerのmultipart受信。Cookie経路は既存同一origin CSRFを維持。CORSはBearer書込だけ、credentialsなし。
+- `app/api/clip/token/route.ts`: session/CSRFとアカウント照合を保つGET/POST/DELETEトークン管理。
+- `app/api/clip/images/[id]/route.ts`: ログインした所有者のラスター画像だけをprivate/no-store配信。
+- `src/lib/clip-token.ts`: 256bit秘密・SHA256ハッシュ・30日期限・clip:write scope、R2 CASポインタによる再発行/失効。
+- `src/lib/clip.ts`: 5MiB HTMLのbounded multipart/JSON解析、HTML/URL検証、ZIP明示拒否。
+- `src/lib/clip-images.ts`: PNG/JPEG/GIF/WebPの実バイト確認、私有画像保存、既存サニタイザを緩めないURL復元。
+- `src/lib/clip-image-url.ts`: 64hexの私有画像パスだけを許可するクライアント共通判定。
+- `src/lib/clip-storage.ts`: 本人の本文と画像を永続保存、手動保存記事へ接続。
+- `src/lib/saved-articles.ts`: URL保存とSingleFile保存に共通のCASマージ（最大3試行・500件上限）。
+- `src/hooks/useSingleFileSettings.ts`: 表示中のアカウントに紐づけた設定読込/明示操作、秘密はメモリのみ。
+- `src/components/user-settings/SingleFileSettings.tsx`: 設定手順、発行前確認、コピー、有効期限、失効UI。
+
+R2: `clip-tokens/{id}.json` は所有者と秘密ハッシュ。`users/{userId}/clip-token.json` は現在のトークンへのCASポインタ/失効tombstone。`users/{userId}/clips/{urlSha256}.json` は本文、`users/{userId}/clip-images/{contentSha256}` は検証済み画像。`saved.json` には本文を膨らませず記事メタデータのみを入れる。共有feed/D1に本文・画像・秘密を入れない。

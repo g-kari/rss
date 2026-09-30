@@ -1,3 +1,5 @@
+import { isClipImageUrl } from "./clip-image-url";
+
 /**
  * 記事画像抽出ユーティリティ。
  *
@@ -28,7 +30,7 @@ function isCollectableUrl(src: string): boolean {
   return (
     !!src &&
     !src.startsWith("data:") &&
-    (src.startsWith("/api/image-proxy?") || src.startsWith("http"))
+    (isClipImageUrl(src) || src.startsWith("/api/image-proxy?") || src.startsWith("http"))
   );
 }
 

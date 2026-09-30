@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readSavedClip } from "@/lib/clip-storage";
 import { withSession, type AuthSession } from "@/lib/server-auth";
 import { apiError, formatError } from "@/lib/api-error";
 import { deleteCfCache, matchCfCache } from "@/lib/cache-helper";
@@ -75,6 +76,14 @@ async function handleGet(
 
   if (!isValidFeedUrl(url)) {
     return apiError("Invalid URL", 400, { code: "INVALID_URL" });
+  }
+
+  // Durable owner-only clips take precedence even after Cache API eviction or a POP change.
+  const savedClip = await readSavedClip(env.RSS_DATA, session.userId, url);
+  if (savedClip) {
+    return NextResponse.json(savedClip, {
+      headers: { "Cache-Control": "private, no-store", "X-Cache-Source": "saved-clip" },
+    });
   }
 
   // clip key と shared cache key を並列構築 (sha256 計算が独立)、

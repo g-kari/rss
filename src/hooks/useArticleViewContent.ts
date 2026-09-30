@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import type { Article } from "../types";
 import type { Theme } from "./useThemePreference";
 import { readingTime } from "../lib/article-utils";
@@ -65,6 +66,19 @@ export function useArticleViewContent(
     () => (processedContent ? collectImageUrlsFromHtml(processedContent) : []),
     [processedContent],
   );
+
+  // A usable image already found in the displayed body can repair a missing
+  // gallery thumbnail without fetching OGP or the full body again. Reuse the
+  // canonical extractor's proxy/lazy-image and small-image handling.
+  const { ogpCache, cacheOgpEntry } = useOgpCacheContext();
+  const articleLink = article?.link;
+  const feedImage = article?.ogImage;
+  const cachedImage = articleLink ? ogpCache[articleLink] : undefined;
+  const bodyImage = galleryImages[0];
+  useEffect(() => {
+    if (!articleLink || feedImage || cachedImage || !bodyImage) return;
+    cacheOgpEntry(articleLink, { image: bodyImage });
+  }, [articleLink, feedImage, cachedImage, bodyImage, cacheOgpEntry]);
 
   // #672 Phase 2: TTS ハイライト用にセンテンス span でラップした HTML と sentence 配列
   // SPEECH_SUPPORTED ガード: Web Speech API 非対応ブラウザでは wrappedContent を使わないため、

@@ -124,6 +124,8 @@ OGP 画像がない場合は `image: ""` を返す（エラーにはならない
 
 外部画像を取得してプロキシする。Cloudflare Cache API（30日）でキャッシュされる。同一オリジンからのリクエスト（`Sec-Fetch-Site: same-origin` または `Referer` 一致）のみ受け付ける。MIME タイプ検証あり。
 
+SVGは入力・出力とも512KiBまでのUTF-8 XMLだけを静的画像として再構成し、スクリプト・イベント・foreignObject・外部リソース・アニメーション・use展開を除去する。図形・文字・ローカルのグラデーション/クリップ参照と単純なクラス指定の色は保持する。HIT/MISS両方で再検証し、SVG応答に `Content-Security-Policy: default-src 'none'; sandbox` を付ける。raw SVGの透過配信や全体のCSP緩和は行わない。DOM生成前のマークアップ数制限、描画ノード5000・深さ64・CSSセレクター合計256の上限と、クラス索引・逐次UTF-8出力予算でCPU/メモリ増幅を抑える。
+
 ### クエリパラメータ
 
 | パラメータ | 型     | 説明                   |

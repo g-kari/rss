@@ -85,6 +85,12 @@ export interface BinaryProxyOptions<Reason extends string> {
    * のみで完結するため未指定。
    */
   isConsistentMime?: (declaredCt: string, detectedMime: string) => boolean;
+  /** Rebuild active formats before serving or caching; null rejects the body. Also runs on cache hits. */
+  sanitizeBody?: (body: Uint8Array<ArrayBuffer>, mime: string) => Uint8Array<ArrayBuffer> | null;
+  /** A stricter per-format cap, used before reading declared active formats. */
+  maxBytesForContentType?: (mime: string) => number;
+  /** Additional restrictive headers for active image formats, on hits and misses alike. */
+  responseHeaders?: (mime: string) => Record<string, string>;
   /**
    * Referer の上書き (例: Qiita imgix 用)。null を返すと origin + "/" の default を使う。
    * 未指定なら常に origin + "/"。
@@ -148,14 +154,28 @@ export async function handleBinaryProxy<Reason extends string>(
     const cachedBody = cached.body ? await readBodyBytes(cached.body, options.maxBytes) : null;
     if (cachedBody !== null) {
       const cachedDetectedMime = options.detectMimeType(cachedBody);
-      if (cachedDetectedMime && options.allowedContentTypes.has(cachedDetectedMime)) {
-        return new Response(cachedBody, {
+      const cachedContentType = (cached.headers.get("Content-Type") ?? "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+      const safeCachedBody =
+        cachedDetectedMime &&
+        options.allowedContentTypes.has(cachedDetectedMime) &&
+        (!options.isConsistentMime ||
+          options.isConsistentMime(cachedContentType, cachedDetectedMime))
+          ? options.sanitizeBody
+            ? options.sanitizeBody(cachedBody, cachedDetectedMime)
+            : cachedBody
+          : null;
+      if (safeCachedBody && cachedDetectedMime) {
+        return new Response(safeCachedBody, {
           headers: {
-            "Content-Type": cached.headers.get("Content-Type") ?? options.defaultCacheContentType,
+            "Content-Type": cachedDetectedMime,
             "Cache-Control": `public, max-age=${options.cacheTtlSec}`,
             "X-Cache": "HIT",
             "Cross-Origin-Resource-Policy": "same-origin",
             "X-Content-Type-Options": "nosniff",
+            ...options.responseHeaders?.(cachedDetectedMime),
           },
         });
       }
@@ -172,6 +192,7 @@ export async function handleBinaryProxy<Reason extends string>(
     }
   }
 
+  let upstream: Response | null = null;
   try {
     const overrideReferer = options.refererOverride?.(url) ?? null;
     const referer = overrideReferer ?? new URL(url).origin + "/";
@@ -187,6 +208,7 @@ export async function handleBinaryProxy<Reason extends string>(
       },
       DEFAULT_FETCH_TIMEOUT_MS,
     );
+    upstream = res;
 
     const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
 
@@ -218,7 +240,11 @@ export async function handleBinaryProxy<Reason extends string>(
 
     const contentLength = res.headers.get("content-length");
     const clBytes = contentLength ? parseInt(contentLength, 10) : NaN;
-    if (contentLength && clBytes > options.maxBytes) {
+    const maxBytes = Math.min(
+      options.maxBytes,
+      options.maxBytesForContentType?.(ct) ?? options.maxBytes,
+    );
+    if (contentLength && clBytes > maxBytes) {
       console.error(
         `[${options.label}] too large (Content-Length): url=${logUrl} cl=${clBytes} max=${options.maxBytes}`,
       );
@@ -230,9 +256,9 @@ export async function handleBinaryProxy<Reason extends string>(
     }
 
     const effectiveMax =
-      contentLength && clBytes <= options.maxBytes
-        ? options.maxBytes
-        : options.maxBytesNoContentLength;
+      contentLength && clBytes <= maxBytes
+        ? maxBytes
+        : Math.min(maxBytes, options.maxBytesNoContentLength);
 
     if (!res.body) {
       console.error(`[${options.label}] no body: url=${logUrl} content-type="${ct}"`);
@@ -281,25 +307,30 @@ export async function handleBinaryProxy<Reason extends string>(
       });
     }
 
+    const safeBody = options.sanitizeBody ? options.sanitizeBody(merged, mimeType) : merged;
+    if (safeBody === null) return options.errorResponse(options.reasonMap.contentTypeMismatch);
+
     cachePutAsync(
       cacheKey,
-      new Response(merged, {
+      new Response(safeBody, {
         headers: {
           "Content-Type": mimeType,
           "Cache-Control": `public, max-age=${options.cacheTtlSec}`,
+          ...options.responseHeaders?.(mimeType),
         },
       }),
       ctx,
       options.label,
     );
 
-    return new Response(merged, {
+    return new Response(safeBody, {
       headers: {
         "Content-Type": mimeType,
         "Cache-Control": `public, max-age=${options.cacheTtlSec}`,
         "X-Cache": "MISS",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Content-Type-Options": "nosniff",
+        ...options.responseHeaders?.(mimeType),
       },
     });
   } catch (err) {
@@ -307,5 +338,8 @@ export async function handleBinaryProxy<Reason extends string>(
       console.error(`[${options.label}] fetch error:`, formatError(err));
     }
     return options.errorResponse(options.reasonMap.network);
+  } finally {
+    // MIME/size/status rejection must not leave an unread upstream response open.
+    if (upstream?.body && !upstream.bodyUsed) void upstream.body.cancel().catch(() => {});
   }
 }

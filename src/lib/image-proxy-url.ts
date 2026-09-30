@@ -1,3 +1,5 @@
+import { isClipImageUrl } from "./clip-image-url";
+
 /**
  * `/api/image-proxy?url=...` 形式のプロキシ URL を組み立てるユーティリティ。
  *
@@ -20,7 +22,7 @@
  */
 export function buildImageProxyUrl(url: unknown): string {
   if (typeof url !== "string" || url === "") return "";
-  if (isProxiedImageUrl(url)) return url;
+  if (isProxiedImageUrl(url) || isClipImageUrl(url)) return url;
   return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 

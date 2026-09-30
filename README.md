@@ -301,16 +301,18 @@ pre-commit install   # 初回セットアップ
 
 ### 記事
 
-| メソッド | パス                       | 説明                                                   |
-| -------- | -------------------------- | ------------------------------------------------------ |
-| GET      | `/api/articles`            | 記事一覧取得                                           |
-| POST     | `/api/articles/save`       | 記事保存                                               |
-| GET      | `/api/content?url=...`     | 記事フルテキスト取得プロキシ                           |
-| DELETE   | `/api/content?url=...`     | 自分の clip cache を削除 (共有 cache は触らない、冪等) |
-| GET      | `/api/ogp?url=...`         | OGP 画像 URL 取得                                      |
-| GET      | `/api/image-proxy?url=...` | 外部画像プロキシ                                       |
-| GET      | `/api/video-proxy?url=...` | 外部動画プロキシ (image-proxy と同 handler)            |
-| POST     | `/api/clip`                | SingleFile 拡張からの HTML クリップ保存                |
+| メソッド        | パス                       | 説明                                                   |
+| --------------- | -------------------------- | ------------------------------------------------------ |
+| GET             | `/api/articles`            | 記事一覧取得                                           |
+| POST            | `/api/articles/save`       | 記事保存                                               |
+| GET             | `/api/content?url=...`     | 記事フルテキスト取得プロキシ                           |
+| DELETE          | `/api/content?url=...`     | 自分の clip cache を削除 (共有 cache は触らない、冪等) |
+| GET             | `/api/ogp?url=...`         | OGP 画像 URL 取得                                      |
+| GET             | `/api/image-proxy?url=...` | 外部画像プロキシ                                       |
+| GET             | `/api/video-proxy?url=...` | 外部動画プロキシ (image-proxy と同 handler)            |
+| POST            | `/api/clip`                | SingleFile の multipart HTML + URL を本人専用に保存    |
+| GET/POST/DELETE | `/api/clip/token`          | 保存専用トークンの確認・明示的発行・失効               |
+| GET             | `/api/clip/images/{id}`    | ログインユーザー専用の保存画像                         |
 
 ### 既読・ブックマーク状態
 
@@ -596,3 +598,15 @@ Piper TTS engine の voice として **つくよみちゃんコーパス** (CC B
 
 記事詳細ビューの設計・UXは [Readeck](https://codeberg.org/readeck/readeck) (AGPL v3.0) を参考にしています。
 コードの直接流用はなく、設計・機能アイデアのみを参考にしています。
+
+## SingleFile 連携
+
+1. 設定 → インポート/エクスポートで「保存専用トークンを発行」を押し、確認して発行します。
+2. SingleFile の保存先で `upload to a REST Form API` を選択します。
+3. URL は設定画面の保存先URL、authorization token は発行した値、archive data field name は `html`、archive URL field name は `url` に設定します。Bearer の接頭辞はSingleFileが付けるため、トークン欄に加えません。
+4. ファイル形式は `HTML`。HTML全体で5MiB、埋め込み画像はPNG/JPEG/GIF/WebPを128種類まで、送信は1分に1回です。ZIP/自己解凍ZIP、SVG等のdata画像は明示的に拒否します。
+5. 保存後は記事一覧を更新します。本文と対応画像はユーザー専用R2に保存し、既存の手動保存記事として「すべての記事」に追加します。元ページのCSS/スクリプトを再現する完全アーカイブではありません。
+
+トークンは保存だけを許可し、30日で期限切れになります。設定を開いただけでは発行しません。再発行/失効は即時に以後の認証へ反映され、既に認証された処理は取り消しません。生トークンは発行レスポンスと開いている画面だけに保持し、サーバーではハッシュのみ保存します。既存Cookie APIのCSRF保護は変更せず、クロスオリジンのCookie利用を許可しません。失効しても保存済み記事は残ります。
+
+公式仕様: [SingleFile REST Form API](https://github.com/gildas-lormeau/SingleFile/blob/master/src/lib/rest-form-api/index.js)、[設定ヘルプ](https://github.com/gildas-lormeau/SingleFile/blob/master/src/ui/pages/help.html)
