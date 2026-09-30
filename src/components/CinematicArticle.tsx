@@ -1,89 +1,102 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Article } from "../types";
-import { immersiveExcerpt } from "../lib/immersive-articles";
+import {
+  immersiveCaptions,
+  immersiveExcerpt,
+  immersiveVideoSource,
+} from "../lib/immersive-articles";
 import { useVisualMode } from "../contexts/VisualModeContext";
 import { CINEMATIC_DURATION, useCinematicPlayback } from "../hooks/useCinematicPlayback";
 import { ArticleThumbnail } from "./article-items/shared";
+import CinematicVideo from "./CinematicVideo";
 
 interface Props {
   article: Article;
   thumb?: string;
   feedTitle: string;
   active: boolean;
+  paused?: boolean;
+  speed?: number;
+  onComplete?: () => void;
 }
 
-export default function CinematicArticle({ article, thumb, feedTitle, active }: Props) {
-  const { motionAllowed, pageVisible } = useVisualMode();
+export default function CinematicArticle({
+  article,
+  thumb,
+  feedTitle,
+  active,
+  paused = false,
+  speed = 1,
+  onComplete,
+}: Props) {
+  const { motionEnabled, motionReason, pageVisible } = useVisualMode();
+  // Opening immersive mode opts in independently of the normal reader's visual skin.
+  const motionAllowed = motionEnabled && !motionReason;
   const imageRef = useRef<HTMLDivElement>(null);
-  const playback = useCinematicPlayback(imageRef, active && motionAllowed, pageVisible);
-  const excerpt = immersiveExcerpt(article);
-  // Verbatim feed text, not generated summaries or invented key points.
-  const captions = Array.from(excerpt.matchAll(/.{1,80}/gu), (part) => part[0]);
-  const captionIndex = Math.min(
-    captions.length - 1,
-    Math.floor(playback.elapsed / (CINEMATIC_DURATION / Math.max(1, captions.length))),
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const fallback = useCallback(() => setVideoFailed(true), []);
+  const video = useMemo(() => immersiveVideoSource(article), [article]);
+  const captions = useMemo(() => immersiveCaptions(article), [article]);
+  const duration = Math.max(CINEMATIC_DURATION, captions.length * 5000);
+  const nativeVideo = active && motionAllowed && !!video && !videoFailed;
+  const playback = useCinematicPlayback(
+    imageRef,
+    active && motionAllowed && !nativeVideo,
+    pageVisible,
+    {
+      autoPlay: true,
+      paused,
+      speed,
+      duration,
+      onComplete,
+    },
   );
-  const caption = captions[captionIndex] || "気になったら「本文を読む」へ";
-  const animated = motionAllowed && !playback.failed;
+  const progress = nativeVideo ? videoProgress : playback.elapsed / duration;
+  const captionIndex = Math.min(captions.length - 1, Math.floor(progress * captions.length));
   return (
     <div className="cinematic-article">
       <div
         className="cinematic-shot"
-        data-playing={playback.playing && pageVisible ? "true" : "false"}
+        data-playing={active && !paused && pageVisible && motionAllowed ? "true" : "false"}
       >
         <div ref={imageRef} className="cinematic-image" aria-hidden="true">
-          <ArticleThumbnail thumb={thumb} className="h-full w-full object-contain" />
+          <ArticleThumbnail thumb={thumb} className="h-full w-full object-cover" />
         </div>
+        {nativeVideo && (
+          <CinematicVideo
+            key={video}
+            src={video!}
+            paused={paused}
+            pageVisible={pageVisible}
+            speed={speed}
+            onProgress={setVideoProgress}
+            onComplete={() => onComplete?.()}
+            onFallback={fallback}
+          />
+        )}
         <div className="cinematic-shade" aria-hidden="true" />
-        <div className="cinematic-kicker" aria-hidden="true">
-          <span>STORY / 20 SEC</span>
-          <span>◈</span>
-        </div>
         <div className="cinematic-copy">
-          <p className="cinematic-feed">{feedTitle}</p>
-          <h3 className="cinematic-title">{article.title}</h3>
-          {animated && (
-            <p className="cinematic-caption" key={captionIndex} aria-hidden="true">
-              {caption}
-            </p>
+          <p className="cinematic-feed">
+            {feedTitle} · {nativeVideo ? "動画・音声なし" : "記事のショート表示"}
+          </p>
+          <h3 className="sr-only">{article.title}</h3>
+          <p className="cinematic-caption" key={captionIndex} aria-hidden="true">
+            {captions[captionIndex]}
+          </p>
+          {(!motionAllowed || playback.failed) && (
+            <p className="cinematic-static">静止表示 · 次へはボタンか縦スワイプで</p>
           )}
         </div>
         <div className="cinematic-progress" aria-hidden="true">
-          <span style={{ width: `${(playback.elapsed / CINEMATIC_DURATION) * 100}%` }} />
+          <span style={{ width: `${progress * 100}%` }} />
         </div>
       </div>
-      {active && (
-        <div className="cinematic-controls">
-          {animated ? (
-            <button
-              type="button"
-              className="visual-mode-switch"
-              onClick={playback.toggle}
-              aria-label={
-                playback.playing
-                  ? "演出を一時停止"
-                  : playback.finished
-                    ? "20秒の演出をもう一度再生"
-                    : "20秒の演出を再生"
-              }
-            >
-              {playback.playing
-                ? "Ⅱ 一時停止"
-                : playback.finished
-                  ? "↻ もう一度"
-                  : "▷ 20秒で眺める"}
-            </button>
-          ) : (
-            <span>静止表示で楽しめます</span>
-          )}
-          <span>{playback.finished ? "ここでストップ" : "自動では次に進みません"}</span>
-        </div>
-      )}
-      <p className="cinematic-transcript">
+      <p className="cinematic-transcript sr-only">
         <span>フィードの説明</span>
-        {excerpt || "短い説明はありません。「本文を読む」から記事を開けます。"}
+        {immersiveExcerpt(article) || "短い説明はありません。「本文を読む」から記事を開けます。"}
       </p>
     </div>
   );

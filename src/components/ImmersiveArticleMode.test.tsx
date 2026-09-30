@@ -89,11 +89,11 @@ function advance(count: number) {
 }
 
 describe("ImmersiveArticleMode", () => {
-  it("shows one accessible article, existing plain text, and no autoplay or generated-content requests", () => {
+  it("shows one accessible article with only neighboring media and no generated-content requests", () => {
     render(<ImmersiveArticleMode {...props} />);
     expect(screen.getByRole("heading", { name: "記事 0" })).toBeInTheDocument();
     expect(screen.getAllByRole("article")).toHaveLength(1);
-    expect(screen.getAllByText("既存の説明 & 要点")).toHaveLength(10);
+    expect(screen.getAllByText("既存の説明 & 要点", { exact: false })).toHaveLength(2);
     expect(document.querySelector("audio, video, iframe")).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
     expect(props.onSelectArticle).not.toHaveBeenCalled();
