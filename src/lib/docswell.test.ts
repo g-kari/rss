@@ -73,6 +73,30 @@ describe("Docswell slides", () => {
     }
   });
 
+  it.each(["</script bar>", "</script\t\n bar>", "</SCRIPT data-end='yes'>"])(
+    "recognizes browser-valid attributed script closing tags: %s",
+    (endTag) => {
+      const html = script.replace("</script>", `ignoredPublisherCode()${endTag}`);
+      const transformed = transformDocswellScriptEmbeds(html);
+      expect(transformed).not.toMatch(/<script/i);
+      expect(transformed).not.toContain("ignoredPublisherCode");
+      expect(parse(applyCorePipeline(html)).querySelector("iframe")?.getAttribute("src")).toBe(
+        embed,
+      );
+    },
+  );
+
+  it("does not re-form unsafe iframe markup while deduplicating the fallback player", () => {
+    const nested =
+      '<ifr<iframe src="https://www.youtube.com/embed/T-TuEmg8MIo"></iframe>ame src="https://evil.test/" onload="evil()"></iframe>';
+    const result = extractMainContent(`<article><p>Slide summary</p>${nested}</article>`, page);
+    const document = parse(result.content);
+    expect(document.querySelectorAll("iframe")).toHaveLength(1);
+    expect(document.querySelector("iframe")?.getAttribute("src")).toBe(embed);
+    expect(result.content).not.toContain("onload");
+    expect(document.querySelector("script")).toBeNull();
+  });
+
   it("does not turn script body text or title attributes into trusted players", () => {
     const hostile = `<script title='class="docswell-embed" data-src="${embed}"'>evil()</script>`;
     expect(parse(applyCorePipeline(hostile)).querySelector("iframe")).toBeNull();

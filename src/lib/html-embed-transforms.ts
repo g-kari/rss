@@ -188,7 +188,7 @@ export function buildDocswellEmbed(url: string): string {
 /** Idempotent conversion of official script embeds in both fetched HTML and RSS. */
 export function transformDocswellScriptEmbeds(html: string): string {
   return html.replace(
-    /<script\b((?:"[^"]*"|'[^']*'|[^'">])*)>[\s\S]*?<\/script\s*>/gi,
+    /<script\b((?:"[^"]*"|'[^']*'|[^'">])*)>[\s\S]*?<\/script\b[^>]*>/gi,
     (match, attrs: string) => {
       const parsed = new Map<string, string>();
       for (const attr of attrs.matchAll(

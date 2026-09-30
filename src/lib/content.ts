@@ -1,3 +1,4 @@
+import { stripIframes } from "./embed-utils";
 import { extractDocswellTranscript } from "./docswell-content";
 import { parseDocswellUrl } from "./docswell";
 import { buildDocswellEmbed } from "./html-embed-transforms";
@@ -359,7 +360,7 @@ export function extractMainContent(
   const augmentWithDocswell = (content: string): string => {
     if (!docswell) return content;
     // The article UI also strips this frame when it renders its dedicated viewer.
-    const withoutFrames = content.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe\s*>/gi, "");
+    const withoutFrames = stripIframes(content);
     return buildDocswellEmbed(pageUrl) + docswellFallback + withoutFrames;
   };
   // SpeakerDeck は CSR サービスのため静的 HTML に <script class="speakerdeck-embed"> が
