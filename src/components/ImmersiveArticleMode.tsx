@@ -15,6 +15,9 @@ import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useSyncedRef } from "../hooks/useSyncedRef";
+import CinematicArticle from "./CinematicArticle";
+import { VisualModeSwitch } from "./VisualModeBar";
+import { useVisualMode } from "../contexts/VisualModeContext";
 import { ArticleThumbnail } from "./article-items/shared";
 
 interface Props extends ArticleRecommendationOptions {
@@ -38,6 +41,7 @@ export default function ImmersiveArticleMode(props: Props) {
     readingListIds,
     dismissedIds,
   } = props;
+  const { enabled: visualMode } = useVisualMode();
   const [batch, setBatch] = useState(() => createImmersiveBatch(props, []));
   const [served, setServed] = useState<Article[]>(() => batch.map(({ article }) => article));
   const [index, setIndex] = useState(0);
@@ -118,7 +122,7 @@ export default function ImmersiveArticleMode(props: Props) {
         }
       }}
     >
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border-default px-4 pt-[env(safe-area-inset-top)]">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border-default px-4 pt-[env(safe-area-inset-top)]">
         <div className="min-w-0 py-2">
           <h2 id={titleId} className="text-[14px] font-medium">
             ドパガキモード
@@ -130,6 +134,7 @@ export default function ImmersiveArticleMode(props: Props) {
         <button type="button" onClick={onClose} className={secondaryButton}>
           一覧に戻る
         </button>
+        <VisualModeSwitch />
       </header>
       <div
         ref={scrollRef}
@@ -155,26 +160,39 @@ export default function ImmersiveArticleMode(props: Props) {
             <div
               key={item.article.id}
               aria-hidden={itemIndex !== index}
+              inert={itemIndex !== index || undefined}
               className="h-full snap-start snap-always overflow-y-auto"
             >
               <article className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center gap-3 p-4 sm:p-6">
                 {article ? (
                   <>
-                    {Math.abs(itemIndex - index) <= 1 && (
-                      <ArticleThumbnail
-                        key={`${article.id}:${thumb ?? "none"}`}
+                    {visualMode && Math.abs(itemIndex - index) <= 1 ? (
+                      <CinematicArticle
+                        key={`${article.id}:${itemIndex === index}`}
+                        article={article}
                         thumb={thumb}
-                        className="h-[24dvh] min-h-20 max-h-72 w-full shrink-0 rounded-xl bg-surface-subtle object-contain"
+                        feedTitle={item.feedTitle}
+                        active={itemIndex === index}
                       />
+                    ) : (
+                      <>
+                        {Math.abs(itemIndex - index) <= 1 && (
+                          <ArticleThumbnail
+                            key={`${article.id}:${thumb ?? "none"}`}
+                            thumb={thumb}
+                            className="h-[24dvh] min-h-20 max-h-72 w-full shrink-0 rounded-xl bg-surface-subtle object-contain"
+                          />
+                        )}
+                        <p className="break-words text-[11px] text-text-muted">{item.feedTitle}</p>
+                        <h3 className="break-words text-xl font-medium leading-relaxed sm:text-2xl">
+                          {article.title}
+                        </h3>
+                        <p className="break-words text-[14px] leading-relaxed text-text-default">
+                          {immersiveExcerpt(article) ||
+                            "短い説明はありません。「本文を読む」から記事を開けます。"}
+                        </p>
+                      </>
                     )}
-                    <p className="break-words text-[11px] text-text-muted">{item.feedTitle}</p>
-                    <h3 className="break-words text-xl font-medium leading-relaxed sm:text-2xl">
-                      {article.title}
-                    </h3>
-                    <p className="break-words text-[14px] leading-relaxed text-text-default">
-                      {immersiveExcerpt(article) ||
-                        "短い説明はありません。「本文を読む」から記事を開けます。"}
-                    </p>
                     <p className="break-words text-[11px] leading-relaxed text-text-muted">
                       {item.reasons.join(" · ")}
                     </p>

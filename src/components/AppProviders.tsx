@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { VisualModeProvider } from "../contexts/VisualModeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import type { ToastApi } from "@/hooks/useToast";
 import { TtsAdapterProvider } from "@/contexts/TtsAdapterContext";
@@ -21,10 +22,11 @@ interface AppProvidersProps {
 /**
  * App.tsx の Provider 入れ子 (#650 Step 1u 抽出)。
  *
- * 4 段の Provider:
+ * 5 段の Provider:
  * - `ToastProvider` — 全 UI 共通のトースト通知 API (`useToast()`)
  * - `TtsAdapterProvider` — TTS engine adapter を記事ヘッダー / 設定モーダルで共有
  * - `ReaderSettingsProvider` — フォントサイズ・行間・テーマ等の表示設定 (40 フィールド)
+ * - `VisualModeProvider` — 表示モードと動きの設定 (リーダー全体・ポータルで共有)
  * - `ArticleFilterProvider` — 記事フィルター状態 (FilterState + onSaveFilter)
  *
  * 順序の理由:
@@ -48,7 +50,9 @@ export default function AppProviders({
     <ToastProvider value={toast}>
       <TtsAdapterProvider value={ttsAdapter}>
         <ReaderSettingsProvider value={readerSettings}>
-          <ArticleFilterProvider value={articleFilter}>{children}</ArticleFilterProvider>
+          <VisualModeProvider>
+            <ArticleFilterProvider value={articleFilter}>{children}</ArticleFilterProvider>
+          </VisualModeProvider>
         </ReaderSettingsProvider>
       </TtsAdapterProvider>
     </ToastProvider>

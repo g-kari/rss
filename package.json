@@ -35,6 +35,7 @@
     "@cloudflare/puppeteer": "^1.1.0",
     "@mozilla/readability": "^0.6.0",
     "@tanstack/react-virtual": "^3.14.13",
+    "animejs": "4.5.0",
     "fast-xml-parser": "^5.11.1",
     "highlight.js": "^11.12.0",
     "katex": "^0.18.9",

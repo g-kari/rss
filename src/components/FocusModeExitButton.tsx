@@ -16,7 +16,7 @@ export default function FocusModeExitButton({ listFocusMode, onExit }: Props) {
   return (
     <button
       onClick={onExit}
-      className="fixed top-3 right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
+      className="fixed top-[calc(3rem+env(safe-area-inset-top)+0.75rem)] right-3 z-50 hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[11px] tracking-[0.03em] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all duration-200"
       aria-label="フォーカスモード解除"
       title="フォーカスモード解除 (Esc)"
     >

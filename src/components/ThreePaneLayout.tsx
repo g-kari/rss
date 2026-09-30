@@ -1,5 +1,6 @@
 "use client";
 
+import VisualModeBar from "./VisualModeBar";
 import type { ReactNode } from "react";
 import { useHasOpenPopup } from "@/hooks/usePopupLock";
 
@@ -25,17 +26,22 @@ export default function ThreePaneLayout({
 }: Props) {
   const hasOpenPopup = useHasOpenPopup();
   return (
-    <div
-      data-layout="root"
-      data-popup-open={hasOpenPopup ? "true" : "false"}
-      className="relative h-screen overflow-hidden font-sans antialiased bg-surface-base text-text-strong lg:grid"
-      style={{
-        gridTemplateColumns: listFocusMode ? `0px 1fr 0px` : `${sidebarWidth}px ${listWidth}px 1fr`,
-        gridTemplateRows: "100%",
-        transition: "grid-template-columns 0.25s ease",
-      }}
-    >
-      {children}
+    <div className="reader-visual-shell flex h-dvh flex-col overflow-hidden">
+      <VisualModeBar />
+      <div
+        data-layout="root"
+        data-popup-open={hasOpenPopup ? "true" : "false"}
+        className="relative min-h-0 flex-1 overflow-hidden font-sans antialiased bg-surface-base text-text-strong lg:grid"
+        style={{
+          gridTemplateColumns: listFocusMode
+            ? `0px 1fr 0px`
+            : `${sidebarWidth}px ${listWidth}px 1fr`,
+          gridTemplateRows: "100%",
+          transition: "grid-template-columns 0.25s ease",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

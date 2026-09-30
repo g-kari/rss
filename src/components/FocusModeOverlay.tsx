@@ -1,5 +1,6 @@
 "use client";
 import { useId, useRef, type ComponentProps } from "react";
+import { VisualModeSwitch } from "./VisualModeBar";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
@@ -57,6 +58,9 @@ export default function FocusModeOverlay({ focusMode, exitFocusMode, articleView
           <path d="M4 4l12 12M16 4l-12 12" />
         </svg>
       </button>
+      <div className="shrink-0 px-3 pr-16">
+        <VisualModeSwitch onlyExit />
+      </div>
       <div className="flex-1 min-h-0 overflow-hidden">
         <ErrorBoundary label="フォーカスモード">
           <ArticleView {...articleViewProps} />

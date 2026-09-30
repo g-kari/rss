@@ -4,6 +4,7 @@ import { useId, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
+import { VisualModeSwitch } from "./VisualModeBar";
 import Backdrop from "./Backdrop";
 
 interface Props {
@@ -106,6 +107,9 @@ export default function Modal({
               <path d="M2 2l10 10M12 2l-10 10" />
             </svg>
           </button>
+        </div>
+        <div className="px-4">
+          <VisualModeSwitch onlyExit />
         </div>
         <div className="overflow-y-auto">{children}</div>
       </div>
