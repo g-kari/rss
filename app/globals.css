@@ -1267,3 +1267,49 @@ body {
   border: 1px solid var(--color-border-default);
   padding: 0.3em 0.6em;
 }
+
+/* Docswell uses a native top-layer dialog so expansion retains the iframe's current page. */
+.docswell-viewer-dialog {
+  display: block;
+  position: relative;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  color: inherit;
+  background: var(--color-surface-elevated);
+}
+.docswell-viewer-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 8px;
+  margin: auto;
+  width: calc(100vw - 16px);
+  max-width: 1200px;
+  height: calc(100dvh - 16px);
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.docswell-viewer-dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.docswell-viewer-frame {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 80dvh;
+  aspect-ratio: 16 / 10;
+  border: 0;
+}
+.docswell-viewer-dialog[open] .docswell-viewer-frame {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}

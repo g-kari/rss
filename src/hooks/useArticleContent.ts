@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { getSlideAwareContentCacheId } from "../lib/docswell";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
 import { isAbortError } from "../lib/fetch";
@@ -73,8 +74,11 @@ export function useArticleContent(
   const { ogpCache, cacheOgpEntry } = useOgpCacheContext();
 
   const cachedContent = useMemo(
-    () => (articleId ? (contentLruCache.get(articleId) ?? null) : null),
-    [articleId],
+    () =>
+      articleId
+        ? (contentLruCache.get(getSlideAwareContentCacheId(articleId, articleLink)) ?? null)
+        : null,
+    [articleId, articleLink],
   );
   // { id, link, content } でタグ付けすることで、記事 ID が再利用された場合も
   // 前 URL の fetchedContent が新しい記事へ漏れ込むのを防ぐ。
@@ -262,7 +266,8 @@ export function useArticleContent(
         const data = (await res.json()) as { content?: string; error?: string };
         if (controller.signal.aborted) return;
         if (data.content) {
-          if (articleId) contentLruCache.set(articleId, data.content);
+          if (articleId)
+            contentLruCache.set(getSlideAwareContentCacheId(articleId, articleLink), data.content);
           setFetchedState({ id: articleId ?? "", link: articleLink, content: data.content });
           autoReadDebug("useArticleContent.fetch-success", {
             articleId,

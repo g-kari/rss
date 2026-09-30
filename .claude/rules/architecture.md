@@ -227,6 +227,7 @@ src/
     article-view/ArticleHeaderShare.tsx     # クイックシェア + ShareMenu/FilterMenu/GlobalFilterMenu
     article-view/ArticleHeaderEngagement.tsx # 後で読む/ブックマーク/いいね/メモ/コレクション/フォーカスモード
     article-view/EngagementSegmentButton.tsx # 後で読む/ブックマーク/いいね 3 連トグルボタン共通テンプレート（simplify 監査 Issue 2 で抽出）
+    article-view/DocswellViewer.tsx        # Docswell スライドの遅延表示・拡大モーダル・元ページリンク
     article-view/ArticleContentBody.tsx     # 記事本文描画ボディ（ArticleView から分割）
     article-view/EmptyArticleView.tsx       # 記事未選択時のプレースホルダ表示
     article-view/FetchFullContentArea.tsx   # 「全文取得」CTA 領域（ボタン・retry・進捗）
@@ -400,6 +401,8 @@ src/
     ai-route-helper.ts       # AI Route Handler 共通処理
     api-fetch.ts             # 認証付きクライアントサイド fetch ラッパー
     api-feed-guard.ts        # フィード API の subscription guard（assertFeedSubscribed — discriminated union 戻り値で `if (guard.err) return guard.err;` 後の `sub: UserSubscription` narrowing が効く）
+    docswell.ts              # Docswell の公開ページ／埋め込み URL の厳密な検証と正規化
+    docswell-content.ts      # Docswell の各ページのテキストを上限付きで安全に抽出
     embed-utils.ts           # iframe embed 処理ユーティリティ
     engagement-score.ts      # エンゲージメントスコア計算ロジック
     auto-ai-fallback.ts      # 自動翻訳・自動要約のブラウザ AI フォールバック判定純粋関数（shouldSkipAutoAi — #700 ブラウザ AI のみ使う設定）

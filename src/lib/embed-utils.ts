@@ -1,3 +1,5 @@
+import { parseDocswellUrl } from "./docswell";
+import { transformDocswellScriptEmbeds } from "./html-embed-transforms";
 import { transformXTweetEmbeds } from "./html-post-processor";
 import { escapeHtml, sanitizeHtml, unescapeHtml } from "./html";
 import { extractYouTubeVideoId } from "./youtube";
@@ -5,7 +7,7 @@ import { extractYouTubeVideoId } from "./youtube";
 /** 埋め込みメディアの情報 */
 export interface EmbedInfo {
   embedUrl: string;
-  type: "video" | "audio";
+  type: "video" | "audio" | "slides";
   audioHeight?: number;
   allow: string;
 }
@@ -15,6 +17,9 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
   const ALLOW_VIDEO =
     "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
   const ALLOW_AUDIO = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+
+  const docswell = parseDocswellUrl(url);
+  if (docswell) return { embedUrl: docswell.embedUrl, type: "slides", allow: "fullscreen" };
 
   // YouTube
   const videoId = extractYouTubeVideoId(url);
@@ -109,7 +114,7 @@ export function extractEmbedInfo(url: string): EmbedInfo | null {
  * @param theme - X ツイート埋め込みのテーマ（'light' | 'dark'）
  */
 export function processContent(html: string, theme: "light" | "dark" = "light"): string {
-  let result = sanitizeHtml(transformXTweetEmbeds(html, theme));
+  let result = sanitizeHtml(transformDocswellScriptEmbeds(transformXTweetEmbeds(html, theme)));
 
   // YouTube iframe → レスポンシブラッパー
   result = result.replace(

@@ -1,3 +1,4 @@
+import { parseDocswellUrl } from "./docswell";
 /**
  * HTML 埋め込み変換モジュール
  *
@@ -5,7 +6,7 @@
  * 埋め込みコンテンツを変換する関数群。
  * html-post-processor.ts から分割。
  */
-import { escapeHtml } from "./html";
+import { escapeHtml, unescapeHtml } from "./html";
 import { isZennDevUrl, isAbsoluteHttpUrl } from "./url";
 
 /**
@@ -173,6 +174,31 @@ export function transformSlideShareEmbedLinks(html: string): string {
         `</div>` +
         `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;font-size:11px;margin-top:4px;margin-bottom:8px;opacity:0.55">SlideShare で見る ↗</a>`
       );
+    },
+  );
+}
+
+/** Build only a validated Docswell iframe; no third-party script enters the reader. */
+export function buildDocswellEmbed(url: string): string {
+  const slide = parseDocswellUrl(url);
+  if (!slide) return "";
+  return `<iframe src="${slide.embedUrl}" title="Docswell スライド" loading="lazy" sandbox="allow-scripts allow-same-origin" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer" style="border:0;width:100%;height:auto;aspect-ratio:16/10;max-height:80dvh"></iframe>`;
+}
+
+/** Idempotent conversion of official script embeds in both fetched HTML and RSS. */
+export function transformDocswellScriptEmbeds(html: string): string {
+  return html.replace(
+    /<script\b((?:"[^"]*"|'[^']*'|[^'">])*)>[\s\S]*?<\/script\b[^>]*>/gi,
+    (match, attrs: string) => {
+      const parsed = new Map<string, string>();
+      for (const attr of attrs.matchAll(
+        /([^\s=/"'<>`]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g,
+      )) {
+        const key = attr[1].toLowerCase();
+        if (!parsed.has(key)) parsed.set(key, unescapeHtml(attr[2] ?? attr[3] ?? attr[4] ?? ""));
+      }
+      if (!(parsed.get("class") ?? "").split(/\s+/).includes("docswell-embed")) return match;
+      return buildDocswellEmbed(parsed.get("data-src") ?? "") || match;
     },
   );
 }

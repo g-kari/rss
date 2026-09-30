@@ -19,6 +19,7 @@ import {
   transformZennMermaidEmbeds,
   transformSpeakerDeckScriptEmbeds,
   transformSlideShareEmbedLinks,
+  transformDocswellScriptEmbeds,
 } from "./html-embed-transforms";
 import { removeNoise } from "./html-noise-removal";
 import {
@@ -51,6 +52,7 @@ export {
   transformXTweetEmbeds,
   transformSpeakerDeckScriptEmbeds,
   transformSlideShareEmbedLinks,
+  transformDocswellScriptEmbeds,
 } from "./html-embed-transforms";
 
 /**
@@ -152,6 +154,7 @@ export function applyCorePipeline(html: string, pageUrl = ""): string {
   h = rewriteImageUrls(h);
   h = rewriteVideoUrls(h);
   h = fixExternalLinks(h, pageUrl);
+  h = transformDocswellScriptEmbeds(h);
   h = transformSpeakerDeckScriptEmbeds(h);
   h = transformSlideShareEmbedLinks(h);
   h = wrapTables(h);
