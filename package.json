@@ -32,7 +32,7 @@
     "test:migrations": "node --test scripts/lib/search-maintenance-options.test.mjs scripts/migrate-search-schema.test.mjs scripts/rebuild-article-search.test.mjs"
   },
   "dependencies": {
-    "@cloudflare/puppeteer": "^1.1.0",
+    "@cloudflare/puppeteer": "^1.4.0",
     "@mozilla/readability": "^0.6.0",
     "@tanstack/react-virtual": "^3.14.13",
     "animejs": "4.5.0",
@@ -47,8 +47,8 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260702.1",
-    "@opennextjs/cloudflare": "^1.20.1",
+    "@cloudflare/workers-types": "^5.20260927.1",
+    "@opennextjs/cloudflare": "^1.20.6",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^6.9.1",
@@ -65,7 +65,7 @@
     "vite": "^8.3.1",
     "vite-plus": "^0.3.3",
     "vitest": "^4.1.11",
-    "wrangler": "^4.107.0"
+    "wrangler": "^4.141.0"
   },
   "packageManager": "pnpm@10.29.3",
   "pnpm": {
