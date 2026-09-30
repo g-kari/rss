@@ -22,10 +22,10 @@ describe("immersive captions", () => {
 });
 describe("immersive native video", () => {
   it("uses existing native video, child sources and proxy values without double wrapping", () => {
-    const url = "https://example.com/movie.mp4?a=1&b=2";
+    const url = "https://example.com/movie.mp4?a=1&b=2&c=3";
     const proxy = `/api/video-proxy?url=${encodeURIComponent(url)}`;
     for (const content of [
-      `<video src="${url.replace("&", "&amp;")}"></video>`,
+      `<video src="${url.replaceAll("&", "&amp;")}"></video>`,
       `<video><source src="${url}"></video>`,
       `<video src="${proxy}"></video>`,
     ]) {
