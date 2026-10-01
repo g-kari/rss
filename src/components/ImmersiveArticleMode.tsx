@@ -126,8 +126,21 @@ export default function ImmersiveArticleMode(props: Props) {
   useEffect(() => {
     onSessionChange?.({ remaining: batch.slice(index), served, paused, speed });
   }, [batch, index, served, paused, speed, onSessionChange]);
+  const retainNavigationFocus = (next: number) => {
+    const focused = document.activeElement;
+    if (!focused || !dialogRef.current?.contains(focused)) return;
+    // End-of-batch controls disappear or become disabled; Previous also disables at the start.
+    // Leave stable controls, including the speed selector and Close, focused during automatic movement.
+    const unavailableAtEnd =
+      next === batch.length &&
+      (focused.closest(".immersive-actions") ||
+        focused.matches('.immersive-playback-controls button, button[aria-label="次の記事"]'));
+    if (unavailableAtEnd || (next === 0 && focused.getAttribute("aria-label") === "前の記事"))
+      scrollRef.current?.focus({ preventScroll: true });
+  };
   const moveTo = (next: number) => {
     const value = Math.max(0, Math.min(batch.length, next));
+    retainNavigationFocus(value);
     indexRef.current = value;
     setMediaFinished(undefined);
     setIndex(value);
@@ -248,6 +261,7 @@ export default function ImmersiveArticleMode(props: Props) {
               Math.min(batch.length, Math.round(element.scrollTop / element.clientHeight)),
             );
             if (indexRef.current !== next) setMediaFinished(undefined);
+            retainNavigationFocus(next);
             indexRef.current = next;
             setIndex(next);
           }

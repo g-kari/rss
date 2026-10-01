@@ -208,7 +208,10 @@ for (const viewport of [
       await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
       await dialog.getByRole("button", { name: "次の記事", exact: true }).click();
       await expect(dialog.getByRole("status")).toHaveText("区切り");
+      await expect(dialog.getByRole("region")).toBeFocused();
       await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(entry).toBeFocused();
       await entry.click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
       await dialog.getByRole("button", { name: "次の10件を見る", exact: true }).click();
