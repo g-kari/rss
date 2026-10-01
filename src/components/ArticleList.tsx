@@ -44,7 +44,11 @@ import ArticleContextMenu, { type ArticleContextMenuTarget } from "./ArticleCont
 import LoadMoreButton from "./LoadMoreButton";
 import { useFeedStructuralSignature } from "../hooks/useFeedStructuralSignature";
 import ArticleListEmptyState from "./ArticleListEmptyState";
-import { explodeArticlesIntoGalleryEntries, type GalleryEntry } from "../lib/gallery-explode";
+import {
+  explodeArticlesIntoGalleryEntries,
+  isGalleryEntry,
+  type GalleryEntry,
+} from "../lib/gallery-explode";
 import { EMPTY_STRING_SET } from "../lib/empty-sentinels";
 import {
   CompactListBody,
@@ -485,7 +489,18 @@ function ArticleList({
     categoryFilter,
     globalFilter,
   ]);
-  useReaderArrival(scrollContainerRef, "list", readerMotionScope, visible.map(getArticleId));
+  const presentationItems =
+    layout === "gallery" ? (galleryEntries ?? galleryDisplayItems) : nonGalleryDisplayItems;
+  const presentedMotionIds = useMemo(() => {
+    const currentIds = new Set(visible.map(getArticleId));
+    const presentedIds = new Set(
+      presentationItems.map((item) => (isGalleryEntry(item) ? item.article.id : item.id)),
+    );
+    return [...presentedIds].filter((id) => currentIds.has(id));
+  }, [presentationItems, visible]);
+  // Logical scope can precede delayed/virtualized presentation. Start its finite arrival
+  // only for IDs committed to the current presentation, never stale outgoing rows.
+  useReaderArrival(scrollContainerRef, "list", readerMotionScope, presentedMotionIds);
 
   const flatItems = useMemo<FlatItem[]>(() => {
     if (layout !== "compact" && layout !== "list") return [];

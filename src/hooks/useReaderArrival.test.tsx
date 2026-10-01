@@ -317,4 +317,25 @@ describe("useReaderArrival", () => {
     expect(mocks.animate).not.toHaveBeenCalled();
     expect(frames.size).toBe(0);
   });
+  it("starts the bounded deadline only when the new scope has presented incoming IDs", async () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(0);
+    const { rerender } = render(<Fixture event="feed-b" ids={[]} renderedIds={["stale-a"]} />);
+    await frame();
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(frames.size).toBe(0);
+    now.mockReturnValue(200);
+    rerender(<Fixture event="feed-b" ids={["c", "d"]} />);
+    await frame();
+    expect(mocks.animate.mock.calls.map(([target]) => target.textContent)).toEqual(["c", "d"]);
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+  });
+  it("keeps rapid newer navigation authoritative during a pending readiness frame", async () => {
+    const { rerender } = render(<Fixture event="feed-b" ids={["b"]} renderedIds={[]} />);
+    await frame();
+    expect(frames.size).toBe(1);
+    rerender(<Fixture event="feed-c" ids={["c"]} />);
+    await frame();
+    expect(mocks.animate.mock.calls.map(([target]) => target.textContent)).toEqual(["c"]);
+    expect(frames.size).toBe(0);
+  });
 });

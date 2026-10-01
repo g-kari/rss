@@ -70,6 +70,7 @@ jobs:
           src/hooks/useFilteredArticles.recommendations.test.ts
           src/components/ArticleRecommendations.test.tsx
           src/components/ArticleList.recommendations.test.tsx
+          src/components/ArticleList.motion.test.tsx
           src/components/ImmersiveArticleMode.test.tsx
           src/components/ImmersiveArticleMode.autoplay.test.tsx
           src/hooks/useImmersiveClock.test.tsx

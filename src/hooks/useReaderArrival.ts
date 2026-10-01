@@ -30,7 +30,12 @@ export function useReaderArrival(
     previousRef.current = { key: eventKey, ids };
     const changedScope = !previous || previous.key !== eventKey;
     const added = changedScope ? ids : new Set([...ids].filter((id) => !previous.ids.has(id)));
-    if (!allowed || eventKey === null || (!changedScope && (kind === "article" || !added.size)))
+    if (
+      !allowed ||
+      eventKey === null ||
+      (kind === "list" && !added.size) ||
+      (!changedScope && kind === "article")
+    )
       return;
 
     let cancelled = false;
