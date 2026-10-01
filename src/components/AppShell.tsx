@@ -970,15 +970,18 @@ export default function AppShell({
               loadingFeeds={loadingFeeds}
               feedsEmpty={feeds.length === 0}
               articleListProps={{
-                recommendationContext:
-                  !selectedGroupId && !selectedTag && !selectedCollectionId
-                    ? {
-                        userId: user.id,
-                        likeIds,
-                        historyIds,
-                        readBeforeTimestamp: effectiveReadBeforeTimestamp,
-                      }
-                    : undefined,
+                recommendationContext: {
+                  userId: user.id,
+                  likeIds,
+                  historyIds,
+                  readBeforeTimestamp: effectiveReadBeforeTimestamp,
+                  scopeKey: JSON.stringify([
+                    selectedGroupId,
+                    selectedTag,
+                    selectedCollectionId,
+                    nsfwMode,
+                  ]),
+                },
                 feeds,
                 readIds,
                 readBeforeTimestamp,

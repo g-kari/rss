@@ -41,7 +41,7 @@ export interface FilterByStructureOptions {
   feedId: string | null;
   /** feedHash → CompiledKeywordFilter のマップ（呼び出し側で buildFilterMap を使って事前計算すること） */
   feedFilterMap: Map<string, CompiledKeywordFilter>;
-  /** グループ選択時の対象フィード ID セット — 設定時は feedHash が含まれる記事のみ表示 */
+  /** グループ選択時の対象フィード ID セット — 空 Set を含め、設定時は所属記事のみ表示 */
   groupFeedIds?: Set<string>;
   /** feedHash → フィード表示名のマップ — `feed:` クエリで使用（未指定時は feed: クエリは常にミス） */
   feedTitleByHash?: ReadonlyMap<string, string>;
@@ -176,7 +176,8 @@ function buildFeedPredicate(opts: ArticleFilterOptions): (a: Article) => boolean
   const feedMatcher = (a: Article) =>
     matchesFeedId(a, feedId, bookmarkIds, readingListIds, likeIds, historyIds);
   if (!feedId) {
-    if (groupFeedIds && groupFeedIds.size > 0) {
+    // undefined means no group; an explicitly empty group must not fall through to all feeds.
+    if (groupFeedIds) {
       return (a) => groupFeedIds.has(a.feedHash);
     }
     // viewFeedIds が設定されていれば（空 Set 含む）カテゴリ横断表示モード。

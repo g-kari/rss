@@ -57,6 +57,7 @@ const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
 
 interface Props {
   recommendationContext?: {
+    scopeKey?: string;
     userId: string;
     readBeforeTimestamp: string | null;
     likeIds: Set<string>;
@@ -176,6 +177,7 @@ function ArticleList({
 }: Props) {
   const {
     filtered,
+    recommendationCandidates,
     recommendationSources,
     visible,
     hasMore,
@@ -192,6 +194,7 @@ function ArticleList({
     authorFilter,
     categoryFilter,
     digestMode,
+    globalFilter,
   } = useArticleFilter();
   const {
     galleryColumns,
@@ -685,7 +688,7 @@ function ArticleList({
         {recommendationContext && (
           <ArticleRecommendations
             {...recommendationContext}
-            candidates={filtered}
+            candidates={recommendationCandidates ?? filtered}
             articles={recommendationSources ?? filtered}
             feeds={feeds}
             readIds={readIds}
@@ -694,23 +697,32 @@ function ArticleList({
             readingListIds={readingListIds ?? EMPTY_STRING_SET}
             onToggleReadingList={onToggleReadingList}
             onSelectArticle={onSelectArticle}
-            enabled={
-              !loading &&
-              !fetchError &&
-              selectedFeedId === null &&
-              (!activeFeedView || activeFeedView === "articles") &&
-              !rawQuery.trim() &&
-              !query.trim() &&
-              !bookmarkOnly &&
-              !readingListOnly &&
-              !likeOnly &&
-              !noteOnly &&
-              !digestMode &&
-              dateRange === "all" &&
-              readingTimeRange === "all" &&
-              !authorFilter &&
-              !categoryFilter
+            status={
+              loading
+                ? "loading"
+                : fetchError
+                  ? "error"
+                  : rawQuery.trim() !== query.trim()
+                    ? "searching"
+                    : "ready"
             }
+            scopeKey={JSON.stringify([
+              recommendationContext.scopeKey,
+              selectedFeedId,
+              activeFeedView,
+              query,
+              unreadOnly,
+              bookmarkOnly,
+              readingListOnly,
+              likeOnly,
+              noteOnly,
+              digestMode,
+              dateRange,
+              readingTimeRange,
+              authorFilter,
+              categoryFilter,
+              globalFilter,
+            ])}
           />
         )}
 
