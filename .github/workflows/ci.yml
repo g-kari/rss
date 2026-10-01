@@ -39,7 +39,7 @@ jobs:
         run: pnpm run typecheck
 
       - name: ユニットテスト（全体・並列数を制限）
-        run: pnpm run test:unit -- --maxWorkers=2
+        run: pnpm run test:unit --maxWorkers=2
 
       - name: production ビルド
         run: pnpm run build
@@ -72,7 +72,7 @@ jobs:
 
       - name: スコープ・再生・本文・キューのユニットテスト
         run: >-
-          pnpm run test:unit --
+          pnpm run test:unit --maxWorkers=2
           src/hooks/useFilteredArticles.recommendations.test.ts
           src/components/ArticleRecommendations.test.tsx
           src/components/ArticleList.recommendations.test.tsx
