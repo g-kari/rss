@@ -8,6 +8,7 @@ export default defineConfig({
     "immersive-articles.spec.ts",
     "immersive-autoplay-narration.spec.ts",
     "reader-motion.spec.ts",
+    "feed-retry-status.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,

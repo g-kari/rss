@@ -159,7 +159,7 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
       )}
       {feed.fetchError && (
         <span className="text-[10px] text-error truncate block leading-tight mt-0.5">
-          {(feed.consecutiveErrors ?? 0) >= 5 ? "更新停止 · " : ""}
+          {(feed.consecutiveErrors ?? 0) >= 5 ? "自動再試行待ち · " : ""}
           {feed.fetchError}
         </span>
       )}

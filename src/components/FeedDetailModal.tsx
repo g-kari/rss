@@ -93,9 +93,15 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
           {feed.consecutiveErrors !== undefined && feed.consecutiveErrors > 0 && (
             <DetailRow
               label="連続エラー"
-              value={`${feed.consecutiveErrors} 回${feed.consecutiveErrors >= 5 ? "（更新停止中）" : ""}`}
+              value={`${feed.consecutiveErrors} 回${feed.consecutiveErrors >= 5 ? "（自動再試行待ち）" : ""}`}
               error
             />
+          )}
+          {(feed.consecutiveErrors ?? 0) >= 5 && (
+            <p className="text-[12px] text-text-muted leading-relaxed">
+              連続エラーのため自動更新の間隔を空けています。通常は最終エラーから24時間以上経過後、自動更新の対象に選ばれ、他の待機条件も満たすと再試行します。
+              すぐに試す場合はフィードのメニューから「再試行」を選んでください。
+            </p>
           )}
           {feed.fetchError && <DetailRow label="エラー内容" value={feed.fetchError} error />}
           {feed.lastErrorAt && (
@@ -269,7 +275,8 @@ function DetailRow({
 }
 
 function getHealthStatus(feed: Feed): { color: string; label: string } {
-  if ((feed.consecutiveErrors ?? 0) >= 5) return { color: "bg-status-error", label: "更新停止" };
+  if ((feed.consecutiveErrors ?? 0) >= 5)
+    return { color: "bg-status-error", label: "自動再試行待ち" };
   if (
     feed.fetchError ||
     (feed.rateLimitedUntil && new Date(feed.rateLimitedUntil) > new Date()) ||

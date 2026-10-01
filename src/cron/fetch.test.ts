@@ -89,6 +89,82 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe("automatic retry after consecutive errors", () => {
+  const lastErrorAt = "2026-09-30T03:00:55Z";
+  const retryAt = new Date(lastErrorAt).getTime() + 24 * 60 * 60 * 1000;
+
+  function failedMeta(): SharedFeedMeta {
+    const meta = {
+      ...makeMeta(),
+      consecutiveErrors: 5,
+      fetchError: "Response closed due to connection limit",
+      lastErrorAt,
+    };
+    vi.mocked(readFeedMeta).mockResolvedValue(meta);
+    vi.useFakeTimers();
+    return meta;
+  }
+
+  it("makes no upstream request one millisecond before the 24-hour boundary", async () => {
+    const meta = failedMeta();
+    vi.setSystemTime(retryAt - 1);
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await fetchAndUpdateSharedFeed(env, meta.feedHash);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(writeFeedMeta).not.toHaveBeenCalled();
+    expect(meta.lastErrorAt).toBe(lastErrorAt);
+    expect(meta.consecutiveErrors).toBe(5);
+  });
+
+  it.each([0, 1])(
+    "retries naturally at the boundary plus %i milliseconds and clears success state",
+    async (offset) => {
+      const meta = failedMeta();
+      vi.setSystemTime(retryAt + offset);
+      const fetch = vi.fn().mockResolvedValue(new Response(XML));
+      vi.stubGlobal("fetch", fetch);
+      await fetchAndUpdateSharedFeed(env, meta.feedHash);
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(fetch.mock.calls[0][1].headers["If-None-Match"]).toBe('"old"');
+      expect(meta.fetchError).toBeNull();
+      expect(meta.consecutiveErrors).toBe(0);
+      expect(meta.lastErrorAt).toBeNull();
+      expect(meta.lastFetchedAt).toBe(new Date(retryAt + offset).toISOString());
+      expect(writeFeedMeta).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("a failed natural retry keeps count five and starts another 24-hour wait", async () => {
+    const meta = failedMeta();
+    vi.setSystemTime(retryAt);
+    const fetch = vi.fn().mockRejectedValue(new Error("upstream unavailable"));
+    vi.stubGlobal("fetch", fetch);
+    await fetchAndUpdateSharedFeed(env, meta.feedHash);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(meta.consecutiveErrors).toBe(5);
+    expect(meta.lastErrorAt).toBe(new Date(retryAt).toISOString());
+    expect(meta.lastFetchedAt).toBe("2026-01-01T00:00:00Z");
+    vi.setSystemTime(retryAt + 1);
+    await fetchAndUpdateSharedFeed(env, meta.feedHash);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each(["rateLimitedUntil", "nextFetchEarliestAt"] as const)(
+    "still respects %s after error retry eligibility",
+    async (field) => {
+      const meta = failedMeta();
+      vi.setSystemTime(retryAt);
+      meta[field] = new Date(retryAt + 60_000).toISOString();
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      await fetchAndUpdateSharedFeed(env, meta.feedHash);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(meta.lastErrorAt).toBe(lastErrorAt);
+    },
+  );
+});
+
 describe("safe article rollout defaults", () => {
   it("does not overwrite winner metadata or index after a legacy CAS conflict", async () => {
     vi.stubGlobal(
