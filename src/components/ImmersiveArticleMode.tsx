@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import type {
@@ -126,6 +126,12 @@ export default function ImmersiveArticleMode(props: Props) {
   useEffect(() => {
     onSessionChange?.({ remaining: batch.slice(index), served, paused, speed });
   }, [batch, index, served, paused, speed, onSessionChange]);
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    // Align after the new slides exist: an empty queue's persistent end section must not
+    // remain the browser's snap target when a new batch is inserted before it.
+    if (element) element.scrollTop = element.clientHeight * indexRef.current;
+  }, [batch, indexRef]);
   const retainNavigationFocus = (next: number) => {
     const focused = document.activeElement;
     if (!focused || !dialogRef.current?.contains(focused)) return;
@@ -393,7 +399,6 @@ export default function ImmersiveArticleMode(props: Props) {
                   setMediaFinished(undefined);
                   setMessage("");
                   if (scrollRef.current) {
-                    scrollRef.current.scrollTop = 0;
                     // This button is removed by the new batch; keep keyboard events in the mode.
                     scrollRef.current.focus({ preventScroll: true });
                   }

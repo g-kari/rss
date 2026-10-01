@@ -140,6 +140,31 @@ describe("ImmersiveArticleMode", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
   });
+  it("aligns the new batch after slides replace an empty queue instead of retaining the end snap target", () => {
+    render(
+      <ImmersiveArticleMode
+        {...props}
+        candidates={articles.slice(0, 2)}
+        session={{ remaining: [], served: [articles[0]], paused: true, speed: 1 }}
+      />,
+    );
+    const scroller = screen.getByRole("region");
+    Object.defineProperty(scroller, "clientHeight", { value: 400 });
+    let alignedAfterInsertion = false;
+    // Model the hosted browser retaining the persistent end-section snap target at its new offset.
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => (scroller.querySelector(".immersive-slide") && !alignedAfterInsertion ? 400 : 0),
+      set: (value: number) => {
+        if (value === 0 && scroller.querySelector(".immersive-slide")) alignedAfterInsertion = true;
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
+    fireEvent.scroll(scroller);
+    expect(screen.getByRole("heading", { name: "記事 1" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 / 1件");
+    expect(scroller.scrollTop).toBe(0);
+  });
   it.each(["end", "start"])(
     "keeps keyboard focus when the %s navigation control becomes disabled",
     (edge) => {

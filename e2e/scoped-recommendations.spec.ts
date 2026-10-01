@@ -190,7 +190,7 @@ for (const viewport of [
     });
     test("same-scope empty recovery keeps occupied and exhausted batches finite", async ({
       page,
-    }) => {
+    }, testInfo) => {
       const count = page.getByRole("combobox", { name: "合成候補数" });
       const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
       const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
@@ -222,7 +222,12 @@ for (const viewport of [
       await expect(
         dialog.getByRole("heading", { name: "条件に合う記事", exact: true }),
       ).toHaveCount(0);
+      await expect(dialog.getByRole("status")).toHaveText("1 / 1件");
+      await expect
+        .poll(() => dialog.getByRole("region").evaluate((element) => element.scrollTop))
+        .toBe(0);
       await expect(dialog.getByRole("region")).toBeFocused();
+      await page.screenshot({ path: testInfo.outputPath("continued-one-item-batch.png") });
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(entry).toBeFocused();
