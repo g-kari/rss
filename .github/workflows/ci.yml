@@ -87,6 +87,8 @@ jobs:
           src/hooks/useDelayedGalleryItems.test.ts
           src/lib/reader-motion-request-guard.test.ts
           src/contexts/VisualModeContext.test.tsx
+          src/components/FeedRetryStatus.test.tsx
+          src/cron/fetch.test.ts
 
       - name: レスポンシブな production component fixture を確認
         run: pnpm run test:e2e:scoped
