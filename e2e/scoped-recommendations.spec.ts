@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 let html = "";
+const diagnostics = new WeakMap<Page, { requests: string[]; errors: string[] }>();
 test.beforeAll(async () => {
   const root = resolve(import.meta.dirname, "..");
   const [{ outputFiles }, css] = await Promise.all([
@@ -23,7 +24,31 @@ test.beforeAll(async () => {
       { from: resolve(root, "app/globals.css") },
     ),
   ]);
-  html = `<!doctype html><html lang="ja"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif;margin:0}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  html = `<!doctype html><html lang="ja"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif;margin:0}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+});
+
+test.beforeEach(async ({ page }) => {
+  const requests: string[] = [];
+  const errors: string[] = [];
+  diagnostics.set(page, { requests, errors });
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/*", (route) => {
+    if (
+      route.request().url() === "https://rss-preview.test/" &&
+      route.request().isNavigationRequest()
+    )
+      return route.fulfill({ contentType: "text/html", body: html });
+    requests.push(route.request().url());
+    return route.abort();
+  });
+  await page.goto("https://rss-preview.test/");
+  await expect(page.getByRole("button", { name: "ドパガキモード", exact: true })).toBeVisible();
+});
+
+test.afterEach(({ page }) => {
+  const result = diagnostics.get(page);
+  expect(result?.requests).toEqual([]);
+  expect(result?.errors).toEqual([]);
 });
 
 for (const viewport of [
@@ -36,10 +61,6 @@ for (const viewport of [
     test("retains persisted filters, scope and discoverable empty/loading/error states", async ({
       page,
     }, testInfo) => {
-      await page.route("https://rss-preview.test/**", (route) =>
-        route.fulfill({ contentType: "text/html", body: html }),
-      );
-      await page.goto("https://rss-preview.test/");
       const recommendations = page.getByRole("region", { name: "いま読むおすすめ" });
       const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
       await expect(recommendations.getByRole("button", { name: /を読む$/ })).toHaveCount(1);
@@ -92,6 +113,60 @@ for (const viewport of [
       await expect(
         page.getByRole("button", { name: "ブックマークフィルター切替 (B)" }),
       ).toHaveAttribute("aria-pressed", "true");
+    });
+
+    test("shows only zero/one/two scoped candidates and keeps group/date/Digest constraints", async ({
+      page,
+    }, testInfo) => {
+      const recommendations = page.getByRole("region", { name: "いま読むおすすめ" });
+      const picks = recommendations.getByRole("button", { name: /を読む$/ });
+      const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
+      const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
+      for (const count of [0, 1, 2]) {
+        await page.getByRole("combobox", { name: "合成候補数" }).selectOption(String(count));
+        await expect(picks).toHaveCount(count);
+        await expect(entry).toBeEnabled();
+        await entry.click();
+        await expect(dialog.locator(".immersive-slide")).toHaveCount(count);
+        await page.keyboard.press("Escape");
+        await expect(entry).toBeFocused();
+      }
+      await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("group");
+      await expect(picks).toHaveCount(2);
+      await entry.click();
+      await dialog.getByRole("button", { name: "一覧に戻る" }).click();
+      await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("empty-group");
+      await expect(picks).toHaveCount(0);
+      await expect(entry).toBeEnabled();
+      await expect(recommendations.getByText(/現在のフィルターに合う未読/)).toBeVisible();
+      await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("feed");
+      await expect(picks).toHaveCount(2);
+      await page.getByRole("button", { name: /^日付フィルター切替:.*\(d\)$/ }).click();
+      await expect(picks).toHaveCount(1);
+      await expect(picks).toHaveAttribute("aria-label", "条件に合う記事を読む");
+      await page.screenshot({ path: testInfo.outputPath("dated-scoped-entry.png") });
+
+      // Cycle the real date control back to all before selecting the special feed.
+      for (let index = 0; index < 4; index++)
+        await page.getByRole("button", { name: /^日付フィルター切替:.*\(d\)$/ }).click();
+      await page.getByRole("button", { name: "ブックマークフィルター切替 (B)" }).click();
+      await page.getByRole("button", { name: "リーディングリストフィルター切替 (T)" }).click();
+      await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("digest");
+      await expect(picks).toHaveCount(3);
+      await entry.click();
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(3);
+      await expect(
+        dialog.getByRole("heading", { name: "ダイジェスト候補 3", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        dialog.getByRole("heading", { name: "ダイジェスト候補 4", exact: true }),
+      ).toHaveCount(0);
+      expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+        true,
+      );
+      await page.screenshot({ path: testInfo.outputPath("digest-scoped-immersive.png") });
+      await page.keyboard.press("Escape");
+      await expect(entry).toBeFocused();
     });
   });
 }

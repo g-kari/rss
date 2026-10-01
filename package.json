@@ -21,6 +21,7 @@
     "precheck:fix": "node scripts/sync-release-notes.mjs",
     "check:fix": "vp check --fix",
     "test:e2e": "playwright test",
+    "test:e2e:scoped": "playwright test --config playwright.scoped.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",

@@ -37,3 +37,46 @@ jobs:
 
       - name: 型チェック（tsc）
         run: pnpm run typecheck
+
+  scoped-recommendation-ui:
+    name: おすすめ・モード UI (Chromium fixture)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: pnpm セットアップ
+        uses: pnpm/action-setup@v6.0.8
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: 依存パッケージインストール
+        run: pnpm install --frozen-lockfile
+
+      - name: 公式 Chromium と実行依存をインストール
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: 厳密スコープと状態のユニットテスト
+        run: pnpm run test:unit -- src/hooks/useFilteredArticles.recommendations.test.ts src/components/ArticleRecommendations.test.tsx src/components/ArticleList.recommendations.test.tsx
+
+      - name: レスポンシブな production component fixture を確認
+        run: pnpm run test:e2e:scoped
+
+      - name: 合成データのレポートとスクリーンショットを保存
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: scoped-recommendation-ui-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: warn
