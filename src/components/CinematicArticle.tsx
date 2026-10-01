@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Article } from "../types";
 import {
   immersiveCaptions,
@@ -40,6 +40,7 @@ export default function CinematicArticle({
   // Opening immersive mode opts in independently of the normal reader's visual skin.
   const motionAllowed = motionEnabled && !motionReason;
   const imageRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [manualCaption, setManualCaption] = useState<number | null>(null);
@@ -79,6 +80,9 @@ export default function CinematicArticle({
   while (captionIndex < captions.length - 1 && progress * readingDuration >= captionEnd)
     captionEnd += captionTimes[++captionIndex];
   captionIndex = Math.min(captions.length - 1, manualCaption ?? captionIndex);
+  useLayoutEffect(() => {
+    if (captionRef.current) captionRef.current.scrollTop = 0;
+  }, [captionIndex, excerpt]);
   const moveCaption = (next: number) => {
     onPause?.();
     setManualCaption(Math.max(0, Math.min(captions.length - 1, next)));
@@ -110,22 +114,25 @@ export default function CinematicArticle({
           />
         )}
         <div className="cinematic-shade" aria-hidden="true" />
-        <div
-          className="cinematic-copy"
-          tabIndex={0}
-          aria-label="記事の説明"
-          onKeyDown={(event) => {
-            if (["ArrowUp", "ArrowDown", "PageUp", "PageDown"].includes(event.key))
-              event.stopPropagation();
-          }}
-        >
+        <div className="cinematic-copy">
           <p className="cinematic-feed">
             {feedTitle} · {nativeVideo ? "動画・音声なし" : "記事のショート表示"}
           </p>
           <h3 className="sr-only">{article.title}</h3>
-          <p className="cinematic-caption" key={captionIndex} aria-hidden="true">
-            {captions[captionIndex]}
-          </p>
+          <div
+            ref={captionRef}
+            className="cinematic-caption-scroll"
+            tabIndex={0}
+            aria-label="記事の説明をスクロール"
+            onKeyDown={(event) => {
+              if (["ArrowUp", "ArrowDown", "PageUp", "PageDown"].includes(event.key))
+                event.stopPropagation();
+            }}
+          >
+            <p className="cinematic-caption" key={captionIndex} aria-hidden="true">
+              {captions[captionIndex]}
+            </p>
+          </div>
           <div className="cinematic-caption-navigation">
             <span>
               読み込み済みの説明・抜粋 {captionIndex + 1} / {captions.length}

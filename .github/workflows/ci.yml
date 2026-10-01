@@ -83,6 +83,7 @@ jobs:
           src/components/article-items/ArticleThumbnail.fallback.test.tsx
           src/lib/immersive-articles.test.ts
           src/lib/immersive-media.test.ts
+          src/lib/immersive-text.test.ts
           src/lib/image-extractor.responsive.test.ts
           src/lib/immersive-quality-request-guard.test.ts
           src/lib/immersive-inline-content.test.ts

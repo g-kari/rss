@@ -76,7 +76,7 @@ export function immersiveCaptions(article: Article, excerpt = immersiveExcerpt(a
     let parts = 0;
     for (const sentence of sentences) {
       if (current && (parts >= 2 || Array.from(current + sentence).length > 180)) {
-        captions.push(current);
+        captions.push(current.trim());
         current = "";
         parts = 0;
       }

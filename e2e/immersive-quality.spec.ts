@@ -115,6 +115,18 @@ for (const viewport of [
       const box = await page.locator(".cinematic-copy").boundingBox();
       expect(box!.y).toBeGreaterThan(80);
       expect(box!.y + box!.height).toBeLessThan(viewport.height - 85);
+      const captionScroll = page.locator(".cinematic-caption-scroll");
+      expect(await captionScroll.evaluate((element) => element.scrollTop)).toBe(0);
+      for (const name of ["前の説明", "次の説明"]) {
+        const control = page.getByRole("button", { name });
+        await expect(control).toBeInViewport();
+        const bounds = await control.boundingBox();
+        expect(bounds!.y).toBeGreaterThan(80);
+        expect(bounds!.y + bounds!.height).toBeLessThan(viewport.height - 85);
+      }
+      await captionScroll.focus();
+      await page.keyboard.press("ArrowDown");
+      await expect(page.locator(".immersive-navigation [role=status]")).toHaveText("1 / 1件");
       expect(
         await page
           .getByRole("dialog")
@@ -130,14 +142,22 @@ for (const viewport of [
       await page.goto("https://quality.test/");
       await page.getByRole("button", { name: "ドパガキモードを開く" }).click();
       await page.getByRole("button", { name: "ここで読む", exact: true }).click();
-      await expect(page.getByText("元記事から取得した本文をここで読みます。")).toBeVisible();
+      await expect(
+        page
+          .getByRole("dialog", { name: "ここで記事の本文を読む" })
+          .getByText("元記事から取得した本文をここで読みます。", { exact: true }),
+      ).toBeVisible();
       await expect(page.getByText("取得済みの記事本文", { exact: true })).toBeVisible();
       expect(diagnostics.get(page)!.content).toBe(1);
       await page.screenshot({ path: info.outputPath("inline-extracted-body.png") });
       await page.keyboard.press("Escape");
       await expect(page.getByRole("button", { name: "ここで読む", exact: true })).toBeFocused();
       await page.getByRole("button", { name: "ここで読む", exact: true }).click();
-      await expect(page.getByText("元記事から取得した本文をここで読みます。")).toBeVisible();
+      await expect(
+        page
+          .getByRole("dialog", { name: "ここで記事の本文を読む" })
+          .getByText("元記事から取得した本文をここで読みます。", { exact: true }),
+      ).toBeVisible();
       expect(diagnostics.get(page)!.content).toBe(1);
     });
   });
@@ -156,7 +176,11 @@ test("failed source extraction keeps the complete feed text, discloses its scope
   await page.screenshot({ path: info.outputPath("feed-only-failure.png") });
   diagnostics.get(page)!.failContent = false;
   await page.getByRole("button", { name: "全文取得を再試行" }).click();
-  await expect(page.getByText("元記事から取得した本文をここで読みます。")).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "ここで記事の本文を読む" })
+      .getByText("元記事から取得した本文をここで読みます。", { exact: true }),
+  ).toBeVisible();
   expect(diagnostics.get(page)!.content).toBe(2);
 });
 
@@ -166,7 +190,11 @@ test("cached extraction does not fetch again and tiny-only images keep native di
   await page.goto("https://quality.test/?case=cached");
   await page.getByRole("button", { name: "ドパガキモードを開く" }).click();
   await page.getByRole("button", { name: "ここで読む", exact: true }).click();
-  await expect(page.getByText("すでに取得した記事本文です。")).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "ここで記事の本文を読む" })
+      .getByText("すでに取得した記事本文です。", { exact: true }),
+  ).toBeVisible();
   expect(diagnostics.get(page)!.content).toBe(0);
   await page.keyboard.press("Escape");
   await page.goto("https://quality.test/?case=failure");
