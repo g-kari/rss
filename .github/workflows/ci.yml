@@ -38,6 +38,12 @@ jobs:
       - name: 型チェック（tsc）
         run: pnpm run typecheck
 
+      - name: ユニットテスト（全体・並列数を制限）
+        run: pnpm run test:unit --maxWorkers=2
+
+      - name: production ビルド
+        run: pnpm run build
+
   scoped-recommendation-ui:
     name: おすすめ・モード UI (Chromium fixture)
     runs-on: ubuntu-latest
@@ -66,13 +72,15 @@ jobs:
 
       - name: スコープ・再生・本文・キューのユニットテスト
         run: >-
-          pnpm run test:unit --
+          pnpm run test:unit --maxWorkers=2
           src/hooks/useFilteredArticles.recommendations.test.ts
           src/components/ArticleRecommendations.test.tsx
           src/components/ArticleList.recommendations.test.tsx
           src/components/ArticleList.motion.test.tsx
           src/components/ImmersiveArticleMode.test.tsx
           src/components/ImmersiveArticleMode.autoplay.test.tsx
+          src/components/ImmersiveArticleMode.video.test.tsx
+          src/components/CinematicVideo.test.tsx
           src/components/CinematicArticle.test.tsx
           src/hooks/useImmersiveClock.test.tsx
           src/hooks/useImmersiveNarration.test.tsx

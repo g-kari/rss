@@ -8,6 +8,7 @@ import ImmersiveArticleMode, {
 import type { Article, Feed } from "../../src/types";
 
 const now = Date.now();
+const nativeVideo = new URLSearchParams(location.search).get("case") === "native-video";
 const articles: Article[] = Array.from({ length: 23 }, (_, index) => ({
   id: String(index),
   feedHash: "preview",
@@ -17,7 +18,9 @@ const articles: Article[] = Array.from({ length: 23 }, (_, index) => ({
   ogImage: "https://rss-preview.test/image.svg",
   content:
     index === 0
-      ? '<p>読み込み済みの本文画像</p><img src="/api/image-proxy?url=%ZZ.jpg"><a href="/api/image-proxy?url=%ZZ.jpg">無効な画像候補</a><img src="https://rss-preview.test/body.svg" width="800" height="450">'
+      ? nativeVideo
+        ? '<video src="https://rss-preview.test/movie.mp4"></video>'
+        : '<p>読み込み済みの本文画像</p><img src="/api/image-proxy?url=%ZZ.jpg"><a href="/api/image-proxy?url=%ZZ.jpg">無効な画像候補</a><img src="https://rss-preview.test/body.svg" width="800" height="450">'
       : undefined,
   summary:
     "大きな画像と、フィードにある説明で記事を選べます。スワイプしただけでは既読になりません。気になった記事は本文を開くか、後で読むに保存できます。",
