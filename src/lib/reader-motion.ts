@@ -7,17 +7,22 @@ export function loadReaderAnimation() {
 }
 
 /** Read all geometry before animation writes; leave deep/large galleries static over the budget. */
-export function visibleReaderItems(root: HTMLElement, eligible: ReadonlySet<string>) {
-  if (root.closest("[inert]")) return [];
+export function measureVisibleReaderItems(
+  root: HTMLElement,
+  eligible: ReadonlySet<string>,
+  budget = READER_MOTION_SCAN_LIMIT,
+) {
+  const result = { targets: [] as HTMLElement[], measurements: 0, ready: false };
+  if (root.closest("[inert]")) return result;
   const viewport = root.getBoundingClientRect();
-  if (viewport.width <= 0 || viewport.height <= 0) return [];
-  const targets: HTMLElement[] = [];
-  let scanned = 0;
+  if (viewport.width <= 0 || viewport.height <= 0) return result;
   for (const element of root.querySelectorAll<HTMLElement>('[role="article"]')) {
     const label = element.getAttribute("aria-labelledby") ?? "";
     if (!label.startsWith("article-title-") || !eligible.has(label.slice(14))) continue;
-    if (++scanned > READER_MOTION_SCAN_LIMIT) break;
+    if (result.measurements >= budget) break;
+    result.measurements++;
     const box = element.getBoundingClientRect();
+    if (box.width > 0 && box.height > 0) result.ready = true;
     if (
       box.width > 0 &&
       box.height > 0 &&
@@ -26,8 +31,8 @@ export function visibleReaderItems(root: HTMLElement, eligible: ReadonlySet<stri
       box.right > viewport.left &&
       box.left < viewport.right
     )
-      targets.push(element);
-    if (targets.length === READER_ARRIVAL_LIMIT) break;
+      result.targets.push(element);
+    if (result.targets.length === READER_ARRIVAL_LIMIT) break;
   }
-  return targets;
+  return result;
 }

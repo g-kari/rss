@@ -1025,9 +1025,7 @@ body {
     inset 3px 0 var(--color-selection-accent),
     0 5px 18px var(--visual-aura);
 }
-[data-visual-mode="cinema"] [data-pane="list"] [role="article"] h3 {
-  font-weight: 700;
-}
+/* Keep article typography metrics stable across modes so virtual rows retain their scroll anchor. */
 [data-visual-mode="cinema"] [role="dialog"] {
   border-color: var(--color-selection-accent);
 }

@@ -18,7 +18,17 @@ vi.mock("../lib/dev-log", () => ({ devError: vi.fn() }));
 
 let frames: Map<number, FrameRequestCallback>;
 let frameId: number;
-function Fixture({ event = "feed-a", ids = ["a", "b"], article = false }) {
+function Fixture({
+  event = "feed-a",
+  ids = ["a", "b"],
+  renderedIds = ids,
+  article = false,
+}: {
+  event?: string;
+  ids?: string[];
+  renderedIds?: string[];
+  article?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useReaderArrival(ref, article ? "article" : "list", event, ids);
   return (
@@ -32,7 +42,7 @@ function Fixture({ event = "feed-a", ids = ["a", "b"], article = false }) {
           </div>
         </>
       ) : (
-        ids.map((id) => (
+        renderedIds.map((id) => (
           <div key={id} role="article" aria-labelledby={`article-title-${id}`}>
             {id}
           </div>
@@ -43,7 +53,9 @@ function Fixture({ event = "feed-a", ids = ["a", "b"], article = false }) {
 }
 async function frame() {
   await act(async () => {
-    for (const [id, callback] of frames) {
+    // Callbacks scheduled by this tick belong to the next animation frame.
+    const scheduled = new Map(frames);
+    for (const [id, callback] of scheduled) {
       frames.delete(id);
       callback(0);
     }
@@ -220,5 +232,89 @@ describe("useReaderArrival", () => {
     await frame();
     expect(measurements).toBe(64);
     expect(mocks.animate).not.toHaveBeenCalled();
+  });
+  it("waits one bounded frame for the incoming IDs to reach committed list DOM", async () => {
+    const { rerender } = render(<Fixture />);
+    await frame();
+    mocks.animate.mockClear();
+    rerender(<Fixture event="feed-b" ids={["c", "d"]} renderedIds={["a", "b"]} />);
+    await frame();
+    expect(mocks.animate).not.toHaveBeenCalled();
+    expect(frames.size).toBe(1);
+    rerender(<Fixture event="feed-b" ids={["c", "d"]} />);
+    await frame();
+    expect(mocks.animate.mock.calls.map(([target]) => target.textContent)).toEqual(["c", "d"]);
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    expect(frames.size).toBe(0);
+  });
+  it("retries zero geometry without exceeding the event's shared measurement budget", async () => {
+    const { container } = render(<Fixture ids={["a"]} />);
+    const element = container.querySelector('[role="article"]')!;
+    const zero = vi.fn().mockReturnValue({ width: 0, height: 0 });
+    element.getBoundingClientRect = zero;
+    await frame();
+    expect(mocks.animate).not.toHaveBeenCalled();
+    expect(frames.size).toBe(1);
+    element.getBoundingClientRect = () => ({
+      top: 0,
+      bottom: 100,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    await frame();
+    expect(mocks.animate).toHaveBeenCalledTimes(1);
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(zero).toHaveBeenCalledTimes(1);
+  });
+  it("shares the 64-measurement cap even when every target has zero geometry", async () => {
+    const { container } = render(
+      <Fixture ids={Array.from({ length: 100 }, (_, i) => String(i))} />,
+    );
+    let measurements = 0;
+    for (const element of container.querySelectorAll('[role="article"]'))
+      element.getBoundingClientRect = () => {
+        measurements++;
+        return { width: 0, height: 0 } as DOMRect;
+      };
+    await frame();
+    await frame();
+    expect(measurements).toBe(64);
+    expect(frames.size).toBe(0);
+    expect(mocks.animate).not.toHaveBeenCalled();
+  });
+  it("stops after one readiness retry and never replays on a later DOM-only render", async () => {
+    const { rerender } = render(<Fixture renderedIds={[]} />);
+    await frame();
+    await frame();
+    expect(frames.size).toBe(0);
+    rerender(<Fixture />);
+    await frame();
+    expect(mocks.animate).not.toHaveBeenCalled();
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+  });
+  it("cancels the readiness retry when motion turns off", async () => {
+    const { rerender } = render(<Fixture renderedIds={[]} />);
+    await frame();
+    expect(frames.size).toBe(1);
+    mocks.policy.motionAllowed = false;
+    rerender(<Fixture />);
+    await frame();
+    expect(frames.size).toBe(0);
+    expect(mocks.animate).not.toHaveBeenCalled();
+  });
+  it("keeps the original latency deadline during the readiness retry", async () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(0);
+    const { rerender } = render(<Fixture renderedIds={[]} />);
+    await frame();
+    now.mockReturnValue(200);
+    rerender(<Fixture />);
+    await frame();
+    expect(mocks.animate).not.toHaveBeenCalled();
+    expect(frames.size).toBe(0);
   });
 });

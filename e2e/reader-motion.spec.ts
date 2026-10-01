@@ -143,11 +143,21 @@ for (const viewport of [
       ).toBe("0s");
       await page.getByRole("button", { name: "Show list", exact: true }).click();
       const list = page.locator('[data-reader-motion="list"]');
+      const rowHeight = await list
+        .locator('[data-reader-placement="virtual"]')
+        .first()
+        .evaluate((el) => el.getBoundingClientRect().height);
       await list.evaluate((el) => {
         el.scrollTop = 260;
       });
       await page.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
       expect(await list.evaluate((el) => el.scrollTop)).toBe(260);
+      expect(
+        await list
+          .locator('[data-reader-placement="virtual"]')
+          .first()
+          .evaluate((el) => el.getBoundingClientRect().height),
+      ).toBe(rowHeight);
       await page.getByRole("button", { name: "Open settings", exact: true }).click();
       await page.getByRole("textbox", { name: "Text size" }).fill("22");
       await page.keyboard.press("Escape");
