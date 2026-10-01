@@ -4,7 +4,7 @@ The authenticated reader has a site-wide visual presentation, separate from its 
 
 ## Presentation
 
-- Layered violet/mint surfaces, dimensional article cards, stronger editorial headings, and optional small hover/arrival movements
+- Layered violet/mint surfaces, dimensional article cards, stronger editorial headings, and coordinated optional reader arrivals and interaction feedback
 - Both light and dark palettes retain opaque reading surfaces and non-color selection indicators
 - The explicitly opened immersive view is full-viewport in both normal and visual reader modes, with edge-to-edge image/video, large 24–58 px caption cards and overlaid controls
 - Entry starts silent functional playback unless reduced motion or an explicit motion-off preference requires an initial pause. The Resume control remains usable and can run captions/article timing without decorative movement. The current item advances once after its media endpoint and any opt-in narration finish. Pause/resume and 0.75×/1×/1.5×/2× speed controls remain at the top, with save/dismiss/read actions on the right and previous/next controls at the bottom
@@ -22,7 +22,17 @@ Decorative movement and functional playback have separate policies. The system r
 
 Narration is off on entry and starts only through the explicit Read-aloud action. It uses device-local voices only, prefers Japanese, clearly identifies a non-Japanese fallback, and reports unavailable voices without sending article text to a remote voice provider. Stop cancels the owned utterance; navigation and closing reject stale callbacks. Opening the inline full-body reader temporarily pauses media, timing and narration and restores the prior pause state on close. These functional controls do not change the reader's persistent visual preference.
 
-Anime.js **4.5.0**, MIT, remains pinned and lazy. Its `animejs/timeline` subpath is imported only for an active, motion-enabled image story after the user opens immersive mode. Ordinary reading and neighboring cards never start a timeline. Closing, navigating, source invalidation or unmounting reverts the decorative timeline. Its completion is not the article-advance clock; late imports or animation failure cannot freeze functional timing. Duplicate/stale functional media or narration callbacks cannot advance another card. Native videos pause on cleanup, policy restriction and document hiding; failed playback retains the thumbnail and controls.
+Anime.js **4.5.0**, MIT, remains pinned and lazy. Its `animejs/timeline` subpath is imported only for an active, motion-enabled immersive image story. Ordinary visual reading lazy-loads `animejs/animation` for finite incoming reader decoration, never a playback timeline. Closing, navigating, source invalidation or unmounting reverts the decorative animation. Its completion is not the article-advance clock; late imports or animation failure cannot freeze functional timing. Duplicate/stale functional media or narration callbacks cannot advance another card. Native videos pause on cleanup, policy restriction and document hiding; failed playback retains the thumbnail and controls.
+
+### Ordinary reader choreography
+
+- Simple mode and static policies switch panes and update list removals immediately. They do not load reader animation code. Status spinners and functional deadlines are independent of the decorative CSS policy.
+- Article identity changes decorate the existing title and metadata over 260 ms and dissolve the body surface over 180 ms. Stateful reader content, note inputs and embedded media are never duplicated or remounted to animate.
+- Committed feed/filter/layout changes and genuinely appended IDs may animate up to eight visible inner article surfaces over 240 ms with 25 ms offsets. Scrolling, polling, selection-only renders and visibility return do not replay arrivals.
+- Geometry is read before animation writes. A scan budget of 64 candidate surfaces leaves deeply scrolled large galleries static instead of performing unbounded measurements. Imports taking more than 150 ms skip late decoration so settled content does not jump.
+- Fine-pointer card hover lifts the inner surface 3 px, compact/list rows shift 2 px, and press response is bounded. Touch retains static hit areas. Mobile visual pane transitions use the existing navigation direction over 280 ms.
+- Virtual-row placement transforms and gallery geometry remain owned by their layout controllers. Column resizing is direct rather than animated. Animation cancellation restores original styles and removes temporary `will-change` hints.
+- Shared CSS motion tokens cover 140 ms interaction feedback, 200 ms local arrival and 280 ms pane movement. No animation callback changes article selection, read/save state, queue position, TTS or playback.
 
 Anime.js was selected for finite, coordinated image choreography and its reversible timeline API. Three.js/WebGL is unnecessary for a single article image, and CSS handles the surrounding surfaces/hover effects without a renderer, textures, or WebGL context. Motion's React layout machinery would not simplify this bounded image shot enough to justify another integration layer.
 

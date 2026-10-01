@@ -31,6 +31,7 @@ export function useDelayedGalleryItems<T>(
   items: T[],
   getId: (item: T) => string,
   delayMs = 300,
+  motionAllowed = true,
 ): Result<T> {
   const [displayItems, setDisplayItems] = useState<T[]>(items);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
@@ -41,6 +42,14 @@ export function useDelayedGalleryItems<T>(
   useEffect(() => {
     const prev = prevItemsRef.current;
     prevItemsRef.current = items;
+
+    if (!motionAllowed) {
+      clearTimeout(newTimerRef.current);
+      setDisplayItems(items);
+      setDeletingIds(EMPTY_SET);
+      setNewIds(EMPTY_SET);
+      return;
+    }
 
     const currentIds = new Set<string>();
     for (const item of items) currentIds.add(getId(item));
@@ -53,6 +62,12 @@ export function useDelayedGalleryItems<T>(
     // 新規追加追跡（リスト完全置換時はスキップ）
     clearTimeout(newTimerRef.current);
     const isFullReplacement = prevIds.size > 0 && [...currentIds].every((id) => !prevIds.has(id));
+    if (isFullReplacement) {
+      setDisplayItems(items);
+      setDeletingIds(EMPTY_SET);
+      setNewIds(EMPTY_SET);
+      return;
+    }
     if (addedItems.length > 0 && !isFullReplacement) {
       setNewIds(new Set(addedItems.map(getId)));
       newTimerRef.current = setTimeout(() => setNewIds(EMPTY_SET), delayMs + 200);
@@ -81,7 +96,10 @@ export function useDelayedGalleryItems<T>(
       clearTimeout(deleteTimer);
       clearTimeout(newTimerRef.current);
     };
-  }, [items, getId, delayMs]);
+  }, [items, getId, delayMs, motionAllowed]);
 
-  return { displayItems, deletingIds, newIds };
+  // Instant policy also applies during the render before effect cleanup.
+  return motionAllowed
+    ? { displayItems, deletingIds, newIds }
+    : { displayItems: items, deletingIds: EMPTY_SET, newIds: EMPTY_SET };
 }

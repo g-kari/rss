@@ -809,6 +809,93 @@ body {
 }
 
 /* Optional visual reader. Opaque surfaces keep text legible; decoration never owns layout. */
+:root {
+  /* Shared motion grammar: feedback 140ms, local arrival 200ms, pane 280ms.
+   * JS reader arrivals are finite 180/240/260ms with at most eight 25ms offsets.
+   * Playback, reading progress and Undo deadlines never use these tokens as clocks. */
+  --reader-motion-feedback: 140ms;
+  --reader-motion-arrival: 200ms;
+  --reader-motion-pane: 280ms;
+  --reader-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Instant reader presentation is the default, including portal article bodies.
+ * Only decorative arrival classes are removed; status spinners and Undo clocks remain independent. */
+:root:not([data-visual-motion="full"])
+  :is(.reader-visual-shell, [data-reader-motion="article"], [data-reader-surface])
+  * {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+:root:not([data-visual-motion="full"])
+  :is(.reader-visual-shell, [data-reader-motion="article"], [data-reader-surface])
+  :is(
+    .animate-fade-up,
+    .animate-fade-in,
+    .animate-fade-out,
+    .animate-slide-up,
+    .animate-slide-in-right
+  ) {
+  animation: none !important;
+}
+:root:not([data-visual-motion="full"]) [data-reader-placement] {
+  transition: none !important;
+}
+:root:not([data-visual-motion="full"])
+  :is(.reader-visual-shell, [data-reader-motion="article"], [data-reader-surface])
+  .article-content
+  :is(img.ogp-link-preview-image, .ogp-link-preview-image img) {
+  animation: none !important;
+}
+
+/* Placement and scroll transforms belong to their existing layout controllers. */
+.reader-visual-shell .mobile-pane {
+  transition: none;
+  will-change: auto;
+}
+[data-reader-motion="list"] [role="article"].animate-fade-up {
+  animation: none;
+}
+[data-reader-animating="true"] {
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (max-width: 1023px) {
+    [data-visual-motion="full"] .reader-visual-shell .mobile-pane {
+      transition: transform var(--reader-motion-pane) var(--reader-motion-ease);
+    }
+  }
+  [data-visual-motion="full"] [data-reader-motion="list"] [role="article"] {
+    transition-property: background-color, border-color, color, opacity, translate, scale;
+    transition-duration: var(--reader-motion-feedback);
+    transition-timing-function: var(--reader-motion-ease);
+  }
+  [data-visual-motion="full"] [data-reader-motion="article"] [data-reader-arrival] {
+    transform-origin: center top;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    [data-visual-motion="full"] [data-reader-motion="list"] [role="article"]:hover {
+      translate: 0 -3px;
+    }
+    [data-visual-motion="full"]
+      [data-reader-motion="list"][data-reader-layout="compact"]
+      [role="article"]:hover,
+    [data-visual-motion="full"]
+      [data-reader-motion="list"][data-reader-layout="list"]
+      [role="article"]:hover {
+      translate: 2px 0;
+    }
+    [data-visual-motion="full"] [data-reader-motion="list"] [role="article"]:active {
+      scale: 0.985;
+      transition-duration: 70ms;
+    }
+    [data-visual-motion="full"] [data-reader-motion="list"] [role="article"] img {
+      transition: scale 220ms var(--reader-motion-ease);
+    }
+  }
+}
+
 .visual-mode-bar {
   display: flex;
   flex: none;
@@ -938,9 +1025,7 @@ body {
     inset 3px 0 var(--color-selection-accent),
     0 5px 18px var(--visual-aura);
 }
-[data-visual-mode="cinema"] [data-pane="list"] [role="article"] h3 {
-  font-weight: 700;
-}
+/* Keep article typography metrics stable across modes so virtual rows retain their scroll anchor. */
 [data-visual-mode="cinema"] [role="dialog"] {
   border-color: var(--color-selection-accent);
 }
@@ -1147,7 +1232,7 @@ body {
   }
   @media (hover: hover) {
     [data-visual-motion="full"] [data-pane="list"] [role="article"] img {
-      transition: scale 0.6s ease;
+      transition: scale 220ms var(--reader-motion-ease);
     }
     [data-visual-motion="full"] [data-pane="list"] [role="article"]:hover img {
       scale: 1.025;

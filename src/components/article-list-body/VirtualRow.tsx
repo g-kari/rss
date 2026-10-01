@@ -29,6 +29,7 @@ export function VirtualRow({ vItem, measureRef, animating, extraStyle, children 
     <div
       key={vItem.key}
       data-index={vItem.index}
+      data-reader-placement="virtual"
       ref={measureRef}
       style={{
         position: "absolute",

@@ -20,6 +20,7 @@ import ImageDownloadModal from "./article-view/ImageDownloadModal";
 import InlineArticleNav from "./article-view/InlineArticleNav";
 import AutoReadController from "./article-view/AutoReadController";
 import { shouldShowBackToTopFab } from "../lib/article-view-fab";
+import { useReaderArrival } from "../hooks/useReaderArrival";
 
 interface Props {
   article: Article | null;
@@ -217,6 +218,7 @@ function ArticleView({
     fetchFullContentOnce,
     consumeFullContentIntent,
   );
+  const { titleRef, metaRef, bodyRef } = useReaderArrival(mainRef, "article", article?.id ?? null);
 
   // #677: ArticleHeader のスクロール連動表示 (下スクロールで隠す・上で表示・上端で常時)
   const { headerVisible, handleScrollForHeader } = useHeaderScrollVisibility(mainRef);
@@ -236,7 +238,8 @@ function ArticleView({
     <article
       ref={mainRef}
       aria-label="記事本文"
-      className="h-full overflow-y-auto overflow-x-hidden bg-surface-elevated animate-fade-in relative"
+      className="h-full overflow-y-auto overflow-x-hidden bg-surface-elevated relative"
+      data-reader-motion="article"
       onScroll={composedScroll}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -258,64 +261,70 @@ function ArticleView({
             transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
           }}
         >
-          <ArticleHeader
-            article={article}
-            onMobileBack={onMobileBack}
-            onEngagement={onEngagement}
-            feeds={feeds}
-            embedInfo={embedInfo}
-            readingMins={readingMins}
-            hasContent={hasContent}
-            aiResult={aiResult}
-            aiLoading={aiLoading}
-            aiError={aiError}
-            resetAi={resetAi}
-            doRunAi={doRunAi}
-            fetching={fetching}
-            handleTranslate={handleTranslate}
-            translateResult={translateResult}
-            translateLoading={translateLoading}
-            translateError={translateError}
-            ttsSupported={ttsSupported}
-            ttsPlaying={ttsPlaying}
-            ttsPaused={ttsPaused}
-            ttsRate={ttsRate}
-            ttsCycleRate={ttsCycleRate}
-            ttsVolume={ttsVolume}
-            ttsCycleVolume={ttsCycleVolume}
-            onTtsToggle={handleTtsToggle}
-            autoMode={autoMode}
-            onToggleAutoMode={onToggleAutoMode ?? (() => {})}
-            hasImages={hasImages}
-            downloadAllImages={downloadAllImages}
-            downloadingImages={downloadingImages}
-            imageDownloadProgress={imageDownloadProgress}
-            storedContent={storedContent}
-            isBookmarked={isBookmarked}
-            onToggleBookmark={onToggleBookmark}
-            isInReadingList={isInReadingList}
-            onToggleReadingList={onToggleReadingList}
-            isLiked={isLiked}
-            onToggleLike={onToggleLike}
-            note={note}
-            noteExpanded={noteExpanded}
-            setNoteExpanded={setNoteExpanded}
-            onSetNote={onSetNote}
-            onSnooze={onSnooze}
-            onSelectNext={onSelectNext}
-            tags={tags}
-            onAddTag={onAddTag}
-            onRemoveTag={onRemoveTag}
-            collections={collections}
-            onAddToCollection={onAddToCollection}
-            onAddBulkToCollection={onAddBulkToCollection}
-            bookmarkIds={bookmarkIds}
-            onRemoveFromCollection={onRemoveFromCollection}
-            onCreateCollection={onCreateCollection}
-          />
+          <div ref={metaRef} data-reader-arrival="meta">
+            <ArticleHeader
+              article={article}
+              onMobileBack={onMobileBack}
+              onEngagement={onEngagement}
+              feeds={feeds}
+              embedInfo={embedInfo}
+              readingMins={readingMins}
+              hasContent={hasContent}
+              aiResult={aiResult}
+              aiLoading={aiLoading}
+              aiError={aiError}
+              resetAi={resetAi}
+              doRunAi={doRunAi}
+              fetching={fetching}
+              handleTranslate={handleTranslate}
+              translateResult={translateResult}
+              translateLoading={translateLoading}
+              translateError={translateError}
+              ttsSupported={ttsSupported}
+              ttsPlaying={ttsPlaying}
+              ttsPaused={ttsPaused}
+              ttsRate={ttsRate}
+              ttsCycleRate={ttsCycleRate}
+              ttsVolume={ttsVolume}
+              ttsCycleVolume={ttsCycleVolume}
+              onTtsToggle={handleTtsToggle}
+              autoMode={autoMode}
+              onToggleAutoMode={onToggleAutoMode ?? (() => {})}
+              hasImages={hasImages}
+              downloadAllImages={downloadAllImages}
+              downloadingImages={downloadingImages}
+              imageDownloadProgress={imageDownloadProgress}
+              storedContent={storedContent}
+              isBookmarked={isBookmarked}
+              onToggleBookmark={onToggleBookmark}
+              isInReadingList={isInReadingList}
+              onToggleReadingList={onToggleReadingList}
+              isLiked={isLiked}
+              onToggleLike={onToggleLike}
+              note={note}
+              noteExpanded={noteExpanded}
+              setNoteExpanded={setNoteExpanded}
+              onSetNote={onSetNote}
+              onSnooze={onSnooze}
+              onSelectNext={onSelectNext}
+              tags={tags}
+              onAddTag={onAddTag}
+              onRemoveTag={onRemoveTag}
+              collections={collections}
+              onAddToCollection={onAddToCollection}
+              onAddBulkToCollection={onAddBulkToCollection}
+              bookmarkIds={bookmarkIds}
+              onRemoveFromCollection={onRemoveFromCollection}
+              onCreateCollection={onCreateCollection}
+            />
+          </div>
         </div>
 
-        <h1 className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]">
+        <h1
+          ref={titleRef}
+          data-reader-arrival="title"
+          className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]"
+        >
           {article.title}
         </h1>
 
@@ -340,29 +349,31 @@ function ArticleView({
           onRetry={article.link ? () => void doRunAi(article.link!, article.id) : undefined}
         />
 
-        <ArticleContentBody
-          ref={contentRef}
-          article={article}
-          embedInfo={embedInfo}
-          processedContent={processedContent}
-          wrappedContent={wrappedContent}
-          activeSentenceIndex={activeSentenceIndex}
-          resolvedOgImage={resolvedOgImage}
-          translateResult={translateResult}
-          translateError={translateError}
-          onRetryTranslate={handleTranslate}
-          contentTab={contentTab}
-          setContentTab={setContentTab}
-          translateRating={translateRating}
-          setTranslateRating={setTranslateRating}
-          onEngagement={onEngagement}
-          canFetch={canFetch}
-          fetching={fetching}
-          fetchError={fetchError}
-          fetchRetryable={fetchRetryable}
-          fetchFullContent={fetchFullContent}
-          galleryImages={galleryImages}
-        />
+        <div ref={bodyRef} data-reader-arrival="body">
+          <ArticleContentBody
+            ref={contentRef}
+            article={article}
+            embedInfo={embedInfo}
+            processedContent={processedContent}
+            wrappedContent={wrappedContent}
+            activeSentenceIndex={activeSentenceIndex}
+            resolvedOgImage={resolvedOgImage}
+            translateResult={translateResult}
+            translateError={translateError}
+            onRetryTranslate={handleTranslate}
+            contentTab={contentTab}
+            setContentTab={setContentTab}
+            translateRating={translateRating}
+            setTranslateRating={setTranslateRating}
+            onEngagement={onEngagement}
+            canFetch={canFetch}
+            fetching={fetching}
+            fetchError={fetchError}
+            fetchRetryable={fetchRetryable}
+            fetchFullContent={fetchFullContent}
+            galleryImages={galleryImages}
+          />
+        </div>
 
         {onSetNote && (noteExpanded || noteText) && (
           <ArticleNotePanel

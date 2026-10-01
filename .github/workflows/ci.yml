@@ -70,6 +70,7 @@ jobs:
           src/hooks/useFilteredArticles.recommendations.test.ts
           src/components/ArticleRecommendations.test.tsx
           src/components/ArticleList.recommendations.test.tsx
+          src/components/ArticleList.motion.test.tsx
           src/components/ImmersiveArticleMode.test.tsx
           src/components/ImmersiveArticleMode.autoplay.test.tsx
           src/hooks/useImmersiveClock.test.tsx
@@ -82,6 +83,10 @@ jobs:
           src/lib/immersive-articles.test.ts
           src/lib/immersive-inline-content.test.ts
           src/lib/image-extractor.malformed.test.ts
+          src/hooks/useReaderArrival.test.tsx
+          src/hooks/useDelayedGalleryItems.test.ts
+          src/lib/reader-motion-request-guard.test.ts
+          src/contexts/VisualModeContext.test.tsx
 
       - name: レスポンシブな production component fixture を確認
         run: pnpm run test:e2e:scoped

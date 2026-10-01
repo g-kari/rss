@@ -111,6 +111,7 @@ export default function GalleryMasonrySelf<T>({
               key={id}
               ref={itemRef(id)}
               className="absolute"
+              data-reader-placement="gallery"
               style={{
                 top: `${top}px`,
                 left: `${col * (effectiveColumnWidth + columnGutter)}px`,

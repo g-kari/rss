@@ -67,6 +67,7 @@ export default function Modal({
       <div
         ref={dialogRef}
         role="dialog"
+        data-reader-surface="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={subtitleId}

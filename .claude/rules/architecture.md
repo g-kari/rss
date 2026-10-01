@@ -263,6 +263,7 @@ src/
     useKeyboardNav.ts        # キーボードナビ (j/k/n/p/o/b/t/r/m/c/u/d/s/f/l/[/]/?)
     useThemePresets.ts       # テーマプリセット (theme/fontSize/fontFamily/lineHeight/contentWidth) を `theme-preset.ts` 経由で localStorage 保存・復元する hook（DisplayTabPanel のプリセット保存/適用 UI で利用）
     useCinematicPlayback.ts # 明示したドパガキ入場で有限timelineを遅延再生、速度・一時停止・終了通知・破棄
+    useReaderArrival.ts # 通常リーダーの有限・上限付き装飾を遅延読込、スコープ変更と追加IDのみ演出し再生時計から独立
     useThemePreference.ts    # テーマ（light/dark）+ DOM 同期（useUIState から分割）
     useFocusMode.ts          # フォーカスモード制御（focusMode / listFocusMode / window.history 連携 / \\ Shift+\\ Escape キー）— useUIState から分割
     useAutoReadMode.ts       # オートモード（自動全文取得 → 読み上げ → 次の記事へ）の状態管理
@@ -445,6 +446,7 @@ src/
     recommendation-push.ts  # タイムゾーン日付・通知候補/feedbackの安全な純粋関数
     recommendation-dismissals-client.ts # 端末の有界feedbackとundo/reset同期待ちを保持
     immersive-articles.ts # 推薦モードの厳密候補・10件バッチ・重複防止・既存本文抜粋・大きな字幕分割・安全なサムネイル/ネイティブ動画
+    reader-motion.ts # 既存Anime.jsの装飾専用遅延読込と可視記事の測定上限、配置transformや読書状態は変更しない
     article-recommendations.ts # 既存記事・保存/いいね/閲覧から未読3件を理由付きで選ぶローカル順位付け
     shared-feed.ts           # 共有フィードの R2 ストレージヘルパー
     shared-feed-storage.ts   # 追記型記事保存・CAS commit・論理ページ・明示的な旧形式移行

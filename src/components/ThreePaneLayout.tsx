@@ -37,7 +37,6 @@ export default function ThreePaneLayout({
             ? `0px 1fr 0px`
             : `${sidebarWidth}px ${listWidth}px 1fr`,
           gridTemplateRows: "100%",
-          transition: "grid-template-columns 0.25s ease",
         }}
       >
         {children}
