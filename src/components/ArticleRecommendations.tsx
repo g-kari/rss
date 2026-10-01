@@ -7,6 +7,7 @@ import {
   type ArticleRecommendationOptions,
 } from "../lib/article-recommendations";
 import { useRecommendationDismissals } from "../hooks/useRecommendationDismissals";
+import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { resolveThumbnail } from "../lib/article-utils";
 import { safeRecommendationThumbnail } from "../lib/immersive-articles";
@@ -16,6 +17,8 @@ import { ArticleThumbnail } from "./article-items/shared";
 interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now" | "limit"> {
   userId: string;
   enabled?: boolean;
+  status?: "ready" | "loading" | "error" | "searching";
+  scopeKey?: string;
   onSelectArticle: (article: Article) => void;
   onToggleReadingList?: (id: string) => void;
 }
@@ -28,6 +31,8 @@ export default function ArticleRecommendations(props: Props) {
 function RecommendationContent({
   userId,
   enabled = true,
+  status = "ready",
+  scopeKey,
   candidates,
   articles,
   feeds,
@@ -44,13 +49,18 @@ function RecommendationContent({
   const [immersiveOpen, setImmersiveOpen] = useState(false);
   const [lastDismissed, setLastDismissed] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!enabled) setImmersiveOpen(false);
-  }, [enabled]);
+  const immersiveOpenRef = useSyncedRef(immersiveOpen);
   const undoRef = useRef<HTMLButtonElement>(null);
   const disclosureRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // A disabled launch button cannot receive focus when an interrupted session closes.
+    if (immersiveOpenRef.current && status !== "ready") disclosureRef.current?.focus();
+    setImmersiveOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- immersiveOpenRef is stable; opening alone must not close the session.
+  }, [enabled, status, scopeKey]);
   const headingId = useId();
   const contentId = useId();
+  const stateId = useId();
   const { dismissedIds, dismiss, restore, reset } = useRecommendationDismissals(userId);
   const { ogpCache } = useOgpCacheContext();
   useEffect(() => {
@@ -69,7 +79,7 @@ function RecommendationContent({
     };
   }, [enabled]);
   const recommendations = useMemo(() => {
-    if (!enabled) return [];
+    if (!enabled || status !== "ready") return [];
     const eligibleIds = new Set(articles.map((article) => article.id));
     return rankArticleRecommendations({
       candidates: candidates.filter((article) => eligibleIds.has(article.id)),
@@ -86,6 +96,7 @@ function RecommendationContent({
     });
   }, [
     enabled,
+    status,
     candidates,
     articles,
     feeds,
@@ -99,7 +110,16 @@ function RecommendationContent({
     now,
   ]);
 
-  if (!enabled || (!immersiveOpen && !recommendations.length && !dismissedIds.size)) return null;
+  if (!enabled) return null;
+
+  const unavailableMessage =
+    status === "loading"
+      ? "記事を読み込み中です。現在のフィルター内からおすすめを表示します"
+      : status === "error"
+        ? "記事を読み込めませんでした。一覧で再試行するとおすすめも表示されます"
+        : status === "searching"
+          ? "検索条件を反映しています"
+          : null;
 
   return (
     <>
@@ -134,7 +154,10 @@ function RecommendationContent({
           <button
             type="button"
             onClick={() => setImmersiveOpen(true)}
-            className="min-h-11 rounded-lg border border-border-default px-2 text-[11px] text-text-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2"
+            disabled={status !== "ready"}
+            aria-haspopup="dialog"
+            aria-describedby={recommendations.length === 0 ? stateId : undefined}
+            className="min-h-11 rounded-lg border border-border-default px-2 text-[11px] text-text-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
           >
             ドパガキモード
           </button>
@@ -150,15 +173,15 @@ function RecommendationContent({
             {expanded ? "折りたたむ" : `${recommendations.length}件を表示`}
           </button>
         </div>
+        {recommendations.length === 0 && (
+          <p id={stateId} aria-live="polite" className="px-4 py-3 text-[12px] text-text-muted">
+            {unavailableMessage ?? "現在のフィルターに合う未読のおすすめ記事はありません"}
+          </p>
+        )}
         <div id={contentId} hidden={!expanded}>
           <p className="px-4 pb-1 text-[11px] leading-relaxed text-text-muted">
-            新着と、読んだ・保存した記事のテーマから
+            現在のフィルター内の未読から最大3件。新着と、読んだ・保存した記事のテーマから
           </p>
-          {recommendations.length === 0 && (
-            <p className="px-4 py-3 text-[12px] text-text-muted">
-              いま紹介できる未読記事はありません
-            </p>
-          )}
           <ul className="px-2">
             {recommendations.map(({ article, feedTitle, reasons }) => {
               const thumb = safeRecommendationThumbnail(resolveThumbnail(article, ogpCache));

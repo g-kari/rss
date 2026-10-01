@@ -381,9 +381,9 @@ export function useFilteredArticles({
     ],
   );
 
-  const filtered = useMemo(
-    () =>
-      applyStateFilterAndSort(structuralFiltered, {
+  const { filtered, strictStateIds } = useMemo(
+    () => {
+      const options: Parameters<typeof applyStateFilterAndSort>[1] = {
         feedId,
         readIds: readIdsForState,
         bookmarkIds: bookmarkIdsForState,
@@ -404,10 +404,26 @@ export function useFilteredArticles({
         digestLimitMap: digestLimitMap.size > 0 ? digestLimitMap : undefined,
         feedEngagementOrder,
         getReadingTimeMs: readingTimeCacheRef.current,
-      }),
+      };
+      // Only the few retained active articles need a second state check. The list keeps
+      // them readable, but recommendations must obey saved/liked/note filters too.
+      const activeArticles = structuralFiltered.filter((article) =>
+        options.activeIds.has(article.id),
+      );
+      return {
+        filtered: applyStateFilterAndSort(structuralFiltered, options),
+        strictStateIds: new Set(
+          applyStateFilterAndSort(
+            options.digestMode || isDigestFeed ? recommendationSources : activeArticles,
+            { ...options, activeIds: EMPTY_SET },
+          ).map((article) => article.id),
+        ),
+      };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef は ref; 頻繁に変わる galleryAutoReadIds による再計算を回避。selectedArticleId/gracePeriodId は選択記事が unreadOnly 等で除外されないよう明示的に deps に含める
     [
       structuralFiltered,
+      recommendationSources,
       feedId,
       selectedArticleId,
       gracePeriodId,
@@ -425,6 +441,7 @@ export function useFilteredArticles({
       readBeforeForState,
       historyOrderForState,
       digestMode,
+      isDigestFeed,
       groupFeedIds,
       digestLimitMap,
       feedEngagementOrder,
@@ -509,6 +526,18 @@ export function useFilteredArticles({
     };
   }, [filtered, deduplicateByLink, feedTitleByHash]);
 
+  const recommendationCandidates = useMemo(() => {
+    const sourceIds = new Set(recommendationSources.map((article) => article.id));
+    return deduplicated.filter(
+      (article) =>
+        sourceIds.has(article.id) &&
+        (digestMode || isDigestFeed
+          ? strictStateIds.has(article.id)
+          : !activeIdsRef.current.has(article.id) || strictStateIds.has(article.id)),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeIdsRef is stable; state/selection changes refresh strictStateIds.
+  }, [deduplicated, recommendationSources, strictStateIds, digestMode, isDigestFeed]);
+
   const { visible, hasMore, sentinelRef, notifyArticlesAdded, loadMore } = useArticlePagination(
     deduplicated,
     page,
@@ -522,6 +551,7 @@ export function useFilteredArticles({
   // react-state-ref.md § 派生「複数 state を return する hook は戻り値全体を useMemo で wrap」適用。
   return useMemo<FilterState>(
     () => ({
+      recommendationCandidates,
       recommendationSources,
       filtered: deduplicated,
       visible,
@@ -561,6 +591,7 @@ export function useFilteredArticles({
       duplicateInfo,
     }),
     [
+      recommendationCandidates,
       recommendationSources,
       deduplicated,
       visible,
@@ -603,6 +634,8 @@ export function useFilteredArticles({
 }
 
 export interface FilterState {
+  /** Exact displayed scope, without the reader's retained-active-article exceptions. */
+  recommendationCandidates?: Article[];
   /** Content/view filters applied, before read-state filters; local recommendation evidence. */
   recommendationSources?: Article[];
   filtered: Article[];

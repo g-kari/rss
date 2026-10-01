@@ -921,6 +921,25 @@ test.describe("viewFeedIds フィルター — FeedView カテゴリ横断", () 
     expect(ids(result)).toEqual(["art1"]);
   });
 
+  test("空のグループは viewFeedIds や選択中記事があっても全記事へ広がらない", () => {
+    const result = run(pool, {
+      feedId: null,
+      groupFeedIds: new Set(),
+      viewFeedIds: new Set(["feedPic"]),
+      activeIds: new Set(["pic1"]),
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  test("個別フィード選択は空の groupFeedIds より優先される", () => {
+    const result = run(pool, {
+      feedId: "feedArt",
+      groupFeedIds: new Set(),
+      viewFeedIds: new Set(["feedPic"]),
+    });
+    expect(ids(result)).toEqual(["art1"]);
+  });
+
   test("viewFeedIds が空 Set の場合は記事なし（該当フィードなしの表現）", () => {
     const result = run(pool, {
       feedId: null,
