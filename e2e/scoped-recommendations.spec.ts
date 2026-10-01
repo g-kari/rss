@@ -24,7 +24,7 @@ test.beforeAll(async () => {
       { from: resolve(root, "app/globals.css") },
     ),
   ]);
-  html = `<!doctype html><html lang="ja"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif;margin:0}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif;margin:0}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 
 test.beforeEach(async ({ page }) => {
@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
       route.request().url() === "https://rss-preview.test/" &&
       route.request().isNavigationRequest()
     )
-      return route.fulfill({ contentType: "text/html", body: html });
+      return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
     requests.push(route.request().url());
     return route.abort();
   });
