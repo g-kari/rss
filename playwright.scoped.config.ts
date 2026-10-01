@@ -7,6 +7,7 @@ export default defineConfig({
     "scoped-recommendations.spec.ts",
     "immersive-articles.spec.ts",
     "immersive-autoplay-narration.spec.ts",
+    "reader-motion.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,

@@ -13,6 +13,8 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import dynamic from "next/dynamic";
 import { useDelayedGalleryItems } from "@/hooks/useDelayedGalleryItems";
+import { useReaderArrival } from "@/hooks/useReaderArrival";
+import { useVisualMode } from "../contexts/VisualModeContext";
 import { useEventListener } from "@/hooks/useEventListener";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import type { Article, Feed, FeedView, Layout } from "../types";
@@ -177,6 +179,8 @@ function ArticleList({
   onContextMenuSnooze,
   onAddTag,
 }: Props) {
+  const { motionAllowed, pageVisible } = useVisualMode();
+  const readerMotionAllowed = motionAllowed && pageVisible;
   const {
     filtered,
     recommendationCandidates,
@@ -308,7 +312,7 @@ function ArticleList({
     displayItems: galleryDisplayItems,
     deletingIds: galleryDeletingIds,
     newIds: galleryNewIds,
-  } = useDelayedGalleryItems(galleryVisible, getArticleId, 300);
+  } = useDelayedGalleryItems(galleryVisible, getArticleId, 250, readerMotionAllowed);
 
   // Phase 1: 画像/動画 view のギャラリー layout のとき、1 記事 N 画像を N カードに分解する。
   // explode flag は galleryPrefetchEnabled と同じ条件 (prefetch 完了画像を使うため一致が必要)。
@@ -460,7 +464,28 @@ function ArticleList({
     displayItems: nonGalleryDisplayItems,
     deletingIds: nonGalleryDeletingIds,
     newIds: nonGalleryNewIds,
-  } = useDelayedGalleryItems(visible, getArticleId, 250);
+  } = useDelayedGalleryItems(visible, getArticleId, 250, readerMotionAllowed);
+
+  // Only committed scope and genuinely appended IDs trigger decoration; selection/polling do not.
+  const readerMotionScope = JSON.stringify([
+    selectedFeedId,
+    activeFeedView,
+    layout,
+    listFocusMode,
+    query,
+    unreadOnly,
+    bookmarkOnly,
+    readingListOnly,
+    likeOnly,
+    noteOnly,
+    digestMode,
+    dateRange,
+    readingTimeRange,
+    authorFilter,
+    categoryFilter,
+    globalFilter,
+  ]);
+  useReaderArrival(scrollContainerRef, "list", readerMotionScope, visible.map(getArticleId));
 
   const flatItems = useMemo<FlatItem[]>(() => {
     if (layout !== "compact" && layout !== "list") return [];
@@ -735,6 +760,8 @@ function ArticleList({
             role="feed"
             aria-label="記事"
             aria-busy={loading}
+            data-reader-motion="list"
+            data-reader-layout={layout}
             className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none]"
           >
             <ArticleListEmptyState

@@ -82,6 +82,10 @@ jobs:
           src/lib/immersive-articles.test.ts
           src/lib/immersive-inline-content.test.ts
           src/lib/image-extractor.malformed.test.ts
+          src/hooks/useReaderArrival.test.tsx
+          src/hooks/useDelayedGalleryItems.test.ts
+          src/lib/reader-motion-request-guard.test.ts
+          src/contexts/VisualModeContext.test.tsx
 
       - name: レスポンシブな production component fixture を確認
         run: pnpm run test:e2e:scoped

@@ -112,6 +112,7 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-50 flex justify-end outline-none"
       role="dialog"
+      data-reader-surface="detail"
       aria-modal="true"
       aria-labelledby={titleId}
     >
