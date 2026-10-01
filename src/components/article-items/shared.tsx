@@ -303,12 +303,16 @@ export function ArticleThumbnail({
   thumb,
   fallbacks = [],
   className,
+  limitUpscale = false,
 }: {
   thumb?: string;
   fallbacks?: string[];
   className: string;
+  /** Fullscreen shots must not stretch a remaining tiny image across the viewport. */
+  limitUpscale?: boolean;
 }) {
   const [failed, setFailed] = useState(new Set<string>());
+  const [smallSource, setSmallSource] = useState<string | null>(null);
   const source = [thumb, ...fallbacks].find((url) => !!url && !failed.has(url));
   if (!source) {
     return (
@@ -336,6 +340,19 @@ export function ArticleThumbnail({
       alt=""
       className={className}
       loading="lazy"
+      style={
+        limitUpscale && smallSource === source
+          ? { width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%" }
+          : undefined
+      }
+      onLoad={
+        limitUpscale
+          ? (event) => {
+              const image = event.currentTarget;
+              setSmallSource(image.naturalWidth < 800 && image.naturalHeight < 800 ? source : null);
+            }
+          : undefined
+      }
       onError={() => setFailed((previous) => new Set([...previous, source]))}
     />
   );

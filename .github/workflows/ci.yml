@@ -73,6 +73,7 @@ jobs:
           src/components/ArticleList.motion.test.tsx
           src/components/ImmersiveArticleMode.test.tsx
           src/components/ImmersiveArticleMode.autoplay.test.tsx
+          src/components/CinematicArticle.test.tsx
           src/hooks/useImmersiveClock.test.tsx
           src/hooks/useImmersiveNarration.test.tsx
           src/components/article-view/AutoReadController.immersive.test.tsx
@@ -81,6 +82,9 @@ jobs:
           src/components/ImmersiveInlineReader.test.tsx
           src/components/article-items/ArticleThumbnail.fallback.test.tsx
           src/lib/immersive-articles.test.ts
+          src/lib/immersive-media.test.ts
+          src/lib/image-extractor.responsive.test.ts
+          src/lib/immersive-quality-request-guard.test.ts
           src/lib/immersive-inline-content.test.ts
           src/lib/image-extractor.malformed.test.ts
           src/hooks/useReaderArrival.test.tsx

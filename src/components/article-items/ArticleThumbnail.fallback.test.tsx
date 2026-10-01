@@ -20,3 +20,20 @@ it("tries a finite candidate list and does not let a failed old image poison a n
   rerender(<ArticleThumbnail thumb="https://example.com/fresh.jpg" className="thumb" />);
   expect(container.querySelector("img")!.src).toContain("fresh.jpg");
 });
+it("does not stretch tiny fullscreen images and clears sizing for a new larger source", () => {
+  const { container, rerender } = render(
+    <ArticleThumbnail thumb="https://example.com/tiny.jpg" className="thumb" limitUpscale />,
+  );
+  const image = container.querySelector("img")!;
+  Object.defineProperties(image, {
+    naturalWidth: { value: 300, configurable: true },
+    naturalHeight: { value: 168, configurable: true },
+  });
+  fireEvent.load(image);
+  expect(image.style.width).toBe("auto");
+  expect(image.style.height).toBe("auto");
+  rerender(
+    <ArticleThumbnail thumb="https://example.com/large.jpg" className="thumb" limitUpscale />,
+  );
+  expect(image.style.width).toBe("");
+});

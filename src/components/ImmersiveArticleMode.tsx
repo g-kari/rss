@@ -297,6 +297,7 @@ export default function ImmersiveArticleMode(props: Props) {
                         active={itemIndex === index}
                         paused={playbackPaused}
                         speed={speed}
+                        onPause={() => setPaused(true)}
                         onComplete={() => {
                           // The synchronous index ref rejects duplicate and stale media callbacks.
                           if (itemIndex !== indexRef.current || !canAdvanceRef.current) return;

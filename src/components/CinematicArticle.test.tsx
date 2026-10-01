@@ -1,7 +1,9 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeArticle } from "../../e2e/helpers/article";
 import CinematicArticle from "./CinematicArticle";
+import { contentLruCache } from "../lib/lru-cache";
+import { getProviderContentCacheId } from "../lib/slide-providers";
 
 const state = vi.hoisted(() => ({
   visual: { motionEnabled: true, motionReason: "", pageVisible: true },
@@ -111,5 +113,26 @@ describe("CinematicArticle", () => {
     render(<CinematicArticle {...props} article={{ ...article, summary: "", content: "" }} />);
     expect(screen.getByText(/短い説明はありません/)).toBeInTheDocument();
     expect(screen.queryByRole("img")).toBeNull();
+  });
+  it("refreshes captions from a newly loaded cache when returning from inline reading", () => {
+    const current = {
+      ...article,
+      id: "cinematic-cache-refresh",
+      link: "https://example.com/cache-refresh",
+      summary: "説明の文です。".repeat(20),
+    };
+    const { container, rerender } = render(
+      <CinematicArticle {...props} article={current} paused />,
+    );
+    for (let index = 0; index < 5; index++)
+      fireEvent.click(screen.getByRole("button", { name: "次の説明" }));
+    contentLruCache.set(
+      getProviderContentCacheId(current.id, current.link),
+      "取得した本文を続けて読みます。",
+    );
+    rerender(<CinematicArticle {...props} article={current} paused />);
+    expect(container.querySelector(".cinematic-caption")).toHaveTextContent(
+      "取得した本文を続けて読みます。",
+    );
   });
 });
