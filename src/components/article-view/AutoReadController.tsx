@@ -1,5 +1,7 @@
 "use client";
 
+import { useHasImmersiveSession } from "../../lib/immersive-session";
+
 import { useEffect, useRef } from "react";
 import type { Article } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
@@ -96,6 +98,7 @@ export default function AutoReadController({
   const onTtsStopRef = useSyncedRef(onTtsStop);
   const toast = useToast();
 
+  const immersiveOpen = useHasImmersiveSession();
   const articleId = article?.id;
 
   // 記事切替時に fetch トリガーフラグと prevEndedCountRef をリセット
@@ -163,7 +166,7 @@ export default function AutoReadController({
   // → ttsPlaying=false → effect 再発火 → 再 speak の無限ループになる。
   // また `canFetch && !hasFullContent` の場合は fetch 完了待ちで speak を保留。
   useEffect(() => {
-    if (!enabled || !article) return;
+    if (!enabled || immersiveOpen || !article) return;
     const articleId = article.id;
     if (speakTriggeredRef.current === articleId) return;
     const start = shouldStartAutoSpeak({
@@ -199,6 +202,7 @@ export default function AutoReadController({
     onSpeak(ttsText);
   }, [
     enabled,
+    immersiveOpen,
     article,
     ttsSupported,
     ttsPlaying,
@@ -219,7 +223,7 @@ export default function AutoReadController({
   // 手動停止と自然完了が確実に区別され、勝手に次記事へ遷移するバグを解消。
   useEffect(() => {
     const finished = isAutoReadFinished({
-      enabled,
+      enabled: enabled && !immersiveOpen,
       ttsSupported,
       prevEndedCount: prevEndedCountRef.current,
       currentEndedCount: ttsEndedCount,
@@ -241,6 +245,7 @@ export default function AutoReadController({
     return () => clearTimeout(id);
   }, [
     enabled,
+    immersiveOpen,
     article,
     ttsSupported,
     ttsEndedCount,

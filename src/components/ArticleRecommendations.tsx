@@ -11,7 +11,7 @@ import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { resolveThumbnail } from "../lib/article-utils";
 import { safeRecommendationThumbnail } from "../lib/immersive-articles";
-import ImmersiveArticleMode from "./ImmersiveArticleMode";
+import ImmersiveArticleMode, { type ImmersiveSessionSnapshot } from "./ImmersiveArticleMode";
 import { ArticleThumbnail } from "./article-items/shared";
 
 interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now" | "limit"> {
@@ -20,6 +20,7 @@ interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now
   status?: "ready" | "loading" | "error" | "searching";
   scopeKey?: string;
   onSelectArticle: (article: Article) => void;
+  onReadArticle?: (article: Article) => void;
   onToggleReadingList?: (id: string) => void;
 }
 
@@ -43,9 +44,11 @@ function RecommendationContent({
   likeIds,
   historyIds,
   onSelectArticle,
+  onReadArticle,
   onToggleReadingList,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
+  const [immersiveSession, setImmersiveSession] = useState<ImmersiveSessionSnapshot | null>(null);
   const [immersiveOpen, setImmersiveOpen] = useState(false);
   const [lastDismissed, setLastDismissed] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now);
@@ -56,6 +59,7 @@ function RecommendationContent({
     // A disabled launch button cannot receive focus when an interrupted session closes.
     if (immersiveOpenRef.current && status !== "ready") disclosureRef.current?.focus();
     setImmersiveOpen(false);
+    setImmersiveSession(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- immersiveOpenRef is stable; opening alone must not close the session.
   }, [enabled, status, scopeKey]);
   const headingId = useId();
@@ -137,7 +141,9 @@ function RecommendationContent({
           dismissedIds={dismissedIds}
           now={now}
           onClose={() => setImmersiveOpen(false)}
-          onSelectArticle={onSelectArticle}
+          onSelectArticle={onReadArticle ?? onSelectArticle}
+          session={immersiveSession}
+          onSessionChange={setImmersiveSession}
           onToggleReadingList={onToggleReadingList}
           onDismiss={dismiss}
           onRestore={restore}

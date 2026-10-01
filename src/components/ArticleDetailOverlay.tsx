@@ -161,7 +161,7 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
           <ErrorBoundary label="記事詳細パネル">
-            <ArticleView {...articleViewProps} />
+            <ArticleView {...articleViewProps} presentation="overlay" />
           </ErrorBoundary>
         </div>
       </div>

@@ -1,10 +1,13 @@
 "use client";
 import { useMemo, useRef } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
+import type { FullContentIntent } from "../lib/full-content-intent";
 import { useFeedStructuralSignature } from "./useFeedStructuralSignature";
 
 interface UseArticleViewPropsOptions {
   selectedArticle: Article | null;
+  fullContentIntent?: FullContentIntent | null;
+  consumeFullContentIntent?: (requestId: number) => boolean;
   bookmarkIds: Set<string>;
   handleToggleBookmark: (id: string) => void;
   readingListIds: Set<string>;
@@ -51,6 +54,8 @@ interface UseArticleViewPropsOptions {
  */
 export function useArticleViewProps({
   selectedArticle,
+  fullContentIntent,
+  consumeFullContentIntent,
   bookmarkIds,
   handleToggleBookmark,
   readingListIds,
@@ -93,6 +98,8 @@ export function useArticleViewProps({
   return useMemo(
     () => ({
       article: selectedArticle,
+      fullContentIntent,
+      consumeFullContentIntent,
       isBookmarked: selectedArticle ? bookmarkIds.has(selectedArticle.id) : false,
       onToggleBookmark: handleToggleBookmark,
       isInReadingList: selectedArticle ? readingListIds.has(selectedArticle.id) : false,
@@ -132,6 +139,8 @@ export function useArticleViewProps({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- feedStructuralSignature が feeds 構造を encode 済、feedsRef.current は ref 安定参照 (canonical: ArticleList / useSidebarFeeds)
     [
       selectedArticle,
+      fullContentIntent,
+      consumeFullContentIntent,
       bookmarkIds,
       handleToggleBookmark,
       readingListIds,

@@ -64,8 +64,24 @@ jobs:
       - name: 公式 Chromium と実行依存をインストール
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: 厳密スコープと状態のユニットテスト
-        run: pnpm run test:unit -- src/hooks/useFilteredArticles.recommendations.test.ts src/components/ArticleRecommendations.test.tsx src/components/ArticleList.recommendations.test.tsx
+      - name: スコープ・再生・本文・キューのユニットテスト
+        run: >-
+          pnpm run test:unit --
+          src/hooks/useFilteredArticles.recommendations.test.ts
+          src/components/ArticleRecommendations.test.tsx
+          src/components/ArticleList.recommendations.test.tsx
+          src/components/ImmersiveArticleMode.test.tsx
+          src/components/ImmersiveArticleMode.autoplay.test.tsx
+          src/hooks/useImmersiveClock.test.tsx
+          src/hooks/useImmersiveNarration.test.tsx
+          src/components/article-view/AutoReadController.immersive.test.tsx
+          src/hooks/useFullContentIntent.test.tsx
+          src/hooks/useFullContentIntent.concurrency.test.tsx
+          src/components/ImmersiveInlineReader.test.tsx
+          src/components/article-items/ArticleThumbnail.fallback.test.tsx
+          src/lib/immersive-articles.test.ts
+          src/lib/immersive-inline-content.test.ts
+          src/lib/image-extractor.malformed.test.ts
 
       - name: レスポンシブな production component fixture を確認
         run: pnpm run test:e2e:scoped

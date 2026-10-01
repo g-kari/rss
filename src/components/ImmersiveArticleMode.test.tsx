@@ -129,6 +129,86 @@ describe("ImmersiveArticleMode", () => {
     expect(scroller.scrollTop).toBe(800);
     expect(props.onSelectArticle).not.toHaveBeenCalled();
   });
+  it("keeps keyboard focus inside the mode after the focused next-batch button disappears", () => {
+    const trigger = start();
+    advance(10);
+    const nextBatch = screen.getByRole("button", { name: "次の10件を見る" });
+    nextBatch.focus();
+    fireEvent.click(nextBatch);
+    expect(screen.getByRole("region")).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+  it("aligns the new batch after slides replace an empty queue instead of retaining the end snap target", () => {
+    render(
+      <ImmersiveArticleMode
+        {...props}
+        candidates={articles.slice(0, 2)}
+        session={{ remaining: [], served: [articles[0]], paused: true, speed: 1 }}
+      />,
+    );
+    const scroller = screen.getByRole("region");
+    Object.defineProperty(scroller, "clientHeight", { value: 400 });
+    let alignedAfterInsertion = false;
+    // Model the hosted browser retaining the persistent end-section snap target at its new offset.
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => (scroller.querySelector(".immersive-slide") && !alignedAfterInsertion ? 400 : 0),
+      set: (value: number) => {
+        if (value === 0 && scroller.querySelector(".immersive-slide")) alignedAfterInsertion = true;
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
+    fireEvent.scroll(scroller);
+    expect(screen.getByRole("heading", { name: "記事 1" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 / 1件");
+    expect(scroller.scrollTop).toBe(0);
+  });
+  it.each(["end", "start"])(
+    "keeps keyboard focus when the %s navigation control becomes disabled",
+    (edge) => {
+      const trigger = start();
+      advance(edge === "end" ? 9 : 1);
+      const button = screen.getByRole("button", {
+        name: edge === "end" ? "次の記事" : "前の記事",
+      });
+      button.focus();
+      fireEvent.click(button);
+      expect(button).toBeDisabled();
+      expect(screen.getByRole("region")).toHaveFocus();
+      fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(trigger).toHaveFocus();
+    },
+  );
+  it.each(["再生速度", "一覧に戻る"])(
+    "retains the stable %s control focus when native scrolling reaches the end",
+    (name) => {
+      start();
+      const stable = screen.getByRole(name === "再生速度" ? "combobox" : "button", { name });
+      stable.focus();
+      const scroller = screen.getByRole("region");
+      Object.defineProperty(scroller, "clientHeight", { value: 400 });
+      scroller.scrollTop = 4000;
+      fireEvent.scroll(scroller);
+      expect(screen.getByRole("status")).toHaveTextContent("区切り");
+      expect(stable).toHaveFocus();
+    },
+  );
+  it.each(["自動再生を再開", "ナレーションを開始", "本文を読む"])(
+    "repairs the unavailable %s control focus when native scrolling reaches the end",
+    (name) => {
+      start();
+      screen.getByRole("button", { name }).focus();
+      const scroller = screen.getByRole("region");
+      Object.defineProperty(scroller, "clientHeight", { value: 400 });
+      scroller.scrollTop = 4000;
+      fireEvent.scroll(scroller);
+      expect(scroller).toHaveFocus();
+      expect(screen.getByRole("status")).toHaveTextContent("区切り");
+    },
+  );
   it("saves without reordering, dismisses with a focused undo, and restores the same card", () => {
     start();
     fireEvent.click(screen.getByRole("button", { name: "後で読む" }));

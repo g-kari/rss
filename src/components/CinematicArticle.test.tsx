@@ -7,8 +7,11 @@ const state = vi.hoisted(() => ({
   visual: { motionEnabled: true, motionReason: "", pageVisible: true },
   playback: { playing: true, elapsed: 0, failed: false, finished: false, toggle: vi.fn() },
   usePlayback: vi.fn(),
+  elapsed: 0,
+  clock: vi.fn(),
 }));
 vi.mock("../contexts/VisualModeContext", () => ({ useVisualMode: () => state.visual }));
+vi.mock("../hooks/useImmersiveClock", () => ({ useImmersiveClock: state.clock }));
 vi.mock("../hooks/useCinematicPlayback", () => ({
   CINEMATIC_DURATION: 20_000,
   useCinematicPlayback: state.usePlayback,
@@ -28,6 +31,8 @@ const props = {
 beforeEach(() => {
   Object.assign(state.visual, { motionEnabled: true, motionReason: "", pageVisible: true });
   Object.assign(state.playback, { playing: true, elapsed: 0, failed: false, finished: false });
+  state.elapsed = 0;
+  state.clock.mockReset().mockImplementation(() => state.elapsed);
   state.usePlayback.mockReset().mockImplementation(() => state.playback);
 });
 afterEach(cleanup);
@@ -49,7 +54,6 @@ describe("CinematicArticle", () => {
         autoPlay: true,
         paused: false,
         speed: 1,
-        onComplete: props.onComplete,
       }),
     );
     rerender(<CinematicArticle {...props} active={false} />);
@@ -62,7 +66,7 @@ describe("CinematicArticle", () => {
     expect(container.querySelector("video, iframe, audio")).toBeNull();
   });
   it("uses the parent's persistent pause and speed settings across captions", () => {
-    state.playback.elapsed = 12_000;
+    state.elapsed = 12_000;
     const { container } = render(<CinematicArticle {...props} paused speed={0.75} />);
     expect(state.usePlayback).toHaveBeenLastCalledWith(
       expect.any(Object),
@@ -85,12 +89,13 @@ describe("CinematicArticle", () => {
       true,
       expect.any(Object),
     );
+    expect(state.clock).toHaveBeenLastCalledWith(true, false, true, 1, 20000, props.onComplete);
     expect(container.querySelector(".cinematic-caption")).not.toBeNull();
-    expect(screen.getByText(/静止表示/)).toBeInTheDocument();
+    expect(screen.getByText(/画像の動き/)).toBeInTheDocument();
     state.visual.motionReason = "";
     state.playback.failed = true;
     rerender(<CinematicArticle {...props} />);
-    expect(screen.getByText(/静止表示/)).toBeInTheDocument();
+    expect(screen.getByText(/画像の動き/)).toBeInTheDocument();
   });
   it("never mounts video on an inactive or reduced-motion card", () => {
     const video = { ...article, content: '<video src="https://example.com/movie.mp4"></video>' };

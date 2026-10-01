@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FullContentIntent } from "../lib/full-content-intent";
 import { useSearchParams } from "next/navigation";
 import { AppOverlays } from "./AppOverlays";
 import { AppSidebarPane } from "./AppSidebarPane";
@@ -782,8 +783,43 @@ export default function AppShell({
     anchorListToSelected,
   });
 
+  const [fullContentIntent, setFullContentIntent] = useState<FullContentIntent | null>(null);
+  const fullContentIntentRef = useRef<FullContentIntent | null>(null);
+  const readRequestId = useRef(0);
+  const readImmersiveArticle = useCallback(
+    (article: Article) => {
+      const intent: FullContentIntent = {
+        requestId: ++readRequestId.current,
+        articleId: article.id,
+        link: article.link,
+        target: listFocusMode ? "overlay" : "pane",
+      };
+      fullContentIntentRef.current = intent;
+      setFullContentIntent(intent);
+      selectArticle(article);
+    },
+    [selectArticle, listFocusMode],
+  );
+  const consumeFullContentIntent = useCallback((requestId: number) => {
+    if (fullContentIntentRef.current?.requestId !== requestId) return false;
+    fullContentIntentRef.current = null;
+    setFullContentIntent(null);
+    return true;
+  }, []);
+  useEffect(() => {
+    const intent = fullContentIntentRef.current;
+    if (
+      intent &&
+      (selectedArticle?.id !== intent.articleId || selectedArticle?.link !== intent.link)
+    ) {
+      fullContentIntentRef.current = null;
+      setFullContentIntent(null);
+    }
+  }, [selectedArticle?.id, selectedArticle?.link]);
   const articleViewProps = useArticleViewProps({
     selectedArticle,
+    fullContentIntent,
+    consumeFullContentIntent,
     bookmarkIds,
     handleToggleBookmark,
     readingListIds,
@@ -996,6 +1032,7 @@ export default function AppShell({
                 onChangeLayout,
                 onMobileBack: onMobileBackToSidebar,
                 onSelectArticle: selectArticle,
+                onReadImmersiveArticle: readImmersiveArticle,
                 onToggleRead: toggleRead,
                 onToggleBookmark: toggleBookmark,
                 onToggleReadingList: toggleReadingList,

@@ -7,9 +7,26 @@ import ImmersiveArticleMode from "./ImmersiveArticleMode";
 
 const state = vi.hoisted(() => ({
   visual: { enabled: false, motionEnabled: true, motionReason: "", pageVisible: true },
+  narrationHolding: false,
   cards: new Map<string, { onComplete: () => void; paused: boolean; speed: number }>(),
 }));
 vi.mock("../contexts/VisualModeContext", () => ({ useVisualMode: () => state.visual }));
+vi.mock("../hooks/useImmersiveNarration", () => ({
+  useImmersiveNarration: () => ({
+    enabled: state.narrationHolding,
+    holding: state.narrationHolding,
+    toggle: vi.fn(),
+    message: "",
+  }),
+}));
+vi.mock("./ImmersiveInlineReader", () => ({
+  default: ({ article, onClose }: { article: Article | null; onClose: () => void }) =>
+    article ? (
+      <div role="dialog" aria-label="ここで記事の本文を読む">
+        <button onClick={onClose}>ショート表示に戻る</button>
+      </div>
+    ) : null,
+}));
 vi.mock("./CinematicArticle", () => ({
   default: (props: {
     article: Article;
@@ -51,6 +68,7 @@ const props = {
 };
 beforeEach(() => {
   state.cards.clear();
+  state.narrationHolding = false;
   Object.assign(state.visual, {
     enabled: false,
     motionEnabled: true,
@@ -106,12 +124,62 @@ describe("immersive autoplay session", () => {
     rerender(<ImmersiveArticleMode {...props} />);
     act(() => state.cards.get("0")!.onComplete());
     state.visual.pageVisible = true;
-    state.visual.motionReason = "動きを減らす";
+    state.visual.motionReason = "端末の動きを減らす設定";
     rerender(<ImmersiveArticleMode {...props} />);
     act(() => state.cards.get("0")!.onComplete());
     expect(screen.getByRole("status")).toHaveTextContent("1 / 10件");
     fireEvent.keyDown(screen.getByLabelText("再生速度"), { key: "ArrowDown" });
     expect(screen.getByRole("status")).toHaveTextContent("1 / 10件");
-    expect(screen.getByRole("button", { name: "自動再生を再開" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "自動再生を再開" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "自動再生を再開" }));
+    act(() => state.cards.get("0")!.onComplete());
+    expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
   });
+});
+
+it.each(["軽量表示", "データ節約設定"])(
+  "starts the finite timer despite %s decoration fallback",
+  (reason) => {
+    state.visual.motionReason = reason;
+    render(<ImmersiveArticleMode {...props} />);
+    expect(state.cards.get("0")?.paused).toBe(false);
+    act(() => state.cards.get("0")!.onComplete());
+    expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
+  },
+);
+
+it("waits for narration after media ends, and never releases a manually paused session", () => {
+  state.narrationHolding = true;
+  const { rerender } = render(<ImmersiveArticleMode {...props} />);
+  act(() => state.cards.get("0")!.onComplete());
+  expect(screen.getByRole("status")).toHaveTextContent("1 / 10件");
+  fireEvent.click(screen.getByRole("button", { name: "自動再生を一時停止" }));
+  state.narrationHolding = false;
+  rerender(<ImmersiveArticleMode {...props} />);
+  expect(screen.getByRole("status")).toHaveTextContent("1 / 10件");
+  fireEvent.click(screen.getByRole("button", { name: "自動再生を再開" }));
+  expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
+});
+
+it.each([false, true])(
+  "pauses inline reading and restores prior user-paused state %s",
+  (paused) => {
+    render(<ImmersiveArticleMode {...props} />);
+    if (paused) fireEvent.click(screen.getByRole("button", { name: "自動再生を一時停止" }));
+    const first = state.cards.get("0")!.onComplete;
+    fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
+    expect(state.cards.get("0")?.paused).toBe(true);
+    act(() => first());
+    expect(screen.getByRole("status")).toHaveTextContent("1 / 10件");
+    fireEvent.click(screen.getByRole("button", { name: "ショート表示に戻る" }));
+    expect(state.cards.get("0")?.paused).toBe(paused);
+    expect(props.onSelectArticle).not.toHaveBeenCalled();
+  },
+);
+it("closes an inline panel safely if the active article leaves the eligible scope", () => {
+  const { rerender } = render(<ImmersiveArticleMode {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
+  rerender(<ImmersiveArticleMode {...props} readIds={new Set(["0"])} />);
+  expect(screen.queryByRole("dialog", { name: "ここで記事の本文を読む" })).toBeNull();
+  expect(document.querySelector(".immersive-footer")).not.toHaveAttribute("inert");
 });

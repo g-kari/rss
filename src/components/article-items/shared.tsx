@@ -299,9 +299,18 @@ export function DuplicateBadge({ feedNames }: { feedNames: string[] }) {
   );
 }
 
-export function ArticleThumbnail({ thumb, className }: { thumb?: string; className: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!thumb || failed) {
+export function ArticleThumbnail({
+  thumb,
+  fallbacks = [],
+  className,
+}: {
+  thumb?: string;
+  fallbacks?: string[];
+  className: string;
+}) {
+  const [failed, setFailed] = useState(new Set<string>());
+  const source = [thumb, ...fallbacks].find((url) => !!url && !failed.has(url));
+  if (!source) {
     return (
       <span
         className={`${className} flex items-center justify-center bg-surface-subtle`}
@@ -323,11 +332,11 @@ export function ArticleThumbnail({ thumb, className }: { thumb?: string; classNa
   }
   return (
     <img
-      src={buildImageProxyUrl(thumb)}
+      src={buildImageProxyUrl(source)}
       alt=""
       className={className}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailed((previous) => new Set([...previous, source]))}
     />
   );
 }

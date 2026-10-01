@@ -6,6 +6,11 @@ import {
 } from "./article-recommendations";
 import { toPlainText, unescapeHtml } from "./html";
 import { isProxiedImageUrl } from "./image-proxy-url";
+import { collectImageUrlsFromHtml } from "./image-extractor";
+import { contentLruCache } from "./lru-cache";
+import { getProviderContentCacheId } from "./slide-providers";
+import { resolveThumbnail } from "./article-utils";
+import { isClipImageUrl } from "./clip-image-url";
 import { isValidPublicUrl } from "./url";
 
 export const IMMERSIVE_BATCH_SIZE = 10;
@@ -49,6 +54,7 @@ export function immersiveExcerpt(article: Article): string {
 /** Shared by compact recommendations and the immersive card; never request unsafe cache values. */
 export function safeRecommendationThumbnail(value: unknown): string | undefined {
   if (typeof value !== "string" || !value) return undefined;
+  if (isClipImageUrl(value)) return value;
   if (isProxiedImageUrl(value)) {
     const original = new URLSearchParams(value.slice(value.indexOf("?") + 1)).get("url");
     return original && isValidPublicUrl(original) ? value : undefined;
@@ -100,4 +106,29 @@ export function immersiveVideoSource(article: Article): string | undefined {
   if (isValidPublicUrl(article.link) && /\.(?:mp4|webm|mov)$/i.test(new URL(article.link).pathname))
     return `/api/video-proxy?url=${encodeURIComponent(article.link)}`;
   return undefined;
+}
+
+/** Loaded metadata and body images only. A bad OGP must not hide a good feed/body image. */
+export function immersiveThumbnailSources(
+  article: Article,
+  ogpCache: Record<string, string>,
+): string[] {
+  const cachedBody = contentLruCache.get(getProviderContentCacheId(article.id, article.link));
+  const candidates = [
+    article.link ? ogpCache[article.link] : undefined,
+    article.ogImage,
+    ...collectImageUrlsFromHtml(cachedBody || ""),
+    ...collectImageUrlsFromHtml(article.content || ""),
+    ...collectImageUrlsFromHtml(article.summary),
+    resolveThumbnail(article, {}),
+  ];
+  return Array.from(
+    new Set(
+      candidates
+        .map((source) =>
+          safeRecommendationThumbnail(typeof source === "string" ? unescapeHtml(source) : source),
+        )
+        .filter((source): source is string => !!source),
+    ),
+  );
 }

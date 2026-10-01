@@ -3,7 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 /** Synthetic production-component UI only: no Next server, login, bindings or live data. */
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "scoped-recommendations.spec.ts",
+  testMatch: [
+    "scoped-recommendations.spec.ts",
+    "immersive-articles.spec.ts",
+    "immersive-autoplay-narration.spec.ts",
+  ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
   retries: 0,

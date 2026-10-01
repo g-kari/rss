@@ -1,7 +1,10 @@
 // Production immersive UI with local data only; no login, AI, audio or external network.
+import { VisualModeProvider } from "../../src/contexts/VisualModeContext";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import ImmersiveArticleMode from "../../src/components/ImmersiveArticleMode";
+import ImmersiveArticleMode, {
+  type ImmersiveSessionSnapshot,
+} from "../../src/components/ImmersiveArticleMode";
 import type { Article, Feed } from "../../src/types";
 
 const now = Date.now();
@@ -12,6 +15,10 @@ const articles: Article[] = Array.from({ length: 23 }, (_, index) => ({
   title: `記事 ${index + 1}：気になるニュースを、自分のペースで読む`,
   link: `https://example.com/${index}`,
   ogImage: "https://rss-preview.test/image.svg",
+  content:
+    index === 0
+      ? '<p>読み込み済みの本文画像</p><img src="/api/image-proxy?url=%ZZ.jpg"><a href="/api/image-proxy?url=%ZZ.jpg">無効な画像候補</a><img src="https://rss-preview.test/body.svg" width="800" height="450">'
+      : undefined,
   summary:
     "大きな画像と、フィードにある説明で記事を選べます。スワイプしただけでは既読になりません。気になった記事は本文を開くか、後で読むに保存できます。",
   publishedAt: new Date(now - index * 60000).toISOString(),
@@ -30,6 +37,7 @@ const feeds: Feed[] = [
 const empty = new Set<string>();
 
 function Preview() {
+  const [session, setSession] = useState<ImmersiveSessionSnapshot | null>(null);
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(new Set<string>());
   const [dismissed, setDismissed] = useState(new Set<string>());
@@ -45,6 +53,8 @@ function Preview() {
       </div>
       {open && (
         <ImmersiveArticleMode
+          session={session}
+          onSessionChange={setSession}
           candidates={articles}
           articles={articles}
           feeds={feeds}
@@ -78,4 +88,8 @@ function Preview() {
     </main>
   );
 }
-createRoot(document.getElementById("root")!).render(<Preview />);
+createRoot(document.getElementById("root")!).render(
+  <VisualModeProvider>
+    <Preview />
+  </VisualModeProvider>,
+);
