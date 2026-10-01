@@ -37,3 +37,8 @@ export function useTtsAdapter(): TtsAdapter {
   if (!ctx) throw new Error("useTtsAdapter must be used within TtsAdapterProvider");
   return ctx;
 }
+
+/** Session controls may also be rendered in standalone previews without a reader. */
+export function useOptionalTtsAdapter() {
+  return useContext(TtsAdapterContext);
+}

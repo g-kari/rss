@@ -983,6 +983,9 @@ body {
 }
 .immersive-playback-controls {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: calc(100% - 100px);
   gap: 0.4rem;
   align-items: center;
 }

@@ -79,6 +79,7 @@ interface Props {
   onAddFeed?: () => void;
   onChangeLayout: (layout: Layout) => void;
   onSelectArticle: (article: Article) => void;
+  onReadImmersiveArticle?: (article: Article) => void;
   onToggleRead: (id: string) => void;
   onToggleBookmark: (id: string) => void;
   /** 後で読むのトグル（#633、card/magazine のホバーボタンで使用） */
@@ -155,6 +156,7 @@ function ArticleList({
   onAddFeed,
   onChangeLayout,
   onSelectArticle,
+  onReadImmersiveArticle,
   onToggleRead,
   onToggleBookmark,
   onToggleReadingList,
@@ -697,6 +699,7 @@ function ArticleList({
             readingListIds={readingListIds ?? EMPTY_STRING_SET}
             onToggleReadingList={onToggleReadingList}
             onSelectArticle={onSelectArticle}
+            onReadArticle={onReadImmersiveArticle}
             status={
               loading
                 ? "loading"

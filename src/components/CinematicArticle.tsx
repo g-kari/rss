@@ -8,6 +8,7 @@ import {
   immersiveVideoSource,
 } from "../lib/immersive-articles";
 import { useVisualMode } from "../contexts/VisualModeContext";
+import { useImmersiveClock } from "../hooks/useImmersiveClock";
 import { CINEMATIC_DURATION, useCinematicPlayback } from "../hooks/useCinematicPlayback";
 import { ArticleThumbnail } from "./article-items/shared";
 import CinematicVideo from "./CinematicVideo";
@@ -15,6 +16,7 @@ import CinematicVideo from "./CinematicVideo";
 interface Props {
   article: Article;
   thumb?: string;
+  thumbnailFallbacks?: string[];
   feedTitle: string;
   active: boolean;
   paused?: boolean;
@@ -25,6 +27,7 @@ interface Props {
 export default function CinematicArticle({
   article,
   thumb,
+  thumbnailFallbacks,
   feedTitle,
   active,
   paused = false,
@@ -51,19 +54,30 @@ export default function CinematicArticle({
       paused,
       speed,
       duration,
-      onComplete,
     },
   );
-  const progress = nativeVideo ? videoProgress : playback.elapsed / duration;
+  const elapsed = useImmersiveClock(
+    active && !nativeVideo,
+    paused,
+    pageVisible,
+    speed,
+    duration,
+    onComplete,
+  );
+  const progress = nativeVideo ? videoProgress : elapsed / duration;
   const captionIndex = Math.min(captions.length - 1, Math.floor(progress * captions.length));
   return (
     <div className="cinematic-article">
       <div
         className="cinematic-shot"
-        data-playing={active && !paused && pageVisible && motionAllowed ? "true" : "false"}
+        data-playing={active && !paused && pageVisible ? "true" : "false"}
       >
         <div ref={imageRef} className="cinematic-image" aria-hidden="true">
-          <ArticleThumbnail thumb={thumb} className="h-full w-full object-cover" />
+          <ArticleThumbnail
+            thumb={thumb}
+            fallbacks={thumbnailFallbacks}
+            className="h-full w-full object-cover"
+          />
         </div>
         {nativeVideo && (
           <CinematicVideo
@@ -87,7 +101,12 @@ export default function CinematicArticle({
             {captions[captionIndex]}
           </p>
           {(!motionAllowed || playback.failed) && (
-            <p className="cinematic-static">静止表示 · 次へはボタンか縦スワイプで</p>
+            <p className="cinematic-static">
+              {!motionAllowed
+                ? `画像の動きは停止中（${motionReason || "動き OFF"}）`
+                : "画像の動きを利用できません"}{" "}
+              · 記事の自動送りは再生ボタンで操作できます
+            </p>
           )}
         </div>
         <div className="cinematic-progress" aria-hidden="true">

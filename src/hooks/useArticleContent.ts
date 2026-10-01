@@ -33,6 +33,8 @@ interface ArticleContentState {
   fetchRetryable: boolean;
   /** 全文取得。成功時は onFetched コールバックを呼ぶ（AI 連携用） */
   fetchFullContent: (onFetched?: (content: string) => void) => Promise<void>;
+  /** Explicit one-shot intents skip an already-running matching request. Manual refresh stays separate. */
+  fetchFullContentOnce: () => Promise<void>;
   /** OGP 画像がない場合に /api/ogp から動的解決した URL */
   resolvedOgImage: string | null;
 }
@@ -310,7 +312,27 @@ export function useArticleContent(
     [articleId, articleLink],
   );
 
+  const fetchFullContentOnce = useCallback(async () => {
+    const pending = fetchAbortControllerRef.current;
+    if (
+      pending &&
+      pending.articleId === articleId &&
+      pending.articleLink === articleLink &&
+      !pending.controller.signal.aborted
+    )
+      return;
+    await fetchFullContent();
+  }, [articleId, articleLink, fetchFullContent]);
+
   const storedContent = fetchedContent ?? cachedContent;
 
-  return { storedContent, fetching, fetchError, fetchRetryable, fetchFullContent, resolvedOgImage };
+  return {
+    storedContent,
+    fetching,
+    fetchError,
+    fetchRetryable,
+    fetchFullContent,
+    fetchFullContentOnce,
+    resolvedOgImage,
+  };
 }

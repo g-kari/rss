@@ -3,22 +3,35 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
-import type { ArticleRecommendationOptions } from "../lib/article-recommendations";
-import {
-  createImmersiveBatch,
-  getImmersiveCandidates,
-  safeRecommendationThumbnail,
-} from "../lib/immersive-articles";
-import { resolveThumbnail } from "../lib/article-utils";
+import type {
+  ArticleRecommendation,
+  ArticleRecommendationOptions,
+} from "../lib/article-recommendations";
+import { createImmersiveBatch, getImmersiveCandidates } from "../lib/immersive-articles";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useSyncedRef } from "../hooks/useSyncedRef";
+import ImmersiveInlineReader from "./ImmersiveInlineReader";
+import { immersiveThumbnailSources } from "../lib/immersive-articles";
 import CinematicArticle from "./CinematicArticle";
+import { useImmersiveNarration } from "../hooks/useImmersiveNarration";
+import { acquireImmersiveSession } from "../lib/immersive-session";
+import { useOptionalTtsAdapter } from "../contexts/TtsAdapterContext";
+import { immersiveExcerpt } from "../lib/immersive-articles";
 import { useVisualMode } from "../contexts/VisualModeContext";
+
+export interface ImmersiveSessionSnapshot {
+  remaining: ArticleRecommendation[];
+  served: Article[];
+  paused: boolean;
+  speed: number;
+}
 
 interface Props extends ArticleRecommendationOptions {
   onClose: () => void;
+  session?: ImmersiveSessionSnapshot | null;
+  onSessionChange?: (session: ImmersiveSessionSnapshot) => void;
   onSelectArticle: (article: Article) => void;
   onToggleReadingList?: (id: string) => void;
   onDismiss: (id: string) => void;
@@ -34,19 +47,31 @@ export default function ImmersiveArticleMode(props: Props) {
     onToggleReadingList,
     onDismiss,
     onRestore,
+    session,
+    onSessionChange,
     readingListIds,
     dismissedIds,
   } = props;
   const { motionEnabled, motionReason, pageVisible } = useVisualMode();
-  const [paused, setPaused] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const canAdvance = motionEnabled && !motionReason && pageVisible && !paused;
+  const prefersPause =
+    !motionEnabled || motionReason === "端末の動きを減らす設定" || motionReason === "静止表示";
+  const [paused, setPaused] = useState(session?.paused ?? prefersPause);
+  const [inlineOpen, setInlineOpen] = useState(false);
+  const playbackPaused = paused || inlineOpen;
+  const [speed, setSpeed] = useState(session?.speed ?? 1);
+  const canAdvance = pageVisible && !playbackPaused;
   const canAdvanceRef = useSyncedRef(canAdvance);
   useEffect(() => {
-    if (!motionEnabled || motionReason) setPaused(true);
-  }, [motionEnabled, motionReason]);
-  const [batch, setBatch] = useState(() => createImmersiveBatch(props, []));
-  const [served, setServed] = useState<Article[]>(() => batch.map(({ article }) => article));
+    if (prefersPause) setPaused(true);
+  }, [prefersPause]);
+  const [batch, setBatch] = useState(() => {
+    if (!session) return createImmersiveBatch(props, []);
+    const eligibleIds = new Set(getImmersiveCandidates(props).map((article) => article.id));
+    return session.remaining.filter((item) => eligibleIds.has(item.article.id));
+  });
+  const [served, setServed] = useState<Article[]>(
+    () => session?.served ?? batch.map(({ article }) => article),
+  );
   const [index, setIndex] = useState(0);
   const indexRef = useSyncedRef(index);
   const [lastDismissed, setLastDismissed] = useState<string | null>(null);
@@ -63,8 +88,27 @@ export default function ImmersiveArticleMode(props: Props) {
     () => new Map(getImmersiveCandidates(props).map((article) => [article.id, article])),
     [props],
   );
+  const [mediaFinished, setMediaFinished] = useState<string>();
+  const readerTts = useOptionalTtsAdapter();
+  const readerTtsRef = useSyncedRef(readerTts);
+  useEffect(() => {
+    const release = acquireImmersiveSession();
+    readerTtsRef.current?.stop();
+    return release;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- readerTtsRef is stable.
+  }, []);
   const current = batch[index];
   const activeArticle = current ? eligible.get(current.article.id) : undefined;
+  useEffect(() => {
+    if (inlineOpen && !activeArticle) setInlineOpen(false);
+  }, [inlineOpen, activeArticle]);
+  const narration = useImmersiveNarration(
+    activeArticle?.id,
+    activeArticle ? `${activeArticle.title}。${immersiveExcerpt(activeArticle)}` : "",
+    playbackPaused,
+    pageVisible,
+    speed,
+  );
   const servedKeys = useMemo(
     () => ({
       ids: new Set(served.map((article) => article.id)),
@@ -76,14 +120,22 @@ export default function ImmersiveArticleMode(props: Props) {
     (article) =>
       !servedKeys.ids.has(article.id) && (!article.link || !servedKeys.links.has(article.link)),
   );
+  useEffect(() => {
+    onSessionChange?.({ remaining: batch.slice(index), served, paused, speed });
+  }, [batch, index, served, paused, speed, onSessionChange]);
   const moveTo = (next: number) => {
     const value = Math.max(0, Math.min(batch.length, next));
     indexRef.current = value;
+    setMediaFinished(undefined);
     setIndex(value);
     const element = scrollRef.current;
     // An immediate move avoids queued smooth-scroll races and honors reduced motion.
     if (element) element.scrollTop = element.clientHeight * value;
   };
+  useEffect(() => {
+    if (activeArticle && mediaFinished === activeArticle.id && !narration.holding && canAdvance)
+      moveTo(index + 1);
+  });
   useEffect(() => {
     const element = scrollRef.current;
     if (!element || typeof ResizeObserver === "undefined") return;
@@ -107,13 +159,14 @@ export default function ImmersiveArticleMode(props: Props) {
     <div
       ref={dialogRef}
       role="dialog"
-      aria-modal="true"
+      aria-modal={!inlineOpen}
       aria-labelledby={titleId}
       aria-describedby={helpId}
       tabIndex={-1}
       className="immersive-dialog fixed inset-0 z-50 h-dvh overflow-hidden outline-none"
       onKeyDown={(event) => {
         event.stopPropagation();
+        if (inlineOpen) return;
         handleKeyDown(event);
         if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         if ((event.target as HTMLElement).closest("select, input, textarea")) return;
@@ -131,7 +184,7 @@ export default function ImmersiveArticleMode(props: Props) {
         }
       }}
     >
-      <header className="immersive-toolbar">
+      <header className="immersive-toolbar" inert={inlineOpen || undefined}>
         <button type="button" onClick={onClose} className={secondaryButton}>
           一覧に戻る
         </button>
@@ -145,12 +198,22 @@ export default function ImmersiveArticleMode(props: Props) {
           <button
             type="button"
             className={secondaryButton}
-            disabled={!motionEnabled || !!motionReason || !activeArticle}
+            disabled={!activeArticle}
             aria-label={paused ? "自動再生を再開" : "自動再生を一時停止"}
             aria-pressed={paused}
             onClick={() => setPaused((previous) => !previous)}
           >
-            {paused ? "▶ 再開" : "Ⅱ 停止"}
+            {paused ? "▶ 再開" : "Ⅱ 一時停止"}
+          </button>
+          <button
+            type="button"
+            className={secondaryButton}
+            aria-pressed={narration.enabled}
+            aria-label={narration.enabled ? "ナレーションを停止" : "ナレーションを開始"}
+            onClick={narration.toggle}
+            disabled={!activeArticle}
+          >
+            {narration.enabled ? "読み上げ停止" : "読み上げ"}
           </button>
           <label className="immersive-speed">
             <span className="sr-only">再生速度</span>
@@ -169,6 +232,7 @@ export default function ImmersiveArticleMode(props: Props) {
       </header>
       <div
         ref={scrollRef}
+        inert={inlineOpen || undefined}
         role="region"
         aria-label="おすすめ記事を縦にスワイプ"
         tabIndex={0}
@@ -180,6 +244,7 @@ export default function ImmersiveArticleMode(props: Props) {
               0,
               Math.min(batch.length, Math.round(element.scrollTop / element.clientHeight)),
             );
+            if (indexRef.current !== next) setMediaFinished(undefined);
             indexRef.current = next;
             setIndex(next);
           }
@@ -187,7 +252,8 @@ export default function ImmersiveArticleMode(props: Props) {
       >
         {batch.map((item, itemIndex) => {
           const article = eligible.get(item.article.id);
-          const thumb = article && safeRecommendationThumbnail(resolveThumbnail(article, ogpCache));
+          const thumbnails = article ? immersiveThumbnailSources(article, ogpCache) : [];
+          const thumb = thumbnails[0];
           return (
             <div
               key={item.article.id}
@@ -203,14 +269,15 @@ export default function ImmersiveArticleMode(props: Props) {
                         key={`${article.id}:${itemIndex === index}`}
                         article={article}
                         thumb={thumb}
+                        thumbnailFallbacks={thumbnails.slice(1)}
                         feedTitle={item.feedTitle}
                         active={itemIndex === index}
-                        paused={paused}
+                        paused={playbackPaused}
                         speed={speed}
                         onComplete={() => {
                           // The synchronous index ref rejects duplicate and stale media callbacks.
                           if (itemIndex !== indexRef.current || !canAdvanceRef.current) return;
-                          moveTo(itemIndex + 1);
+                          setMediaFinished(article.id);
                         }}
                       />
                     )}
@@ -240,7 +307,7 @@ export default function ImmersiveArticleMode(props: Props) {
           <p className="text-[14px]">スワイプしただけでは既読になりません</p>
         </section>
       </div>
-      <footer className="immersive-footer">
+      <footer className="immersive-footer" inert={inlineOpen || undefined}>
         <div className="flex flex-col gap-2">
           <div className={activeArticle ? "immersive-actions" : "immersive-batch-actions"}>
             {activeArticle && (
@@ -249,11 +316,19 @@ export default function ImmersiveArticleMode(props: Props) {
                   type="button"
                   className={secondaryButton}
                   onClick={() => {
+                    onSessionChange?.({ remaining: batch.slice(index + 1), served, paused, speed });
                     onClose();
                     onSelectArticle(activeArticle);
                   }}
                 >
                   本文を読む
+                </button>
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  onClick={() => setInlineOpen(true)}
+                >
+                  ここで読む
                 </button>
                 {onToggleReadingList && (
                   <button
@@ -297,7 +372,8 @@ export default function ImmersiveArticleMode(props: Props) {
                   setServed((previous) => [...previous, ...next.map(({ article }) => article)]);
                   indexRef.current = 0;
                   setIndex(0);
-                  setPaused(false);
+                  setPaused(prefersPause);
+                  setMediaFinished(undefined);
                   setMessage("");
                   if (scrollRef.current) scrollRef.current.scrollTop = 0;
                 }}
@@ -339,6 +415,11 @@ export default function ImmersiveArticleMode(props: Props) {
               次へ ↓
             </button>
           </div>
+          {narration.message && (
+            <p className="immersive-narration-message text-center text-[12px]" aria-live="polite">
+              {narration.message}
+            </p>
+          )}
           {message && (
             <div
               role="status"
@@ -364,6 +445,10 @@ export default function ImmersiveArticleMode(props: Props) {
           )}
         </div>
       </footer>
+      <ImmersiveInlineReader
+        article={inlineOpen ? (activeArticle ?? null) : null}
+        onClose={() => setInlineOpen(false)}
+      />
     </div>,
     document.body,
   );

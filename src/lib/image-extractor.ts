@@ -1,4 +1,5 @@
 import { isClipImageUrl } from "./clip-image-url";
+import { unescapeHtml } from "./html";
 
 /**
  * 記事画像抽出ユーティリティ。
@@ -95,12 +96,26 @@ export function normalizeImageUrlForDedup(src: string): string {
  */
 const IMAGE_HREF_EXTENSION_RE = /\.(jpe?g|png|gif|webp|avif|svg)(?:[?#].*)?$/i;
 
+/** Malformed proxy escapes are an invalid candidate, never a whole-body extraction failure. */
+function decodedImageSource(src: string): string | null {
+  // live DOM currentSrc resolves the same proxy path to an absolute URL.
+  const proxyPrefix = /^(?:https?:\/\/[^/?#]+)?\/api\/image-proxy\?/i;
+  if (!proxyPrefix.test(src)) return src;
+  const query = unescapeHtml(src.replace(proxyPrefix, ""));
+  const encoded = /(?:^|&)url=([^&#]*)/.exec(query)?.[1];
+  if (encoded === undefined) return null;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return null;
+  }
+}
+
 export function isImageHref(href: string): boolean {
   if (!href) return false;
   // image-proxy 経由は内部の url パラメータをデコードして判定
-  const target = href.startsWith("/api/image-proxy?")
-    ? decodeURIComponent(href.replace(/^\/api\/image-proxy\?url=/, ""))
-    : href;
+  const target = decodedImageSource(href);
+  if (target === null) return false;
   return IMAGE_HREF_EXTENSION_RE.test(target);
 }
 
@@ -134,9 +149,8 @@ function parseSizeFromStyle(
 const WP_THUMB_RE = /-(\d+)x(\d+)(?:_\w+)?\.(jpe?g|png|gif|webp|avif|svg)(?:\?.*)?$/i;
 
 export function isTooSmallByUrl(src: string): boolean {
-  const url = src.startsWith("/api/image-proxy?")
-    ? decodeURIComponent(src.replace(/^\/api\/image-proxy\?url=/, ""))
-    : src;
+  const url = decodedImageSource(src);
+  if (url === null) return true; // Exclude this invalid source without dropping its neighbors.
   const m = WP_THUMB_RE.exec(url);
   if (!m) return false;
   const w = Number(m[1]);

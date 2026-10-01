@@ -260,3 +260,37 @@ describe("ArticleRecommendations thumbnail resolution", () => {
     expect(read.querySelector("img")).toBeNull();
   });
 });
+
+it("preserves the remaining play queue after an explicit full-reader departure without global hide/read mutations", () => {
+  const read = vi.fn();
+  render(<ArticleRecommendations {...props} onReadArticle={read} />);
+  fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+  fireEvent.click(screen.getByRole("button", { name: "次の記事" }));
+  fireEvent.click(screen.getByRole("button", { name: "本文を読む" }));
+  expect(read).toHaveBeenCalledWith(articles[1]);
+  expect(props.onSelectArticle).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+  expect(screen.getByRole("heading", { name: "記事 c" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "記事 b" })).toBeNull();
+  expect(within(screen.getByRole("dialog")).getByRole("status")).toHaveTextContent("1 / 1件");
+});
+it("resets remaining queues on account/scope changes and rechecks current eligible sources on reopen", () => {
+  const { rerender } = render(<ArticleRecommendations {...props} scopeKey="first" />);
+  fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+  fireEvent.click(screen.getByRole("button", { name: "本文を読む" }));
+  rerender(
+    <ArticleRecommendations
+      {...props}
+      scopeKey="second"
+      candidates={[articles[0]]}
+      articles={[articles[0]]}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+  expect(screen.getByRole("heading", { name: "記事 a" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
+  rerender(<ArticleRecommendations {...props} scopeKey="second" readIds={new Set(["a"])} />);
+  fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
+});

@@ -1,5 +1,7 @@
 "use client";
 
+import type { FullContentIntent } from "../lib/full-content-intent";
+import { useFullContentIntent } from "../hooks/useFullContentIntent";
 import dynamic from "next/dynamic";
 import { memo, useCallback, type UIEvent } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../types";
@@ -21,6 +23,9 @@ import { shouldShowBackToTopFab } from "../lib/article-view-fab";
 
 interface Props {
   article: Article | null;
+  fullContentIntent?: FullContentIntent | null;
+  consumeFullContentIntent?: (requestId: number) => boolean;
+  presentation?: "pane" | "overlay";
   isBookmarked: boolean;
   onToggleBookmark: (id: string) => void;
   isInReadingList: boolean;
@@ -72,6 +77,9 @@ interface Props {
 
 function ArticleView({
   article,
+  fullContentIntent,
+  consumeFullContentIntent,
+  presentation = "pane",
   isBookmarked,
   onToggleBookmark,
   isInReadingList,
@@ -114,6 +122,7 @@ function ArticleView({
     fetchError,
     fetchRetryable,
     fetchFullContent,
+    fetchFullContentOnce,
     resolvedOgImage,
     aiResult,
     aiResultProvider,
@@ -197,6 +206,17 @@ function ArticleView({
     onGoBack,
     autoMode,
   });
+
+  useFullContentIntent(
+    article,
+    fullContentIntent,
+    presentation,
+    hasFullContent,
+    canFetch,
+    fetching,
+    fetchFullContentOnce,
+    consumeFullContentIntent,
+  );
 
   // #677: ArticleHeader のスクロール連動表示 (下スクロールで隠す・上で表示・上端で常時)
   const { headerVisible, handleScrollForHeader } = useHeaderScrollVisibility(mainRef);
