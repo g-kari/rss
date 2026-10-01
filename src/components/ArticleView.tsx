@@ -218,7 +218,7 @@ function ArticleView({
     fetchFullContentOnce,
     consumeFullContentIntent,
   );
-  useReaderArrival(mainRef, "article", article?.id ?? null);
+  const { titleRef, metaRef, bodyRef } = useReaderArrival(mainRef, "article", article?.id ?? null);
 
   // #677: ArticleHeader のスクロール連動表示 (下スクロールで隠す・上で表示・上端で常時)
   const { headerVisible, handleScrollForHeader } = useHeaderScrollVisibility(mainRef);
@@ -261,7 +261,7 @@ function ArticleView({
             transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
           }}
         >
-          <div data-reader-arrival="meta">
+          <div ref={metaRef} data-reader-arrival="meta">
             <ArticleHeader
               article={article}
               onMobileBack={onMobileBack}
@@ -321,6 +321,7 @@ function ArticleView({
         </div>
 
         <h1
+          ref={titleRef}
           data-reader-arrival="title"
           className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]"
         >
@@ -348,7 +349,7 @@ function ArticleView({
           onRetry={article.link ? () => void doRunAi(article.link!, article.id) : undefined}
         />
 
-        <div data-reader-arrival="body">
+        <div ref={bodyRef} data-reader-arrival="body">
           <ArticleContentBody
             ref={contentRef}
             article={article}

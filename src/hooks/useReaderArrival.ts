@@ -23,6 +23,10 @@ export function useReaderArrival(
   const allowed = motionAllowed && pageVisible;
   const itemSignature = JSON.stringify(itemIds);
   const previousRef = useRef<{ key: string | null; ids: Set<string> } | null>(null);
+  // React-owned surfaces only. Provider HTML may legitimately use the same data attributes.
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const metaRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ids = new Set<string>(JSON.parse(itemSignature));
@@ -57,7 +61,7 @@ export function useReaderArrival(
               root.closest("[inert]")
             )
               return;
-            let targets: HTMLElement[];
+            let targets: { element: HTMLElement; part?: "title" | "meta" | "body" }[];
             if (kind === "list") {
               const measured = measureVisibleReaderItems(root, added, remainingMeasurements);
               remainingMeasurements -= measured.measurements;
@@ -74,10 +78,20 @@ export function useReaderArrival(
                 });
                 return;
               }
-              targets = measured.targets;
-            } else targets = [...root.querySelectorAll<HTMLElement>("[data-reader-arrival]")];
-            targets.forEach((element, index) => {
-              const part = element.dataset.readerArrival;
+              targets = measured.targets.map((element) => ({ element }));
+            } else {
+              targets = (
+                [
+                  { ref: titleRef, part: "title" },
+                  { ref: metaRef, part: "meta" },
+                  { ref: bodyRef, part: "body" },
+                ] as const
+              ).flatMap(({ ref, part }) => {
+                const element = ref.current;
+                return element && root.contains(element) ? [{ element, part }] : [];
+              });
+            }
+            targets.forEach(({ element, part }, index) => {
               elements.push(element);
               element.dataset.readerAnimating = "true";
               animations.push(
@@ -109,4 +123,5 @@ export function useReaderArrival(
       for (const element of elements) delete element.dataset.readerAnimating;
     };
   }, [allowed, eventKey, itemSignature, kind, rootRef]);
+  return { titleRef, metaRef, bodyRef };
 }

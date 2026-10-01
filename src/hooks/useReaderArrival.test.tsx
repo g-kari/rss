@@ -2,6 +2,7 @@ import { act, cleanup, render } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useReaderArrival } from "./useReaderArrival";
+import { sanitizeHtml } from "../lib/html";
 
 const mocks = vi.hoisted(() => ({
   policy: { motionAllowed: true, pageVisible: true },
@@ -23,22 +24,51 @@ function Fixture({
   ids = ["a", "b"],
   renderedIds = ids,
   article = false,
+  providerHtml = "",
+  owned = true,
 }: {
   event?: string;
   ids?: string[];
   renderedIds?: string[];
   article?: boolean;
+  providerHtml?: string;
+  owned?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useReaderArrival(ref, article ? "article" : "list", event, ids);
+  const { titleRef, metaRef, bodyRef } = useReaderArrival(
+    ref,
+    article ? "article" : "list",
+    event,
+    ids,
+  );
   return (
     <div ref={ref} data-testid="root">
       {article ? (
         <>
-          <h1 data-reader-arrival="title">Title</h1>
-          <div data-reader-arrival="meta">Meta</div>
-          <div data-reader-arrival="body">
+          <h1
+            ref={owned ? titleRef : undefined}
+            data-reader-arrival="title"
+            data-testid="owned-title"
+          >
+            Title
+          </h1>
+          <div
+            ref={owned ? metaRef : undefined}
+            data-reader-arrival="meta"
+            data-testid="owned-meta"
+          >
+            Meta
+          </div>
+          <div
+            ref={owned ? bodyRef : undefined}
+            data-reader-arrival="body"
+            data-testid="owned-body"
+          >
             <input defaultValue="kept" />
+            <div
+              data-testid="provider-content"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(providerHtml) }}
+            />
           </div>
         </>
       ) : (
@@ -95,6 +125,77 @@ afterEach(() => {
 });
 
 describe("useReaderArrival", () => {
+  it("decorates only the three owned article surfaces while preserving provider markers", async () => {
+    const providerHtml = Array.from(
+      { length: 24 },
+      (_, i) =>
+        `<section data-reader-arrival="body"><h2 data-reader-arrival="title">Provider ${i}</h2><p data-reader-arrival="meta"><a href="https://example.com/reading/${i}">Read more</a></p></section>`,
+    ).join("");
+    const { getByTestId } = render(<Fixture article providerHtml={providerHtml} />);
+    const provider = getByTestId("provider-content");
+    expect(provider.querySelectorAll("[data-reader-arrival]")).toHaveLength(72);
+    const contentBefore = provider.innerHTML;
+    await frame();
+    expect(mocks.animate.mock.calls.map(([target]) => target)).toEqual([
+      getByTestId("owned-title"),
+      getByTestId("owned-meta"),
+      getByTestId("owned-body"),
+    ]);
+    expect(provider.innerHTML).toBe(contentBefore);
+    expect(provider.querySelectorAll("[data-reader-animating], [style]")).toHaveLength(0);
+    expect(provider.querySelectorAll('a[href^="https://example.com/reading/"]')).toHaveLength(24);
+  });
+  it("never discovers article targets from marker attributes when owned refs are missing", async () => {
+    render(
+      <Fixture article owned={false} providerHtml='<p data-reader-arrival="title">Body text</p>' />,
+    );
+    await frame();
+    expect(mocks.animate).not.toHaveBeenCalled();
+    expect(frames.size).toBe(0);
+  });
+  it("derives article choreography from owned roles rather than data attribute values", async () => {
+    const { getByTestId } = render(<Fixture article />);
+    getByTestId("owned-title").dataset.readerArrival = "body";
+    getByTestId("owned-meta").removeAttribute("data-reader-arrival");
+    getByTestId("owned-body").dataset.readerArrival = "title";
+    await frame();
+    expect(mocks.animate.mock.calls.map(([, options]) => options)).toEqual([
+      expect.objectContaining({ y: [14, 0], opacity: [0.75, 1], duration: 260, delay: 0 }),
+      expect.objectContaining({ y: [14, 0], opacity: [0.75, 1], duration: 260, delay: 30 }),
+      expect.objectContaining({ opacity: [0.85, 1], duration: 180, delay: 0 }),
+    ]);
+    expect(mocks.animate.mock.calls[2][1]).not.toHaveProperty("y");
+  });
+  it("keeps delayed provider content intact through navigation and policy cancellation", async () => {
+    const { rerender, getByTestId, getByRole } = render(<Fixture article event="article-a" />);
+    const input = getByRole("textbox") as HTMLInputElement;
+    input.value = "reader state";
+    await frame();
+    const providerHtml =
+      '<section data-reader-arrival="body"><p data-reader-arrival="title">Later article content</p></section>';
+    rerender(<Fixture article event="article-a" providerHtml={providerHtml} />);
+    const provider = getByTestId("provider-content");
+    const contentBefore = provider.innerHTML;
+    await frame();
+    expect(mocks.animate).toHaveBeenCalledTimes(3);
+    rerender(<Fixture article event="article-b" providerHtml={providerHtml} />);
+    await frame();
+    expect(mocks.animate).toHaveBeenCalledTimes(6);
+    mocks.policy.motionAllowed = false;
+    rerender(<Fixture article event="article-b" providerHtml={providerHtml} />);
+    expect(mocks.revert).toHaveBeenCalledTimes(6);
+    expect(getByRole("textbox")).toBe(input);
+    expect(input.value).toBe("reader state");
+    expect(provider.innerHTML).toBe(contentBefore);
+    expect(provider.querySelectorAll("[data-reader-arrival]")).toHaveLength(2);
+    expect(provider.querySelectorAll("[data-reader-animating], [style]")).toHaveLength(0);
+    for (const part of ["title", "meta", "body"])
+      expect(getByTestId(`owned-${part}`)).not.toHaveAttribute("data-reader-animating");
+    mocks.policy.motionAllowed = true;
+    rerender(<Fixture article event="article-b" providerHtml={providerHtml} />);
+    await frame();
+    expect(mocks.animate).toHaveBeenCalledTimes(6);
+  });
   it("does not import animation or schedule work in instant mode", async () => {
     mocks.policy.motionAllowed = false;
     const { rerender } = render(<Fixture />);
