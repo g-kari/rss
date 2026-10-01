@@ -46,6 +46,12 @@ test.beforeEach(async ({ page }) => {
       unexpectedRequests.push(`${route.request().method()} ${url.href}`);
       return route.abort();
     }
+    // The sanitized inline body loads this exact same-origin fixture image directly.
+    if (!route.request().isNavigationRequest() && url.href === "https://rss-preview.test/body.svg")
+      return route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="teal"/></svg>',
+      });
     if (
       !["/", "/favicon.ico", "/api/content", "/api/ogp", "/api/image-proxy"].includes(url.pathname)
     ) {
@@ -87,7 +93,7 @@ test("lightweight fallback starts first article immediately; pause persists acro
   const trigger = page.getByRole("button", { name: "ドパガキモードを開く" });
   await trigger.click();
   await expect(page.getByRole("button", { name: "自動再生を一時停止" })).toBeEnabled();
-  await expect(page.getByText(/画像の動きは停止中（軽量表示）/)).toBeVisible();
+  await expect(page.getByRole("article").getByText(/画像の動きは停止中（軽量表示）/)).toBeVisible();
   await page.clock.runFor(1200);
   expect(await page.locator(".cinematic-progress span").first().getAttribute("style")).not.toBe(
     "width: 0%;",

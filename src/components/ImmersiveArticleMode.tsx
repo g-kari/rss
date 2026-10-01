@@ -64,13 +64,16 @@ export default function ImmersiveArticleMode(props: Props) {
   useEffect(() => {
     if (prefersPause) setPaused(true);
   }, [prefersPause]);
+  // An empty pool has no playback history to preserve when articles become available later.
+  // Occupied or consumed queues still retain their finite batch and served exclusions.
+  const hasSessionQueue = !!session && (session.remaining.length > 0 || session.served.length > 0);
   const [batch, setBatch] = useState(() => {
-    if (!session) return createImmersiveBatch(props, []);
+    if (!hasSessionQueue || !session) return createImmersiveBatch(props, []);
     const eligibleIds = new Set(getImmersiveCandidates(props).map((article) => article.id));
     return session.remaining.filter((item) => eligibleIds.has(item.article.id));
   });
-  const [served, setServed] = useState<Article[]>(
-    () => session?.served ?? batch.map(({ article }) => article),
+  const [served, setServed] = useState<Article[]>(() =>
+    hasSessionQueue && session ? session.served : batch.map(({ article }) => article),
   );
   const [index, setIndex] = useState(0);
   const indexRef = useSyncedRef(index);
@@ -375,7 +378,11 @@ export default function ImmersiveArticleMode(props: Props) {
                   setPaused(prefersPause);
                   setMediaFinished(undefined);
                   setMessage("");
-                  if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                  if (scrollRef.current) {
+                    scrollRef.current.scrollTop = 0;
+                    // This button is removed by the new batch; keep keyboard events in the mode.
+                    scrollRef.current.focus({ preventScroll: true });
+                  }
                 }}
               >
                 次の10件を見る

@@ -116,6 +116,7 @@ for (const viewport of [
       await expect(page.getByRole("button", { name: "次の10件を見る" })).toBeVisible();
       await page.getByRole("button", { name: "次の10件を見る" }).click();
       await expect(page.getByRole("heading", { name: /^記事 11：/ })).toBeVisible();
+      await expect(page.getByRole("region")).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(trigger).toBeFocused();

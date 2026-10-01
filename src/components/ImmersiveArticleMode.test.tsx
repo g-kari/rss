@@ -129,6 +129,17 @@ describe("ImmersiveArticleMode", () => {
     expect(scroller.scrollTop).toBe(800);
     expect(props.onSelectArticle).not.toHaveBeenCalled();
   });
+  it("keeps keyboard focus inside the mode after the focused next-batch button disappears", () => {
+    const trigger = start();
+    advance(10);
+    const nextBatch = screen.getByRole("button", { name: "次の10件を見る" });
+    nextBatch.focus();
+    fireEvent.click(nextBatch);
+    expect(screen.getByRole("region")).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
   it("saves without reordering, dismisses with a focused undo, and restores the same card", () => {
     start();
     fireEvent.click(screen.getByRole("button", { name: "後で読む" }));

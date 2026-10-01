@@ -141,6 +141,8 @@ for (const viewport of [
       const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
       const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
       for (const count of [0, 1, 2]) {
+        // Independent dataset assertions start fresh; queue-continuity transitions are tested below.
+        await page.reload();
         await page.getByRole("combobox", { name: "合成候補数" }).selectOption(String(count));
         await expect(picks).toHaveCount(count);
         await expect(entry).toBeEnabled();
@@ -184,6 +186,42 @@ for (const viewport of [
       );
       await page.screenshot({ path: testInfo.outputPath("digest-scoped-immersive.png") });
       await page.keyboard.press("Escape");
+      await expect(entry).toBeFocused();
+    });
+    test("same-scope empty recovery keeps occupied and exhausted batches finite", async ({
+      page,
+    }) => {
+      const count = page.getByRole("combobox", { name: "合成候補数" });
+      const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
+      const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
+      await count.selectOption("0");
+      await entry.click();
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await count.selectOption("1");
+      await entry.click();
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
+      await page.keyboard.press("Escape");
+      await count.selectOption("2");
+      await entry.click();
+      // New arrivals wait for the next explicit batch instead of changing the held queue.
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
+      await dialog.getByRole("button", { name: "次の記事", exact: true }).click();
+      await expect(dialog.getByRole("status")).toHaveText("区切り");
+      await page.keyboard.press("Escape");
+      await entry.click();
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
+      await dialog.getByRole("button", { name: "次の10件を見る", exact: true }).click();
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
+      await expect(
+        dialog.getByRole("heading", { name: "追加の対象記事", exact: true }),
+      ).toBeVisible();
+      await expect(
+        dialog.getByRole("heading", { name: "条件に合う記事", exact: true }),
+      ).toHaveCount(0);
+      await expect(dialog.getByRole("region")).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
       await expect(entry).toBeFocused();
     });
   });

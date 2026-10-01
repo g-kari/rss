@@ -40,10 +40,12 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
   vi.clearAllMocks();
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}")));
 });
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("ArticleRecommendations", () => {
@@ -292,5 +294,53 @@ it("resets remaining queues on account/scope changes and rechecks current eligib
   fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
   rerender(<ArticleRecommendations {...props} scopeKey="second" readIds={new Set(["a"])} />);
   fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
+});
+
+it("starts newly available candidates when reopening a session that has never contained any articles", () => {
+  const { rerender } = render(<ArticleRecommendations {...props} candidates={[]} />);
+  const entry = screen.getByRole("button", { name: "ドパガキモード" });
+  fireEvent.click(entry);
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
+  rerender(<ArticleRecommendations {...props} candidates={[articles[0]]} />);
+  fireEvent.click(entry);
+  expect(screen.getByRole("heading", { name: "記事 a" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "次の記事" }));
+  // The revived first batch is served once, not replayed as an unseen next batch.
+  expect(screen.queryByRole("button", { name: "次の10件を見る" })).toBeNull();
+});
+
+it("keeps an occupied or consumed queue stable when same-scope candidates are added", () => {
+  const { rerender } = render(<ArticleRecommendations {...props} candidates={[articles[0]]} />);
+  const entry = screen.getByRole("button", { name: "ドパガキモード" });
+  fireEvent.click(entry);
+  rerender(<ArticleRecommendations {...props} candidates={articles} />);
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
+  fireEvent.click(entry);
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(1);
+  expect(screen.getByRole("heading", { name: "記事 a" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "本文を読む" }));
+  fireEvent.click(entry);
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(0);
+  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(2);
+  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
+});
+
+it("does not restart an exhausted served batch when same-scope candidates arrive later", () => {
+  const { rerender } = render(<ArticleRecommendations {...props} candidates={[articles[0]]} />);
+  const entry = screen.getByRole("button", { name: "ドパガキモード" });
+  fireEvent.click(entry);
+  fireEvent.click(screen.getByRole("button", { name: "次の記事" }));
+  fireEvent.click(screen.getByRole("button", { name: "ここで終わる" }));
+  rerender(<ArticleRecommendations {...props} candidates={articles} />);
+  fireEvent.click(entry);
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(0);
+  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(2);
   expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
 });
