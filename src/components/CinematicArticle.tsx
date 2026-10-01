@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Article } from "../types";
 import {
   immersiveCaptions,
@@ -22,6 +22,7 @@ interface Props {
   paused?: boolean;
   speed?: number;
   onComplete?: () => void;
+  onPause?: () => void;
 }
 
 export default function CinematicArticle({
@@ -33,17 +34,26 @@ export default function CinematicArticle({
   paused = false,
   speed = 1,
   onComplete,
+  onPause,
 }: Props) {
   const { motionEnabled, motionReason, pageVisible } = useVisualMode();
   // Opening immersive mode opts in independently of the normal reader's visual skin.
   const motionAllowed = motionEnabled && !motionReason;
   const imageRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [manualCaption, setManualCaption] = useState<number | null>(null);
+  useEffect(() => {
+    if (!paused) setManualCaption(null);
+  }, [paused]);
   const fallback = useCallback(() => setVideoFailed(true), []);
   const video = useMemo(() => immersiveVideoSource(article), [article]);
-  const captions = useMemo(() => immersiveCaptions(article), [article]);
-  const duration = Math.max(CINEMATIC_DURATION, captions.length * 5000);
+  const excerpt = immersiveExcerpt(article);
+  const captions = useMemo(() => immersiveCaptions(article, excerpt), [article, excerpt]);
+  const captionTimes = captions.map((caption) => Math.max(5000, Array.from(caption).length * 90));
+  const readingDuration = captionTimes.reduce((total, time) => total + time, 0);
+  const duration = Math.max(CINEMATIC_DURATION, readingDuration);
   const nativeVideo = active && motionAllowed && !!video && !videoFailed;
   const playback = useCinematicPlayback(
     imageRef,
@@ -65,7 +75,18 @@ export default function CinematicArticle({
     onComplete,
   );
   const progress = nativeVideo ? videoProgress : elapsed / duration;
-  const captionIndex = Math.min(captions.length - 1, Math.floor(progress * captions.length));
+  let captionIndex = 0;
+  let captionEnd = captionTimes[0];
+  while (captionIndex < captions.length - 1 && progress * readingDuration >= captionEnd)
+    captionEnd += captionTimes[++captionIndex];
+  captionIndex = Math.min(captions.length - 1, manualCaption ?? captionIndex);
+  useLayoutEffect(() => {
+    if (captionRef.current) captionRef.current.scrollTop = 0;
+  }, [captionIndex, excerpt]);
+  const moveCaption = (next: number) => {
+    onPause?.();
+    setManualCaption(Math.max(0, Math.min(captions.length - 1, next)));
+  };
   return (
     <div className="cinematic-article">
       <div
@@ -77,6 +98,7 @@ export default function CinematicArticle({
             thumb={thumb}
             fallbacks={thumbnailFallbacks}
             className="h-full w-full object-cover"
+            limitUpscale
           />
         </div>
         {nativeVideo && (
@@ -97,9 +119,45 @@ export default function CinematicArticle({
             {feedTitle} · {nativeVideo ? "動画・音声なし" : "記事のショート表示"}
           </p>
           <h3 className="sr-only">{article.title}</h3>
-          <p className="cinematic-caption" key={captionIndex} aria-hidden="true">
-            {captions[captionIndex]}
-          </p>
+          <div
+            ref={captionRef}
+            className="cinematic-caption-scroll"
+            tabIndex={0}
+            aria-label="記事の説明をスクロール"
+            onKeyDown={(event) => {
+              if (["ArrowUp", "ArrowDown", "PageUp", "PageDown"].includes(event.key))
+                event.stopPropagation();
+            }}
+          >
+            <p className="cinematic-caption" key={captionIndex} aria-hidden="true">
+              {captions[captionIndex]}
+            </p>
+          </div>
+          <div className="cinematic-caption-navigation">
+            <span>
+              読み込み済みの説明・抜粋 {captionIndex + 1} / {captions.length}
+            </span>
+            {captions.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="前の説明"
+                  disabled={captionIndex === 0}
+                  onClick={() => moveCaption(captionIndex - 1)}
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  aria-label="次の説明"
+                  disabled={captionIndex === captions.length - 1}
+                  onClick={() => moveCaption(captionIndex + 1)}
+                >
+                  続き →
+                </button>
+              </>
+            )}
+          </div>
           {(!motionAllowed || playback.failed) && (
             <p className="cinematic-static">
               {!motionAllowed
@@ -114,8 +172,8 @@ export default function CinematicArticle({
         </div>
       </div>
       <p className="cinematic-transcript sr-only">
-        <span>フィードの説明</span>
-        {immersiveExcerpt(article) || "短い説明はありません。「本文を読む」から記事を開けます。"}
+        <span>読み込み済みの説明・抜粋</span>
+        {excerpt || "短い説明はありません。「本文を読む」から記事を開けます。"}
       </p>
     </div>
   );

@@ -32,12 +32,18 @@ export default function ImmersiveInlineReader({
     typeof document !== "undefined" && document.documentElement.dataset.theme === "light"
       ? "light"
       : "dark";
-  const { processedContent, canFetch, hasFullContent } = useArticleViewContent(
+  const { processedContent, embedInfo } = useArticleViewContent(
     article,
     storedContent,
     resolvedOgImage,
     theme,
   );
+  // Feed content length is not evidence that it is the complete source article.
+  // Only this explicit reader action requests the source, once, reusing an existing cache.
+  const canFetch =
+    !storedContent &&
+    isValidPublicUrl(article?.link || "") &&
+    (!embedInfo || embedInfo.type === "slides");
   const content = useMemo(
     () =>
       prepareImmersiveInlineContent(
@@ -58,8 +64,8 @@ export default function ImmersiveInlineReader({
     const key = `${article.id}:${article.link}`;
     if (attempted.current === key || fetching) return;
     attempted.current = key;
-    if (!hasFullContent && canFetch) void fetchFullContentOnce();
-  }, [article, fetching, hasFullContent, canFetch, fetchFullContentOnce]);
+    if (canFetch) void fetchFullContentOnce();
+  }, [article, fetching, canFetch, fetchFullContentOnce]);
   if (!article) return null;
   return (
     <div
@@ -89,6 +95,11 @@ export default function ImmersiveInlineReader({
         </h3>
         {fetching && <p role="status">全文を取得中…</p>}
         {fetchError && <p role="alert">全文を取得できませんでした: {fetchError}</p>}
+        <p className="mb-4 text-[13px] text-text-muted">
+          {storedContent
+            ? "取得済みの記事本文"
+            : "フィードに含まれる本文・説明を表示しています。全文とは限りません。"}
+        </p>
         <div className="article-content" dangerouslySetInnerHTML={{ __html: content }} />
         {canFetch && !fetching && (
           <button

@@ -8,16 +8,29 @@ describe("immersive captions", () => {
       immersiveCaptions(makeArticle({ title: "見出し", summary: "一文。二文。三文。四文。" })),
     ).toEqual(["見出し", "一文。二文。", "三文。四文。"]);
   });
-  it("keeps original sentence order, bounds big caption cards and preserves Unicode", () => {
+  it("keeps whole sentences, decimal numbers and Unicode rather than cutting at 44 characters", () => {
     const title = "ニュースです。";
     const text = "大きな字幕。次の文です！" + "🎮あ".repeat(50);
     const captions = immersiveCaptions(makeArticle({ title, summary: `<p>${text}</p>` }));
     expect(captions[0]).toBe(title);
-    expect(captions.every((caption) => Array.from(caption).length <= 44)).toBe(true);
     expect(captions.join("")).toBe(title + text);
     expect(captions.every((caption) => !/[\uD800-\uDBFF]$|^[\uDC00-\uDFFF]/u.test(caption))).toBe(
       true,
     );
+  });
+  it("does not cut a Japanese sentence at a decimal or arbitrary character boundary", () => {
+    const text =
+      "日本コロムビアは1日、YouTubeチャンネル登録者数11.5万人を超えたクリエイターの新しい活動について発表しました。";
+    expect(immersiveCaptions(makeArticle({ title: "見出し", summary: text }))).toEqual([
+      "見出し",
+      text,
+    ]);
+  });
+  it("uses loaded body paragraphs instead of the short feed summary", () => {
+    const content = "段落の本文です。".repeat(60);
+    expect(
+      immersiveCaptions(makeArticle({ title: "見出し", summary: "短い説明", content })).join(""),
+    ).toBe("見出し" + content);
   });
 });
 describe("immersive native video", () => {

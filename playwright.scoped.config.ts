@@ -7,6 +7,7 @@ export default defineConfig({
     "scoped-recommendations.spec.ts",
     "immersive-articles.spec.ts",
     "immersive-autoplay-narration.spec.ts",
+    "immersive-quality.spec.ts",
     "reader-motion.spec.ts",
     "feed-retry-status.spec.ts",
   ],

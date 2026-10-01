@@ -12,6 +12,7 @@ import { getProviderContentCacheId } from "./slide-providers";
 import { resolveThumbnail } from "./article-utils";
 import { isClipImageUrl } from "./clip-image-url";
 import { isValidPublicUrl } from "./url";
+import { immersiveSentences, sentenceExcerpt } from "./immersive-text";
 
 export const IMMERSIVE_BATCH_SIZE = 10;
 
@@ -47,8 +48,12 @@ export function createImmersiveBatch(options: ArticleRecommendationOptions, serv
 
 /** Reuse feed text without triggering extraction, translation, AI or media playback. */
 export function immersiveExcerpt(article: Article): string {
-  const text = toPlainText(article.summary) || toPlainText(article.content || "");
-  return text.length > 240 ? `${text.slice(0, 240)}…` : text;
+  const cached = toPlainText(
+    contentLruCache.get(getProviderContentCacheId(article.id, article.link)) || "",
+  );
+  const body = toPlainText(article.content || "");
+  const summary = toPlainText(article.summary);
+  return sentenceExcerpt(cached || (body.length >= summary.length ? body : summary));
 }
 
 /** Shared by compact recommendations and the immersive card; never request unsafe cache values. */
@@ -62,25 +67,21 @@ export function safeRecommendationThumbnail(value: unknown): string | undefined 
   return isValidPublicUrl(value) ? value : undefined;
 }
 
-/** Short, verbatim caption cards; never cut a surrogate pair or invent a summary. */
-export function immersiveCaptions(article: Article): string[] {
+/** Verbatim caption cards: up to two sentences, never arbitrary 44-character slices. */
+export function immersiveCaptions(article: Article, excerpt = immersiveExcerpt(article)): string[] {
   const captions: string[] = [];
-  for (const text of [article.title, immersiveExcerpt(article)].filter(Boolean)) {
-    const sentences = text.match(/[^。！？.!?]+[。！？.!?]?/gu) ?? [text];
+  for (const text of [article.title, excerpt].filter(Boolean)) {
+    const sentences = immersiveSentences(text);
     let current = "";
     let parts = 0;
     for (const sentence of sentences) {
-      const chars = Array.from(sentence);
-      for (let offset = 0; offset < chars.length; offset += 44) {
-        const chunk = chars.slice(offset, offset + 44).join("");
-        if (parts >= 2 || Array.from(current + chunk).length > 44) {
-          captions.push(current.trim());
-          current = "";
-          parts = 0;
-        }
-        current += chunk;
-        parts += 1;
+      if (current && (parts >= 2 || Array.from(current + sentence).length > 180)) {
+        captions.push(current.trim());
+        current = "";
+        parts = 0;
       }
+      current += sentence;
+      parts += 1;
     }
     if (current.trim()) captions.push(current.trim());
   }
@@ -117,12 +118,12 @@ export function immersiveThumbnailSources(
   const candidates = [
     article.link ? ogpCache[article.link] : undefined,
     article.ogImage,
-    ...collectImageUrlsFromHtml(cachedBody || ""),
-    ...collectImageUrlsFromHtml(article.content || ""),
-    ...collectImageUrlsFromHtml(article.summary),
+    ...collectImageUrlsFromHtml(cachedBody || "", { preferResponsive: true }),
+    ...collectImageUrlsFromHtml(article.content || "", { preferResponsive: true }),
+    ...collectImageUrlsFromHtml(article.summary, { preferResponsive: true }),
     resolveThumbnail(article, {}),
   ];
-  return Array.from(
+  const safe = Array.from(
     new Set(
       candidates
         .map((source) =>
@@ -131,4 +132,18 @@ export function immersiveThumbnailSources(
         .filter((source): source is string => !!source),
     ),
   );
+  // Known small WordPress variants are list thumbnails, not fullscreen originals.
+  // Reorder only supplied candidates; never guess an original URL or extract each slide.
+  return [
+    ...safe.filter((source) => !isSmallImmersiveImage(source)),
+    ...safe.filter(isSmallImmersiveImage),
+  ];
+}
+
+function isSmallImmersiveImage(source: string): boolean {
+  const original = isProxiedImageUrl(source)
+    ? new URLSearchParams(source.slice(source.indexOf("?") + 1)).get("url") || ""
+    : source;
+  const size = /-(\d+)x(\d+)\.(?:jpe?g|png|webp|avif|gif)(?:[?#]|$)/i.exec(original);
+  return !!size && Number(size[1]) < 800 && Number(size[2]) < 800;
 }

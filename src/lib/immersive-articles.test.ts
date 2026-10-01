@@ -90,8 +90,37 @@ describe("immersive article batches", () => {
       "本文",
     );
     expect(immersiveExcerpt({ ...articles[0]!, summary: "" })).toBe("");
-    expect(immersiveExcerpt({ ...articles[0]!, summary: "あ".repeat(500) })).toHaveLength(241);
+    expect(immersiveExcerpt({ ...articles[0]!, summary: "あ".repeat(500) })).toHaveLength(500);
   });
+});
+
+it("uses supplied full-size body variants ahead of tiny feed metadata without inventing URLs", () => {
+  const small = "https://example.com/photo-300x168.webp";
+  const large = "https://example.com/photo-1600x900.webp";
+  const article = {
+    ...articles[0]!,
+    ogImage: small,
+    content: `<img src="${small}" srcset="${large} 1600w, https://example.com/photo-768x432.webp 768w, ${small} 300w">`,
+  };
+  expect(immersiveThumbnailSources(article, {})).toEqual([large, small]);
+});
+
+it("ends a bounded excerpt on a sentence boundary and reuses richer cached text", () => {
+  const article = {
+    ...articles[0]!,
+    id: "sentence-boundary",
+    summary: "短い説明",
+    content: "本文の文です。".repeat(200),
+  };
+  const excerpt = immersiveExcerpt(article);
+  expect(excerpt.length).toBeGreaterThan(1000);
+  expect(excerpt.length).toBeLessThanOrEqual(1200);
+  expect(excerpt).toMatch(/。$/);
+  contentLruCache.set(
+    getProviderContentCacheId(article.id, article.link),
+    "取得済みの本文です。".repeat(120),
+  );
+  expect(immersiveExcerpt(article)).toContain("取得済みの本文です。");
 });
 
 it("reuses loaded body images, validates each candidate and accepts only authenticated clip image paths", () => {

@@ -1,5 +1,6 @@
 import { isClipImageUrl } from "./clip-image-url";
 import { unescapeHtml } from "./html";
+import { transformSrcset } from "./html-srcset";
 
 /**
  * 記事画像抽出ユーティリティ。
@@ -16,14 +17,27 @@ import { unescapeHtml } from "./html";
 export const MIN_IMAGE_SIZE_PX = 170;
 
 /**
- * srcset 属性文字列の最後のエントリ（最高解像度）の URL を返す。
+ * srcset 属性文字列から最大の w/x descriptor を持つ候補の URL を返す（順序非依存）。
  * 例: "/api/image-proxy?url=...jpg 1x, /api/image-proxy?url=...jpg@2x 2x" → 後者の URL
  * srcset が空のときは空文字を返す。
  */
 export function bestSrcFromSrcset(srcset: string): string {
   if (!srcset) return "";
-  const last = srcset.split(",").at(-1)?.trim() ?? "";
-  return last.split(/\s+/)[0] ?? "";
+  const urls: string[] = [];
+  // Reuse the canonical parser, which preserves commas inside CDN URLs.
+  const descriptors = transformSrcset(srcset, (url) => String(urls.push(url) - 1));
+  let best = "";
+  let score = -1;
+  for (const part of descriptors.split(",")) {
+    const match = /^(\d+)(?:\s+(\d+(?:\.\d+)?)(w|x))?$/.exec(part.trim());
+    if (!match) continue;
+    const value = match[2] ? Number(match[2]) : 1;
+    if (value > score) {
+      best = urls[Number(match[1])];
+      score = value;
+    }
+  }
+  return best;
 }
 
 /** data: URI・非 http/proxy URL を除外して収集対象かどうかを判定する (重複判定は別途 normalizeImageUrlForDedup で実施) */
@@ -182,7 +196,10 @@ function isTooSmallByAttrs(
  * - data: URI / 非 proxy・非絶対 URL は除外
  * - width/height 属性（または style）から両辺とも `MIN_IMAGE_SIZE_PX` 未満と判定できる画像は除外
  */
-export function collectImageUrlsFromHtml(html: unknown): string[] {
+export function collectImageUrlsFromHtml(
+  html: unknown,
+  options: { preferResponsive?: boolean } = {},
+): string[] {
   // #812 派生防御: client side caller (useArticleViewContent / usePrefetchGalleryContents)
   // から processedContent 経由で渡される input は `string | null` 型保証だが、runtime で
   // 非 string が混入する経路 (cache 旧 schema / decode fallback / API edge case) があり、
@@ -233,6 +250,12 @@ export function collectImageUrlsFromHtml(html: unknown): string[] {
   while ((m = imgRe.exec(html)) !== null) {
     const attrs = m[1];
     let src = /\bsrc=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
+    let responsiveSource = "";
+    if (options.preferResponsive) {
+      const srcset = /(?<![\w-])(?:data-)?srcset=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
+      responsiveSource = bestSrcFromSrcset(srcset);
+      src = responsiveSource || src;
+    }
     if (!src || src.startsWith("data:")) {
       const srcset = /\bsrcset=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
       src = bestSrcFromSrcset(srcset);
@@ -249,7 +272,7 @@ export function collectImageUrlsFromHtml(html: unknown): string[] {
     const widthAttr = /\bwidth=["']([^"']+)["']/i.exec(attrs)?.[1];
     const heightAttr = /\bheight=["']([^"']+)["']/i.exec(attrs)?.[1];
     const styleAttr = /\bstyle=["']([^"']+)["']/i.exec(attrs)?.[1];
-    if (isTooSmallByAttrs(widthAttr, heightAttr, styleAttr)) continue;
+    if (!responsiveSource && isTooSmallByAttrs(widthAttr, heightAttr, styleAttr)) continue;
     tryAdd(src);
   }
   return result;
