@@ -6,7 +6,10 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 let html = "";
-const diagnostics = new WeakMap<Page, { requests: string[]; errors: string[] }>();
+const diagnostics = new WeakMap<
+  Page,
+  { requests: string[]; errors: string[]; configReads: number }
+>();
 test.beforeAll(async () => {
   const root = resolve(import.meta.dirname, "..");
   const [{ outputFiles }, css] = await Promise.all([
@@ -30,15 +33,29 @@ test.beforeAll(async () => {
 test.beforeEach(async ({ page }) => {
   const requests: string[] = [];
   const errors: string[] = [];
-  diagnostics.set(page, { requests, errors });
+  const result = { requests, errors, configReads: 0 };
+  diagnostics.set(page, result);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/*", (route) => {
     if (
       route.request().url() === "https://rss-preview.test/" &&
+      route.request().method() === "GET" &&
       route.request().isNavigationRequest()
     )
       return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
-    requests.push(route.request().url());
+    // Existing dismissal hook reads opt-in state on mount; never enable sync in this fixture.
+    if (
+      route.request().url() === "https://rss-preview.test/api/push/config" &&
+      route.request().method() === "GET" &&
+      !route.request().isNavigationRequest() &&
+      route.request().headers()["x-rss-account-id"] === "list-test"
+    ) {
+      result.configReads++;
+      return route.fulfill({
+        json: { recommendationEnabled: false, recommendationDismissals: [] },
+      });
+    }
+    requests.push(`${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
   await page.goto("https://rss-preview.test/");
@@ -49,6 +66,7 @@ test.afterEach(({ page }) => {
   const result = diagnostics.get(page);
   expect(result?.requests).toEqual([]);
   expect(result?.errors).toEqual([]);
+  expect(result?.configReads).toBeGreaterThanOrEqual(1);
 });
 
 for (const viewport of [
