@@ -11,6 +11,8 @@ export interface ArticleRecommendation {
 export interface ArticleRecommendationOptions {
   /** Already filtered by the reader: never retrieve or expand this candidate pool. */
   candidates: Article[];
+  /** Strict state/content scope before unread exclusion; only retains already painted cards. */
+  displayCandidates?: Article[];
   /** Evidence after the same content/view filters, before the unread-only filter. */
   articles: Article[];
   feeds: Feed[];

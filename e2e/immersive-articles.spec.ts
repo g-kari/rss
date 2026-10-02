@@ -70,7 +70,7 @@ for (const viewport of [
       expect(state.requests, "Fixture must reject nonfixture routes and mutations").toEqual([]);
       expect(state.errors, "Fixture must not hide JavaScript exceptions").toEqual([]);
     });
-    test("finite batches, native scroll, keyboard, focus return, and responsive controls", async ({
+    test("continuous articles, native scroll, keyboard, focus return, and responsive controls", async ({
       page,
     }, testInfo) => {
       const list = page.getByTestId("underlying-list");
@@ -111,12 +111,12 @@ for (const viewport of [
       await page.getByRole("button", { name: "元に戻す" }).click();
       for (let index = 0; index < 10; index++)
         await page.getByRole("button", { name: "次の記事", exact: true }).click();
-      await expect(page.getByRole("button", { name: "次の記事", exact: true })).toBeDisabled();
-      await page.keyboard.press("ArrowDown");
-      await expect(page.getByRole("button", { name: "次の10件を見る" })).toBeVisible();
-      await page.getByRole("button", { name: "次の10件を見る" }).click();
       await expect(page.getByRole("heading", { name: /^記事 11：/ })).toBeVisible();
-      await expect(page.getByRole("region")).toBeFocused();
+      await expect(page.locator(".immersive-navigation [role=status]")).toHaveText("11 / 20件");
+      await expect(page.getByRole("button", { name: "次の10件を見る" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "次の記事", exact: true })).toBeEnabled();
+      // A painted article is locally marked read; queued cards must not be marked.
+      await expect(page.getByTestId("read-ids")).toContainText('"10"');
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(trigger).toBeFocused();
@@ -125,7 +125,7 @@ for (const viewport of [
       await trigger.click();
       await page.getByRole("button", { name: "本文を読む" }).click();
       await expect(dialog).toHaveCount(0);
-      await expect(page.getByText("開いた記事: 10")).toBeVisible();
+      await expect(page.getByText("開いた記事: 11")).toBeVisible();
     });
   });
 }

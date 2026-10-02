@@ -66,6 +66,7 @@ const settings = {
 } as unknown as ReaderSettings;
 
 function Reader() {
+  const [shownIds, setShownIds] = useState(new Set<string>());
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [feedId, setFeedId] = useState<string | null>("a");
@@ -128,6 +129,7 @@ function Reader() {
                 </select>
               </label>
             </div>
+            <p data-testid="shown-ids">{JSON.stringify([...shownIds])}</p>
             <ArticleList
               recommendationContext={{
                 scopeKey: selectedGroupId ?? undefined,
@@ -149,7 +151,11 @@ function Reader() {
               onSelectArticle={onSelectArticle}
               onToggleRead={noop}
               onToggleBookmark={noop}
-              onMarkRead={noop}
+              onMarkRead={(id) =>
+                setShownIds((previous) =>
+                  previous.has(id) ? previous : new Set([...previous, id]),
+                )
+              }
               listFocusMode={false}
               onToggleListFocusMode={noop}
             />

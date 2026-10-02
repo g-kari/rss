@@ -21,6 +21,7 @@ interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now
   scopeKey?: string;
   onSelectArticle: (article: Article) => void;
   onReadArticle?: (article: Article) => void;
+  onMarkRead?: (id: string) => void;
   onToggleReadingList?: (id: string) => void;
 }
 
@@ -35,6 +36,7 @@ function RecommendationContent({
   status = "ready",
   scopeKey,
   candidates,
+  displayCandidates,
   articles,
   feeds,
   readIds,
@@ -45,6 +47,7 @@ function RecommendationContent({
   historyIds,
   onSelectArticle,
   onReadArticle,
+  onMarkRead,
   onToggleReadingList,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
@@ -130,6 +133,7 @@ function RecommendationContent({
       {immersiveOpen && (
         <ImmersiveArticleMode
           candidates={candidates}
+          displayCandidates={displayCandidates}
           articles={articles}
           feeds={feeds}
           readIds={readIds}
@@ -142,6 +146,7 @@ function RecommendationContent({
           now={now}
           onClose={() => setImmersiveOpen(false)}
           onSelectArticle={onReadArticle ?? onSelectArticle}
+          onMarkRead={onMarkRead}
           session={immersiveSession}
           onSessionChange={setImmersiveSession}
           onToggleReadingList={onToggleReadingList}

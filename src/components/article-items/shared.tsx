@@ -304,16 +304,27 @@ export function ArticleThumbnail({
   fallbacks = [],
   className,
   limitUpscale = false,
+  failedSources,
+  onSourceFailure,
 }: {
   thumb?: string;
   fallbacks?: string[];
   className: string;
   /** Fullscreen shots must not stretch a remaining tiny image across the viewport. */
   limitUpscale?: boolean;
+  /** Canonical proxy request URLs already failed in the current immersive session. */
+  failedSources?: ReadonlySet<string>;
+  onSourceFailure?: (source: string) => void;
 }) {
   const [failed, setFailed] = useState(new Set<string>());
   const [smallSource, setSmallSource] = useState<string | null>(null);
-  const source = [thumb, ...fallbacks].find((url) => !!url && !failed.has(url));
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
+  const sources = Array.from(
+    new Set([thumb, ...fallbacks].filter(Boolean).map(buildImageProxyUrl)),
+  );
+  const usable = sources.filter((url) => !failed.has(url) && !failedSources?.has(url));
+  // Late OGP updates must not replace a successfully loaded body/feed image with a broken URL.
+  const source = loadedSource && usable.includes(loadedSource) ? loadedSource : usable[0];
   if (!source) {
     return (
       <span
@@ -336,7 +347,8 @@ export function ArticleThumbnail({
   }
   return (
     <img
-      src={buildImageProxyUrl(source)}
+      key={source}
+      src={source}
       alt=""
       className={className}
       loading="lazy"
@@ -345,15 +357,16 @@ export function ArticleThumbnail({
           ? { width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%" }
           : undefined
       }
-      onLoad={
-        limitUpscale
-          ? (event) => {
-              const image = event.currentTarget;
-              setSmallSource(image.naturalWidth < 800 && image.naturalHeight < 800 ? source : null);
-            }
-          : undefined
-      }
-      onError={() => setFailed((previous) => new Set([...previous, source]))}
+      onLoad={(event) => {
+        setLoadedSource(source);
+        if (!limitUpscale) return;
+        const image = event.currentTarget;
+        setSmallSource(image.naturalWidth < 800 && image.naturalHeight < 800 ? source : null);
+      }}
+      onError={() => {
+        setFailed((previous) => (previous.has(source) ? previous : new Set([...previous, source])));
+        onSourceFailure?.(source);
+      }}
     />
   );
 }
