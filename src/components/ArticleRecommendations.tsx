@@ -22,6 +22,7 @@ interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now
   onSelectArticle: (article: Article) => void;
   onReadArticle?: (article: Article) => void;
   onMarkRead?: (id: string) => void;
+  summaryAccess?: boolean;
   onToggleReadingList?: (id: string) => void;
 }
 
@@ -48,6 +49,7 @@ function RecommendationContent({
   onSelectArticle,
   onReadArticle,
   onMarkRead,
+  summaryAccess,
   onToggleReadingList,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
@@ -147,6 +149,11 @@ function RecommendationContent({
           onClose={() => setImmersiveOpen(false)}
           onSelectArticle={onReadArticle ?? onSelectArticle}
           onMarkRead={onMarkRead}
+          summaryAccount={
+            summaryAccess === undefined
+              ? undefined
+              : { userId, authUsable: summaryAccess, scopeKey: scopeKey ?? "" }
+          }
           session={immersiveSession}
           onSessionChange={setImmersiveSession}
           onToggleReadingList={onToggleReadingList}

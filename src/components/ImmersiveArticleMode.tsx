@@ -20,6 +20,14 @@ import { acquireImmersiveSession } from "../lib/immersive-session";
 import { useOptionalTtsAdapter } from "../contexts/TtsAdapterContext";
 import { immersiveExcerpt } from "../lib/immersive-articles";
 import { useVisualMode } from "../contexts/VisualModeContext";
+import { useOptionalReaderSettings } from "../contexts/ReaderSettingsContext";
+import { useImmersiveSummaryCache } from "../hooks/useImmersiveSummaryCache";
+import {
+  freezeImmersiveTextPresentation,
+  resolveImmersiveText,
+  type ImmersiveTextPresentation,
+} from "../lib/immersive-summary";
+import ImmersiveSummaryReader from "./ImmersiveSummaryReader";
 
 export interface ImmersiveSessionSnapshot {
   remaining: ArticleRecommendation[];
@@ -35,6 +43,7 @@ interface Props extends ArticleRecommendationOptions {
   onSessionChange?: (session: ImmersiveSessionSnapshot) => void;
   onSelectArticle: (article: Article) => void;
   onMarkRead?: (id: string) => void;
+  summaryAccount?: { userId: string | null; authUsable: boolean; scopeKey?: string };
   onToggleReadingList?: (id: string) => void;
   onDismiss: (id: string) => void;
   onRestore: (id: string) => void;
@@ -47,6 +56,7 @@ export default function ImmersiveArticleMode(props: Props) {
     onClose,
     onSelectArticle,
     onMarkRead,
+    summaryAccount,
     onToggleReadingList,
     onDismiss,
     onRestore,
@@ -59,7 +69,10 @@ export default function ImmersiveArticleMode(props: Props) {
   const prefersPause =
     !motionEnabled || motionReason === "端末の動きを減らす設定" || motionReason === "静止表示";
   const [paused, setPaused] = useState(session?.paused ?? prefersPause);
-  const [inlineOpen, setInlineOpen] = useState(false);
+  const [inlineView, setInlineView] = useState<"body" | "summary" | null>(null);
+  const inlineOpen = inlineView !== null;
+  const inlineTriggerRef = useRef<HTMLElement | null>(null);
+  const settings = useOptionalReaderSettings();
   const playbackPaused = paused || inlineOpen;
   const [speed, setSpeed] = useState(session?.speed ?? 1);
   const canAdvance = pageVisible && !playbackPaused;
@@ -137,14 +150,7 @@ export default function ImmersiveArticleMode(props: Props) {
   const pageVisibleRef = useSyncedRef(pageVisible);
   const markReadRef = useSyncedRef(onMarkRead);
   useEffect(() => {
-    if (
-      !onMarkRead ||
-      !activeArticle ||
-      !pageVisible ||
-      inlineOpen ||
-      displayedIds.has(activeArticle.id)
-    )
-      return;
+    if (!onMarkRead || !activeArticle || !pageVisible || displayedIds.has(activeArticle.id)) return;
     const article = activeArticle;
     let secondFrame = 0;
     // Two frames allow the active card to paint. Rapid navigation/teardown cancels both,
@@ -169,16 +175,95 @@ export default function ImmersiveArticleMode(props: Props) {
     // Stable synced refs give callbacks the latest account/scope values; parent interrupts unmount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeArticle?.id, onMarkRead, pageVisible, inlineOpen, displayedIds]);
-  useEffect(() => {
-    if (inlineOpen && !activeArticle) setInlineOpen(false);
-  }, [inlineOpen, activeArticle]);
+  const summaryConfigured = !!summaryAccount && !!settings;
+  const summaryUrls = batch.slice(Math.max(0, index - 1), index + 11).flatMap((item) => {
+    const article = eligible.get(item.article.id) ?? displayed.get(item.article.id);
+    return article?.link ? [article.link] : [];
+  });
+  const summaryCache = useImmersiveSummaryCache({
+    enabled: summaryConfigured,
+    userId: summaryAccount?.userId ?? null,
+    preferenceUserId: settings?.aiUserId ?? null,
+    authUsable: summaryAccount?.authUsable ?? false,
+    scopeKey: summaryAccount?.scopeKey ?? "",
+    provider: settings?.aiProvider,
+    model: settings?.aiModel,
+    urls: summaryUrls,
+    requestAllowed: pageVisible,
+  });
+  const summaryEntry = summaryCache.getEntry(activeArticle?.link ?? "");
+  const presentationKey = summaryConfigured
+    ? JSON.stringify([summaryCache.contextKey, activeArticle?.id, activeArticle?.link])
+    : "no-summary-context";
+  const presentationKeyRef = useSyncedRef(presentationKey);
+  const choosePresentation = (useSummary = true) =>
+    activeArticle
+      ? freezeImmersiveTextPresentation(
+          resolveImmersiveText(
+            activeArticle,
+            useSummary && summaryEntry.kind === "hit" ? summaryEntry.summary : null,
+          ),
+        )
+      : null;
+  const [presentationState, setPresentationState] = useState<{
+    key: string;
+    value: ImmersiveTextPresentation | null;
+    revision: number;
+  }>(() => ({
+    key: presentationKey,
+    value: summaryConfigured ? choosePresentation() : null,
+    revision: 0,
+  }));
+  // Reset only at a new article/account/scope/model presentation boundary. Adjusting local
+  // state during this render avoids a committed frame of old-model text; late cache hits
+  // keep the existing snapshot, caption timing and narration unchanged.
+  if (presentationState.key !== presentationKey) {
+    setPresentationState({
+      key: presentationKey,
+      value: summaryConfigured ? choosePresentation() : null,
+      revision: 0,
+    });
+  }
+  const textPresentation =
+    summaryConfigured && presentationState.key === presentationKey
+      ? (presentationState.value ?? undefined)
+      : undefined;
   const narration = useImmersiveNarration(
     activeArticle?.id,
-    activeArticle ? `${activeArticle.title}。${immersiveExcerpt(activeArticle)}` : "",
+    activeArticle
+      ? `${activeArticle.title}。${textPresentation?.text ?? immersiveExcerpt(activeArticle)}`
+      : "",
     playbackPaused,
     pageVisible,
     speed,
   );
+  const closeInline = () => {
+    setInlineView(null);
+    requestAnimationFrame(() => {
+      if (inlineTriggerRef.current?.isConnected)
+        inlineTriggerRef.current.focus({ preventScroll: true });
+    });
+  };
+  const selectTextSource = (useSummary: boolean) => {
+    if (
+      !activeArticle ||
+      presentationKeyRef.current !== presentationKey ||
+      activeArticleRef.current?.id !== activeArticle.id ||
+      (useSummary && summaryEntry.kind !== "hit")
+    )
+      return;
+    setPaused(true);
+    setMediaFinished(undefined);
+    setPresentationState((previous) => ({
+      key: presentationKey,
+      value: choosePresentation(useSummary),
+      revision: previous.revision + 1,
+    }));
+    closeInline();
+  };
+  useEffect(() => {
+    if (inlineOpen && !activeArticle) setInlineView(null);
+  }, [inlineOpen, activeArticle]);
   useEffect(() => {
     if (batch.length - index > 2) return;
     const next = createImmersiveBatch(props, served);
@@ -371,8 +456,9 @@ export default function ImmersiveArticleMode(props: Props) {
                   <>
                     {Math.abs(itemIndex - index) <= 1 && (
                       <CinematicArticle
-                        key={`${article.id}:${itemIndex === index}`}
+                        key={`${article.id}:${itemIndex === index}:${itemIndex === index ? `${presentationKey}:${presentationState.revision}` : 0}`}
                         article={article}
+                        textPresentation={itemIndex === index ? textPresentation : undefined}
                         thumb={thumb}
                         thumbnailFallbacks={thumbnails.slice(1)}
                         failedThumbnails={failedThumbnails}
@@ -442,10 +528,38 @@ export default function ImmersiveArticleMode(props: Props) {
                 <button
                   type="button"
                   className={secondaryButton}
-                  onClick={() => setInlineOpen(true)}
+                  onClick={(event) => {
+                    inlineTriggerRef.current = event.currentTarget;
+                    setInlineView("body");
+                  }}
                 >
                   ここで読む
                 </button>
+                {summaryConfigured && (
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    aria-label="保存済みAI要約を確認"
+                    onClick={(event) => {
+                      inlineTriggerRef.current = event.currentTarget;
+                      setInlineView("summary");
+                    }}
+                  >
+                    AI要約
+                    <br />
+                    {summaryEntry.kind === "hit"
+                      ? "あり"
+                      : summaryEntry.kind === "loading" || summaryEntry.kind === "idle"
+                        ? "確認中"
+                        : summaryEntry.kind === "error"
+                          ? "取得エラー"
+                          : summaryEntry.kind === "disabled"
+                            ? "利用不可"
+                            : summaryEntry.kind === "evicted"
+                              ? "再確認"
+                              : "未生成"}
+                  </button>
+                )}
                 {onToggleReadingList && (
                   <button
                     type="button"
@@ -542,9 +656,23 @@ export default function ImmersiveArticleMode(props: Props) {
           )}
         </div>
       </footer>
+      {inlineView === "summary" && activeArticle && (
+        <ImmersiveSummaryReader
+          key={presentationKey}
+          article={activeArticle}
+          model={settings?.aiModel}
+          entry={summaryEntry}
+          usingSummary={textPresentation?.source === "cached-ai"}
+          onClose={closeInline}
+          onReadBody={() => setInlineView("body")}
+          onUseSummary={() => selectTextSource(true)}
+          onUseExcerpt={() => selectTextSource(false)}
+          onRetry={() => summaryCache.retry(activeArticle.link)}
+        />
+      )}
       <ImmersiveInlineReader
-        article={inlineOpen ? (activeArticle ?? null) : null}
-        onClose={() => setInlineOpen(false)}
+        article={inlineView === "body" ? (activeArticle ?? null) : null}
+        onClose={closeInline}
       />
     </div>,
     document.body,
