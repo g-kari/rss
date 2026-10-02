@@ -88,7 +88,12 @@ export default function ImageDlSection({
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           シェア設定
         </span>
-        <div className="flex flex-col gap-1.5">
+        <div
+          data-setting-id="share-targets"
+          tabIndex={-1}
+          aria-label="シェア先"
+          className="flex flex-col gap-1.5"
+        >
           <span className="text-[12px] font-medium text-text-default">
             ヘッダーに表示するシェア先
           </span>

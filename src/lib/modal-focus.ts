@@ -16,3 +16,21 @@
  */
 export const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Hidden mounted settings panels must not become the ends of a modal's focus trap. */
+export function getFocusableElements(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
+    if (
+      element.tabIndex < 0 ||
+      element.matches(":disabled, input[type=hidden]") ||
+      element.closest('[hidden], [inert], [aria-hidden="true"]')
+    )
+      return false;
+    for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden") return false;
+      if (node === root) break;
+    }
+    return true;
+  });
+}

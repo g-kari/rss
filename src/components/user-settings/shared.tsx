@@ -1,6 +1,7 @@
 "use client";
 
 import type { KeyboardEvent, ReactNode } from "react";
+import { settingIdForLabel } from "./settings-catalog";
 import type { FontSize, FontFamily } from "../../types";
 import type { ContentWidth, LineHeight } from "../../lib/reader-settings";
 import { getLineHeightStyle, CONTENT_WIDTH_LABELS } from "../../lib/reader-settings";
@@ -36,9 +37,15 @@ const PREVIEW_TEXT =
 
 export function SettingRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div
+      data-settings-row
+      data-setting-id={settingIdForLabel(label)}
+      tabIndex={-1}
+      aria-label={label}
+      className="flex min-w-0 flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-4"
+    >
       <span className="text-[12px] font-medium text-text-default flex-shrink-0 w-24">{label}</span>
-      <div className="flex-1 flex justify-end">{children}</div>
+      <div className="flex w-full min-w-0 flex-1 justify-start sm:justify-end">{children}</div>
     </div>
   );
 }
@@ -94,7 +101,7 @@ export function SegmentGroup<T extends string | number>({
       role="radiogroup"
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
-      className="inline-flex rounded-lg border border-border-default overflow-hidden"
+      className="inline-flex max-w-full flex-wrap rounded-lg border border-border-default overflow-hidden"
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -107,7 +114,7 @@ export function SegmentGroup<T extends string | number>({
             aria-label={opt.label}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(opt.value)}
-            className={`px-2.5 py-1 text-[11px] transition-colors duration-150 ${
+            className={`min-h-[36px] px-2.5 py-1 text-[12px] transition-colors duration-150 ${
               active
                 ? "bg-ink text-ink-text"
                 : "bg-surface-elevated text-text-muted hover:bg-surface-hover hover:text-text-default"

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
-import { FOCUSABLE_SELECTOR } from "../lib/modal-focus";
+import { getFocusableElements } from "../lib/modal-focus";
 
 // Only dialogs that actually own a live trap may consume a parent overlay's Escape.
 const activeDialogRefs = new Set<RefObject<HTMLDivElement | null>>();
@@ -81,7 +81,7 @@ export function useModalFocusTrap(
       returnFocusRef.current = document.activeElement as HTMLElement | null;
       const target =
         initialFocusRef?.current ??
-        dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ??
+        (dialogRef.current ? getFocusableElements(dialogRef.current)[0] : null) ??
         dialogRef.current;
       target?.focus();
       return () => {
@@ -121,17 +121,26 @@ export function useModalFocusTrap(
 
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {
+      const dialog = dialogRef.current;
+      // React portal events bubble through parents that do not contain their DOM.
+      // Nested preset/health dialogs own their keyboard events independently.
+      if (!dialog || (e.target instanceof Node && !dialog.contains(e.target))) return;
       // captureEscape: true の場合、Escape は capture phase で処理済みなので bubble phase では無視
       if (e.key === "Escape" && !captureEscape) {
         onClose();
         return;
       }
       if (e.key !== "Tab") return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      const focusable = getFocusableElements(dialog);
       if (focusable.length === 0) {
         e.preventDefault();
+        return;
+      }
+      // Search may focus an unavailable setting row or a panel with no controls.
+      // A programmatic tabindex=-1 target still needs a route back into the trap.
+      if (!focusable.includes(document.activeElement as HTMLElement)) {
+        e.preventDefault();
+        (e.shiftKey ? focusable[focusable.length - 1] : focusable[0])!.focus();
         return;
       }
       const first = focusable[0]!;

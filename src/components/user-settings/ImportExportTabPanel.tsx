@@ -257,7 +257,12 @@ export default function ImportExportTabPanel({
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           フィードのインポート / エクスポート
         </span>
-        <div className="flex gap-2">
+        <div
+          data-setting-id="opml"
+          tabIndex={-1}
+          aria-label="OPML 入出力"
+          className="flex flex-wrap gap-2"
+        >
           {/* OPML エクスポート */}
           <button
             type="button"
@@ -319,7 +324,7 @@ export default function ImportExportTabPanel({
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           保存済み検索条件
         </span>
-        <div className="flex flex-col gap-2">
+        <div data-setting-id="saved-searches" tabIndex={-1} className="flex flex-col gap-2">
           <p className="text-[12px] text-text-soft leading-relaxed">
             名前を付けて保存した検索条件を、バックアップや別端末で再登録するときの参照用 JSON
             ファイルに保存できます。
@@ -368,7 +373,7 @@ export default function ImportExportTabPanel({
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           メモ
         </span>
-        <div className="flex flex-col gap-2">
+        <div data-setting-id="notes-import" tabIndex={-1} className="flex flex-col gap-2">
           <p className="text-[12px] text-text-soft leading-relaxed">
             記事 URL が一致するメモを JSON バックアップから復元できます。
           </p>
@@ -392,7 +397,7 @@ export default function ImportExportTabPanel({
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           ブックマーク / 後で読む
         </span>
-        <div className="flex flex-col gap-2">
+        <div data-setting-id="article-state-import" tabIndex={-1} className="flex flex-col gap-2">
           <p className="text-[12px] text-text-soft leading-relaxed">
             記事 JSON エクスポートを読み込み、現在の記事 URL と一致する状態を復元できます。
           </p>
@@ -416,7 +421,7 @@ export default function ImportExportTabPanel({
         <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
           コレクション
         </span>
-        <div className="flex flex-col gap-2">
+        <div data-setting-id="collections-import" tabIndex={-1} className="flex flex-col gap-2">
           <p className="text-[12px] text-text-soft leading-relaxed">
             コレクション JSON を既存コレクションへ URL 照合で追加します。
           </p>
