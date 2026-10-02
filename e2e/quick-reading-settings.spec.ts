@@ -75,6 +75,14 @@ async function panel(page: Page, root = page.getByRole("article", { name: "記�
   ).toBe(true);
   return dialog;
 }
+async function settle(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+}
 for (const viewport of [
   { width: 320, height: 568 },
   { width: 390, height: 844 },
@@ -107,6 +115,11 @@ for (const viewport of [
           el.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [start] }));
           el.dispatchEvent(new TouchEvent("touchend", { bubbles: true, changedTouches: [end] }));
         });
+        // Initial scrolling may reveal the existing 2px progress bar. Compare the
+        // settled position before typography changes, not the requested scroll input.
+        await settle(page);
+        const scrollBefore = await ordinary.evaluate((el) => el.scrollTop);
+        expect(scrollBefore).toBeGreaterThan(0);
         const imagesBefore = diagnostics.get(page)?.imageRequests;
         for (const [label, value] of [
           ["文字サイズ", "large"],
@@ -116,9 +129,8 @@ for (const viewport of [
           ["テーマ", theme === "light" ? "dark" : "light"],
         ])
           await dialog.getByLabel(label, { exact: true }).selectOption(value);
-        expect(diagnostics.get(page)?.imageRequests).toBe(imagesBefore);
         await expect(body).toHaveCSS("font-size", "19px");
-        expect(await ordinary.evaluate((el) => el.scrollTop)).toBe(300);
+        expect(await ordinary.evaluate((el) => el.scrollTop)).toBe(scrollBefore);
         await expect(body).toHaveCSS("line-height", "43.7px");
         await expect(body).toHaveClass(/font-serif/);
         expect(await body.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(
@@ -126,6 +138,8 @@ for (const viewport of [
         );
         expect(await body.evaluate((el) => el === window.retainedBody)).toBe(true);
         await page.screenshot({ path: testInfo.outputPath("ordinary-settings.png") });
+        await settle(page);
+        expect(diagnostics.get(page)?.imageRequests).toBe(imagesBefore);
         await page.keyboard.press("Escape");
         await expect(ordinary.getByRole("button", { name: "読書設定", exact: true })).toBeFocused();
         await ordinary.evaluate((el) => {
@@ -163,17 +177,25 @@ for (const viewport of [
         await inline.getByRole("document").evaluate((el) => {
           el.scrollTop = 300;
         });
+        await settle(page);
+        const inlineScrollBefore = await inline
+          .getByRole("document")
+          .evaluate((el) => el.scrollTop);
+        expect(inlineScrollBefore).toBeGreaterThan(0);
         await inlineBody.evaluate((el) => {
           window.retainedBody = el;
         });
         await expect(inlineDialog.getByLabel("文字サイズ", { exact: true })).toHaveValue("small");
         const inlineImagesBefore = diagnostics.get(page)?.imageRequests;
         await inlineDialog.getByLabel("文字サイズ", { exact: true }).selectOption("large");
-        expect(diagnostics.get(page)?.imageRequests).toBe(inlineImagesBefore);
         await expect(inlineBody).toHaveCSS("font-size", "19px");
-        expect(await inline.getByRole("document").evaluate((el) => el.scrollTop)).toBe(300);
+        expect(await inline.getByRole("document").evaluate((el) => el.scrollTop)).toBe(
+          inlineScrollBefore,
+        );
         expect(await inlineBody.evaluate((el) => el === window.retainedBody)).toBe(true);
         await page.screenshot({ path: testInfo.outputPath("immersive-settings.png") });
+        await settle(page);
+        expect(diagnostics.get(page)?.imageRequests).toBe(inlineImagesBefore);
         await page.keyboard.press("Escape");
         await expect(inline).toBeVisible();
         await expect(inline.getByRole("button", { name: "読書設定", exact: true })).toBeFocused();

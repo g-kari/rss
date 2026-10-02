@@ -107,7 +107,7 @@ function SettingsPanel({
       data-print="hide"
       aria-labelledby={titleId}
       tabIndex={-1}
-      className="fixed z-[80] w-[360px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-xl border border-border-default bg-surface-elevated p-4 text-text-strong shadow-xl"
+      className="fixed z-[80] w-[360px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-xl border border-border-default bg-surface-elevated p-3 sm:p-4 text-text-strong shadow-xl"
       style={{ top, right, maxHeight: `calc(100dvh - ${top + 8}px)` }}
       onWheel={(event) => event.stopPropagation()}
       onTouchStart={(event) => event.stopPropagation()}
@@ -117,7 +117,7 @@ function SettingsPanel({
         handleKeyDown(event);
       }}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-2 sm:mb-3 flex items-center justify-between gap-3">
         <h2 id={titleId} className="text-[16px] font-medium">
           読書設定
         </h2>
@@ -129,7 +129,7 @@ function SettingsPanel({
           閉じる
         </button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1 sm:space-y-2">
         <SettingSelect
           label="文字サイズ"
           value={settings.fontSize}
@@ -166,8 +166,11 @@ function SettingsPanel({
           onChange={settings.setTheme}
         />
       </div>
-      <p className="mt-3 text-[12px] text-text-muted">
-        変更はすぐ反映・保存されます。ほかの設定はサイドバーの「設定」から開けます。
+      <p className="mt-2 sm:mt-3 text-[12px] text-text-muted">
+        変更はすぐ反映・保存されます。
+        <span className="sr-only sm:not-sr-only">
+          ほかの設定はサイドバーの「設定」から開けます。
+        </span>
       </p>
     </div>,
     document.body,
