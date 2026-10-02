@@ -188,7 +188,7 @@ for (const viewport of [
       await page.keyboard.press("Escape");
       await expect(entry).toBeFocused();
     });
-    test("same-scope empty recovery keeps occupied and exhausted batches finite", async ({
+    test("same-scope empty recovery consumes painted cards and continues with newly loaded articles", async ({
       page,
     }, testInfo) => {
       const count = page.getByRole("combobox", { name: "合成候補数" });
@@ -201,17 +201,12 @@ for (const viewport of [
       await count.selectOption("1");
       await entry.click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
+      // Wait for the actual read acknowledgement rather than racing Close against paint.
+      await expect(page.getByTestId("shown-ids")).toHaveText('["in-scope"]');
       await page.keyboard.press("Escape");
       await count.selectOption("2");
       await entry.click();
-      // Newly loaded same-scope articles replenish automatically, preserving the current card.
-      await expect(dialog.locator(".immersive-slide")).toHaveCount(2);
-      await dialog.getByRole("button", { name: "次の記事", exact: true }).click();
-      await expect(dialog.getByRole("status")).toHaveText("2 / 2件");
-      await page.keyboard.press("Escape");
-      await expect(dialog).toHaveCount(0);
-      await expect(entry).toBeFocused();
-      await entry.click();
+      // The painted first card is consumed; only the newly loaded card remains on reopen.
       await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
       await expect(dialog.getByRole("button", { name: "次の10件を見る", exact: true })).toHaveCount(
         0,
@@ -226,9 +221,18 @@ for (const viewport of [
       await expect
         .poll(() => dialog.getByRole("region").evaluate((element) => element.scrollTop))
         .toBe(0);
+      await expect(page.getByTestId("shown-ids")).toHaveText('["in-scope","second"]');
       await page.screenshot({ path: testInfo.outputPath("continued-one-item-batch.png") });
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
+      await expect(entry).toBeFocused();
+      await entry.click();
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
+      await expect(
+        dialog.getByRole("heading", { name: "読み込み済みの記事はここまで" }),
+      ).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "次の記事", exact: true })).toBeDisabled();
+      await page.keyboard.press("Escape");
       await expect(entry).toBeFocused();
     });
   });
