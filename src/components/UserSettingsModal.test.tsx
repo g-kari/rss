@@ -213,7 +213,10 @@ describe("purpose-based settings navigation", () => {
     expect(screen.getByRole("status")).toHaveTextContent("一致する設定がありません");
     fireEvent.click(screen.getByRole("button", { name: "設定検索をクリア" }));
     expect(screen.getByRole("searchbox")).toHaveFocus();
+    const scrollBody = screen.getByRole("dialog").lastElementChild as HTMLElement;
+    scrollBody.scrollTop = 240;
     fireEvent.click(screen.getByRole("tab", { name: "ギャラリー" }));
+    expect(scrollBody.scrollTop).toBe(0);
     fireEvent.click(screen.getByRole("tab", { name: "読書・表示" }));
     expect(screen.getByRole("radiogroup", { name: "フォントサイズ" })).toBe(original);
     expect(request).toHaveBeenCalledTimes(1);

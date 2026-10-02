@@ -125,7 +125,14 @@ async function chooseCategory(dialog: Locator, id: string, label: string) {
     "true",
   );
   await expect(dialog.getByRole("tabpanel")).toHaveCount(1);
-  await expect(dialog.locator(`#panel-${id}`)).toBeVisible();
+  const panel = dialog.locator(`#panel-${id}`);
+  await expect(panel).toBeVisible();
+  expect(
+    await panel.evaluate((element) => {
+      const navigation = element.parentElement!.querySelector("[data-settings-navigation]")!;
+      return element.getBoundingClientRect().top >= navigation.getBoundingClientRect().bottom;
+    }),
+  ).toBe(true);
 }
 
 async function focusIsUnobscured(dialog: Locator) {

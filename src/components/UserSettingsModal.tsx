@@ -159,6 +159,10 @@ export default function UserSettingsModal({
           onCategoryChange={(category) => {
             setActiveCategory(category);
             setUnavailable("");
+            // Each purpose category starts at its own heading; keep search-result
+            // navigation separate so it can reveal the selected control instead.
+            const scrollBody = rootRef.current?.parentElement;
+            if (scrollBody) scrollBody.scrollTop = 0;
           }}
           onSettingSelect={(setting) => {
             setActiveCategory(setting.category);
