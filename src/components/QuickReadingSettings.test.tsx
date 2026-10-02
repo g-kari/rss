@@ -56,7 +56,9 @@ it("closes on repeated trigger, outside pointer, resize and article navigation w
   fireEvent.click(trigger);
   expect(screen.queryByRole("dialog")).toBeNull();
   fireEvent.click(trigger);
-  fireEvent.pointerDown(document.body);
+  const outside = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+  fireEvent(document.body, outside);
+  expect(outside.defaultPrevented).toBe(true);
   expect(trigger).toHaveFocus();
   expect(screen.queryByRole("dialog")).toBeNull();
   fireEvent.click(trigger);

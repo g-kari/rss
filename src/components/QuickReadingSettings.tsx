@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 
 import { createPortal } from "react-dom";
 import { useOptionalReaderSettings, type ReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import { FOCUSABLE_SELECTOR } from "../lib/modal-focus";
 import { usePopupLock } from "../hooks/usePopupLock";
 import {
   FONT_SIZE_CYCLE,
@@ -31,10 +32,12 @@ function SettingSelect<T extends string>({
   labels: Record<T, string>;
   onChange: (value: T) => void;
 }) {
+  const controlId = useId();
   return (
-    <label className="flex items-center justify-between gap-3 text-[14px]">
-      <span>{label}</span>
+    <div className="flex items-center justify-between gap-3 text-[14px]">
+      <label htmlFor={controlId}>{label}</label>
       <select
+        id={controlId}
         className="min-h-11 w-36 rounded border border-border-default bg-surface-base px-2 text-text-strong"
         value={value}
         onChange={(event) => {
@@ -48,7 +51,7 @@ function SettingSelect<T extends string>({
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }
 
@@ -81,8 +84,13 @@ function SettingsPanel({
         event.target instanceof Node &&
         !ref.current?.contains(event.target) &&
         !trigger.current?.contains(event.target)
-      )
+      ) {
+        // A background pointer must not clear the focus restored during effect cleanup.
+        // Interactive outside controls retain their own native focus/click behavior.
+        if (event.target instanceof Element && !event.target.closest(FOCUSABLE_SELECTOR))
+          event.preventDefault();
         onClose();
+      }
     };
     window.addEventListener("pointerdown", outside, true);
     window.addEventListener("resize", onClose);

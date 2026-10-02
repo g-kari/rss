@@ -5,7 +5,7 @@ import tailwind from "@tailwindcss/postcss";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 let html = "";
-const diagnostics = new WeakMap<Page, string[]>();
+const diagnostics = new WeakMap<Page, { failures: string[]; imageRequests: number }>();
 test.beforeAll(async () => {
   const root = resolve(import.meta.dirname, "..");
   const [{ outputFiles }, css] = await Promise.all([
@@ -28,7 +28,8 @@ test.beforeAll(async () => {
 });
 test.beforeEach(async ({ page }) => {
   const failures: string[] = [];
-  diagnostics.set(page, failures);
+  const result = { failures, imageRequests: 0 };
+  diagnostics.set(page, result);
   page.on("pageerror", (error) => failures.push(error.message));
   await page.route("**/*", (route) => {
     const request = route.request();
@@ -39,19 +40,26 @@ test.beforeEach(async ({ page }) => {
     )
       return route.fulfill({ contentType: "text/html", body: html });
     if (
-      request.url() === "https://rss-preview.test/image.svg" &&
-      request.resourceType() === "image"
-    )
+      [
+        "https://rss-preview.test/image.svg",
+        "https://rss-preview.test/api/image-proxy?url=https%3A%2F%2Frss-preview.test%2Fimage.svg",
+      ].includes(request.url()) &&
+      request.method() === "GET" &&
+      request.resourceType() === "image" &&
+      !request.isNavigationRequest()
+    ) {
+      result.imageRequests++;
       return route.fulfill({
         contentType: "image/svg+xml",
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="teal"/></svg>',
       });
+    }
     failures.push(`${request.method()} ${request.url()}`);
     return route.abort();
   });
 });
 test.afterEach(async ({ page }) => {
-  expect(diagnostics.get(page)).toEqual([]);
+  expect(diagnostics.get(page)?.failures).toEqual([]);
   expect(await page.evaluate(() => window.quickActions)).toEqual([]);
 });
 async function panel(page: Page, root = page.getByRole("article", { name: "記事本文" }).first()) {
@@ -93,8 +101,13 @@ for (const viewport of [
           el.scrollTop = 300;
         });
         await dialog.dispatchEvent("wheel", { deltaX: 200, deltaY: 0 });
-        await dialog.dispatchEvent("touchstart", { touches: [{ clientX: 200, clientY: 200 }] });
-        await dialog.dispatchEvent("touchend", { changedTouches: [{ clientX: 50, clientY: 200 }] });
+        await dialog.evaluate((el) => {
+          const start = new Touch({ identifier: 1, target: el, clientX: 200, clientY: 200 });
+          const end = new Touch({ identifier: 1, target: el, clientX: 50, clientY: 200 });
+          el.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [start] }));
+          el.dispatchEvent(new TouchEvent("touchend", { bubbles: true, changedTouches: [end] }));
+        });
+        const imagesBefore = diagnostics.get(page)?.imageRequests;
         for (const [label, value] of [
           ["文字サイズ", "large"],
           ["フォント", "serif"],
@@ -103,6 +116,7 @@ for (const viewport of [
           ["テーマ", theme === "light" ? "dark" : "light"],
         ])
           await dialog.getByLabel(label, { exact: true }).selectOption(value);
+        expect(diagnostics.get(page)?.imageRequests).toBe(imagesBefore);
         await expect(body).toHaveCSS("font-size", "19px");
         expect(await ordinary.evaluate((el) => el.scrollTop)).toBe(300);
         await expect(body).toHaveCSS("line-height", "43.7px");
@@ -153,7 +167,9 @@ for (const viewport of [
           window.retainedBody = el;
         });
         await expect(inlineDialog.getByLabel("文字サイズ", { exact: true })).toHaveValue("small");
+        const inlineImagesBefore = diagnostics.get(page)?.imageRequests;
         await inlineDialog.getByLabel("文字サイズ", { exact: true }).selectOption("large");
+        expect(diagnostics.get(page)?.imageRequests).toBe(inlineImagesBefore);
         await expect(inlineBody).toHaveCSS("font-size", "19px");
         expect(await inline.getByRole("document").evaluate((el) => el.scrollTop)).toBe(300);
         expect(await inlineBody.evaluate((el) => el === window.retainedBody)).toBe(true);
@@ -184,7 +200,7 @@ test("interrupted/repeated panel dismissal and nested capture Escape keep reader
   await trigger.click();
   await expect(page.getByRole("dialog", { name: "読書設定" })).toHaveCount(0);
   await trigger.click();
-  await page.locator("body").click({ position: { x: 4, y: 400 } });
+  await page.getByTestId("outside-settings").click();
   await expect(trigger).toBeFocused();
   await trigger.click();
   await page.getByRole("button", { name: "次のテスト記事", exact: true }).click();

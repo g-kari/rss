@@ -96,6 +96,7 @@ function Reader() {
               <button onClick={() => setMode("immersive")}>モードを開く</button>
               <button onClick={() => setMode("overlay")}>オーバーレイを開く</button>
               <button onClick={() => setAllSettings((old) => !old)}>既存の表示設定</button>
+              <p data-testid="outside-settings">設定の外側</p>
             </div>
             {allSettings && (
               <section aria-label="既存の表示設定" className="space-y-3 p-3">
