@@ -1,11 +1,31 @@
 import type { Article, Feed } from "../types";
 import { isArticleRead } from "./article-filter";
 import { getArticleTimestamp } from "./article-utils";
+import {
+  normalizeRecommendationTopic,
+  parseTopicPreferences,
+  TOPIC_PREFERENCE_POINTS,
+  type TopicPreference,
+} from "./recommendation-topics";
 
 export interface ArticleRecommendation {
   article: Article;
   feedTitle: string;
   reasons: string[];
+  /** Exact score contributions at selection time, not an AI explanation or probability. */
+  explanation?: ArticleRecommendationExplanation;
+}
+
+export interface ArticleRecommendationExplanation {
+  topics: { topic: string; label: string }[];
+  freshness: { points: number; ageHours: number | null; source: "published" | "received" };
+  interest: { points: number; topic: string; saved: boolean };
+  feed: { points: number; views: number };
+  priorityPoints: number;
+  preferences: { topic: string; label: string; value: "more" | "less" }[];
+  preferencePoints: number;
+  diversityPenalty: number;
+  total: number;
 }
 
 export interface ArticleRecommendationOptions {
@@ -25,6 +45,7 @@ export interface ArticleRecommendationOptions {
   dismissedIds: Set<string>;
   now: number;
   limit?: number;
+  topicPreferences?: TopicPreference[];
 }
 
 const DAY_MS = 86400000;
@@ -33,7 +54,7 @@ function articleTopics(article: Article, feed: Feed): Map<string, string> {
   const topics = new Map<string, string>();
   for (const label of [...(article.categories ?? []), feed.category ?? ""]) {
     const trimmed = label.trim().slice(0, 60);
-    if (trimmed) topics.set(trimmed.normalize("NFKC").toLowerCase(), trimmed);
+    if (trimmed) topics.set(normalizeRecommendationTopic(trimmed), trimmed);
   }
   return topics;
 }
@@ -95,6 +116,9 @@ export function rankArticleRecommendations(
       }
     }
   }
+  const preferenceMap = new Map(
+    parseTopicPreferences(options.topicPreferences).map((entry) => [entry.topic, entry]),
+  );
   const readBeforeMs = options.readBeforeTimestamp ? Date.parse(options.readBeforeTimestamp) : null;
   const scored = candidates.flatMap((article) => {
     const feed = feedMap.get(article.feedHash);
@@ -113,7 +137,8 @@ export function rankArticleRecommendations(
     let bestTopic = "";
     let bestTopicSaved = false;
     let topicScore = 0;
-    for (const [topic, label] of articleTopics(article, feed)) {
+    const topics = articleTopics(article, feed);
+    for (const [topic, label] of topics) {
       const score = topicAffinity.get(topic) ?? 0;
       if (score > topicScore) {
         topicScore = score;
@@ -121,26 +146,71 @@ export function rankArticleRecommendations(
         bestTopicSaved = savedTopics.has(topic);
       }
     }
-    const reasons = [knownAge && age <= DAY_MS ? "24時間以内の新着" : "未読の記事"];
+    const receivedDate = !article.publishedAt;
+    const reasons = [
+      knownAge && age <= DAY_MS
+        ? receivedDate
+          ? "24時間以内に取得"
+          : "24時間以内の新着"
+        : "未読の記事",
+    ];
+    const preferences = [...topics].flatMap(([topic, label]) => {
+      const preference = preferenceMap.get(topic);
+      return preference ? [{ topic, label, value: preference.value }] : [];
+    });
+    // Multiple tags cannot stack an unbounded boost or erase eligibility. Opposing
+    // choices cancel; the total adjustment is bounded to the same +/-6 points.
+    const preferencePoints = Math.max(
+      -TOPIC_PREFERENCE_POINTS,
+      Math.min(
+        TOPIC_PREFERENCE_POINTS,
+        preferences.reduce(
+          (sum, entry) =>
+            sum + (entry.value === "more" ? TOPIC_PREFERENCE_POINTS : -TOPIC_PREFERENCE_POINTS),
+          0,
+        ),
+      ),
+    );
+    if (preferencePoints !== 0)
+      reasons.push(
+        preferencePoints > 0
+          ? "増やしたい話題と一致"
+          : "減らしたい話題と一致（優先度を下げています）",
+      );
     if (topicScore > 0)
       reasons.push(
         `${bestTopicSaved ? "保存・いいねした記事と同じテーマ" : "読んだ記事と同じテーマ"}: ${bestTopic}`,
       );
     else if (feed.priority === "high") reasons.push("スター付きフィード");
     else if ((viewedCount.get(feed.id) ?? 0) >= 2) reasons.push("読んだことのあるフィード");
-    const score =
-      freshness +
-      Math.min(6, topicScore * 1.5) +
-      Math.min(3, feedAffinity.get(feed.id) ?? 0) +
-      (feed.priority === "high" ? 2 : 0);
+    const interestPoints = Math.min(6, topicScore * 1.5);
+    const feedPoints = Math.min(3, feedAffinity.get(feed.id) ?? 0);
+    const priorityPoints = feed.priority === "high" ? 2 : 0;
+    const score = freshness + interestPoints + feedPoints + priorityPoints + preferencePoints;
+    const explanation: ArticleRecommendationExplanation = {
+      topics: [...topics].map(([topic, label]) => ({ topic, label })),
+      freshness: {
+        points: freshness,
+        ageHours: knownAge ? age / 3600000 : null,
+        source: receivedDate ? "received" : "published",
+      },
+      interest: { points: interestPoints, topic: bestTopic, saved: bestTopicSaved },
+      feed: { points: feedPoints, views: viewedCount.get(feed.id) ?? 0 },
+      priorityPoints,
+      preferences,
+      preferencePoints,
+      diversityPenalty: 0,
+      total: score,
+    };
     return [
       {
         article,
         feedTitle: feed.title,
         reasons,
         score,
+        explanation,
         timestamp: knownAge ? timestamp : 0,
-        topic: bestTopic.normalize("NFKC").toLowerCase(),
+        topic: normalizeRecommendationTopic(bestTopic),
       },
     ];
   });
@@ -170,7 +240,13 @@ export function rankArticleRecommendations(
       }
     }
     if (!best) break;
-    selected.push({ article: best.article, feedTitle: best.feedTitle, reasons: best.reasons });
+    const diversityPenalty = best.score - bestScore;
+    selected.push({
+      article: best.article,
+      feedTitle: best.feedTitle,
+      reasons: best.reasons,
+      explanation: { ...best.explanation, diversityPenalty, total: bestScore },
+    });
     seenIds.add(best.article.id);
     if (best.article.link) seenLinks.add(best.article.link);
     feedCounts.set(best.article.feedHash, (feedCounts.get(best.article.feedHash) ?? 0) + 1);

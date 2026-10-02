@@ -335,3 +335,86 @@ it("resumes an exhausted session with newly arrived candidates but never restart
   expect(document.querySelectorAll(".immersive-slide")).toHaveLength(2);
   expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
 });
+
+describe("recommendation reasons and reversible topic controls", () => {
+  const topical = articles.map((article, index) => ({
+    ...article,
+    categories: [index === 2 ? "Unity" : "Cooking"],
+  }));
+  const topicalProps = { ...props, candidates: topical, articles: topical };
+  const order = () =>
+    within(screen.getByRole("region", { name: "いま読むおすすめ" }))
+      .getAllByRole("button", { name: /を読む$/ })
+      .map((button) => button.getAttribute("aria-label"));
+  it("exposes actual source reasons and changes rank immediately, with stable dialog and undo", () => {
+    render(<ArticleRecommendations {...topicalProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "記事 cをおすすめした理由" }));
+    const dialog = screen.getByRole("dialog", { name: "この記事をおすすめした理由" });
+    expect(within(dialog).getByText(/興味との一致/)).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("一致する閲覧・保存・いいねのカテゴリなし");
+    expect(order()[0]).toBe("記事 aを読む");
+    fireEvent.click(within(dialog).getByRole("button", { name: "話題の調整を元に戻す" }));
+    expect(within(dialog).getByRole("status")).toHaveTextContent("");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Unityの話題を増やす" }));
+    expect(order()[0]).toBe("記事 cを読む");
+    expect(within(dialog).getByRole("button", { name: "Unityの話題を増やす" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "話題の調整を元に戻す" }));
+    expect(order()[0]).toBe("記事 aを読む");
+    fireEvent.keyDown(within(dialog).getByRole("button", { name: "閉じる" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "おすすめを折りたたむ" })).toHaveFocus();
+    expect(props.onSelectArticle).not.toHaveBeenCalled();
+  });
+  it("keeps global reset reachable for an empty pool and isolates account changes", () => {
+    const { rerender } = render(<ArticleRecommendations {...topicalProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "記事 cをおすすめした理由" }));
+    const dialog = screen.getByRole("dialog", { name: "この記事をおすすめした理由" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Unityの話題を減らす" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "閉じる" }));
+    rerender(<ArticleRecommendations {...topicalProps} candidates={[]} scopeKey="empty" />);
+    fireEvent.click(screen.getByText("選び方・おすすめの調整"));
+    fireEvent.click(screen.getByRole("button", { name: "話題の調整をすべてリセット" }));
+    expect(screen.queryByRole("group", { name: "Unityのおすすめ調整" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "話題の調整を元に戻す" }));
+    expect(screen.getByRole("group", { name: "Unityのおすすめ調整" })).toBeInTheDocument();
+    rerender(<ArticleRecommendations {...topicalProps} userId="two" />);
+    expect(screen.queryByRole("group", { name: "Unityのおすすめ調整" })).not.toBeInTheDocument();
+    expect(order()[0]).toBe("記事 aを読む");
+  });
+  it("does not infer topic controls when metadata is absent, and closes on scope interruption", () => {
+    const { rerender } = render(<ArticleRecommendations {...props} scopeKey="one" />);
+    fireEvent.click(screen.getByRole("button", { name: "記事 aをおすすめした理由" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("カテゴリがありません");
+    expect(screen.queryByRole("button", { name: /の話題を増やす/ })).not.toBeInTheDocument();
+    rerender(<ArticleRecommendations {...props} scopeKey="two" />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  it("uses preferences for immersive launch and pauses nested reasons without changing selection", () => {
+    render(<ArticleRecommendations {...topicalProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "記事 cをおすすめした理由" }));
+    fireEvent.click(screen.getByRole("button", { name: "Unityの話題を増やす" }));
+    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(screen.getByRole("button", { name: "ドパガキモード" }));
+    const immersive = screen.getByRole("dialog", { name: "ドパガキモード" });
+    const trigger = within(immersive).getByRole("button", { name: "おすすめ理由" });
+    expect(within(immersive).getByRole("heading", { name: "記事 c" })).toBeInTheDocument();
+    trigger.focus();
+    fireEvent.click(trigger);
+    const reasons = screen.getByRole("dialog", { name: "この記事をおすすめした理由" });
+    expect(reasons).toHaveTextContent("Unity」を増やす");
+    expect(immersive).toHaveAttribute("aria-modal", "false");
+    fireEvent.click(within(reasons).getByRole("button", { name: "Unityの話題を減らす" }));
+    act(() => vi.advanceTimersByTime(30000));
+    expect(within(immersive).getByRole("heading", { name: "記事 c" })).toBeInTheDocument();
+    fireEvent.keyDown(within(reasons).getByRole("button", { name: "閉じる" }), { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "この記事をおすすめした理由" }),
+    ).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(immersive).toHaveAttribute("aria-modal", "true");
+    expect(props.onSelectArticle).not.toHaveBeenCalled();
+  });
+});

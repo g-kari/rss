@@ -5,7 +5,11 @@ import type { Article } from "../types";
 import {
   rankArticleRecommendations,
   type ArticleRecommendationOptions,
+  type ArticleRecommendation,
 } from "../lib/article-recommendations";
+import { useRecommendationTopics } from "../hooks/useRecommendationTopics";
+import RecommendationReasonDialog from "./RecommendationReasonDialog";
+import RecommendationTopicControls from "./RecommendationTopicControls";
 import { useRecommendationDismissals } from "../hooks/useRecommendationDismissals";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import { useOgpCacheContext } from "../contexts/OgpCacheContext";
@@ -52,6 +56,8 @@ function RecommendationContent({
   summaryAccess,
   onToggleReadingList,
 }: Props) {
+  const topicControls = useRecommendationTopics(userId);
+  const [reasonArticle, setReasonArticle] = useState<ArticleRecommendation | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [immersiveSession, setImmersiveSession] = useState<ImmersiveSessionSnapshot | null>(null);
   const [immersiveOpen, setImmersiveOpen] = useState(false);
@@ -63,6 +69,7 @@ function RecommendationContent({
   useEffect(() => {
     // A disabled launch button cannot receive focus when an interrupted session closes.
     if (immersiveOpenRef.current && status !== "ready") disclosureRef.current?.focus();
+    setReasonArticle(null);
     setImmersiveOpen(false);
     setImmersiveSession(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- immersiveOpenRef is stable; opening alone must not close the session.
@@ -101,6 +108,7 @@ function RecommendationContent({
       likeIds,
       historyIds,
       dismissedIds,
+      topicPreferences: topicControls.preferences,
       now,
     });
   }, [
@@ -116,8 +124,15 @@ function RecommendationContent({
     likeIds,
     historyIds,
     dismissedIds,
+    topicControls.preferences,
     now,
   ]);
+
+  useEffect(() => {
+    // Suspended queues were selected with older choices. Open queues keep their current
+    // article/text/playback stable and use new choices for the next replenishment.
+    if (!immersiveOpenRef.current) setImmersiveSession(null);
+  }, [topicControls.preferences]);
 
   if (!enabled) return null;
 
@@ -132,6 +147,14 @@ function RecommendationContent({
 
   return (
     <>
+      {reasonArticle && (
+        <RecommendationReasonDialog
+          recommendation={reasonArticle}
+          controls={topicControls}
+          onClose={() => setReasonArticle(null)}
+          returnFocusEl={disclosureRef.current}
+        />
+      )}
       {immersiveOpen && (
         <ImmersiveArticleMode
           candidates={candidates}
@@ -145,6 +168,8 @@ function RecommendationContent({
           likeIds={likeIds}
           historyIds={historyIds}
           dismissedIds={dismissedIds}
+          topicPreferences={topicControls.preferences}
+          topicControls={topicControls}
           now={now}
           onClose={() => setImmersiveOpen(false)}
           onSelectArticle={onReadArticle ?? onSelectArticle}
@@ -201,7 +226,8 @@ function RecommendationContent({
             現在のフィルター内の未読から最大3件。新着と、読んだ・保存した記事のテーマから
           </p>
           <ul className="px-2">
-            {recommendations.map(({ article, feedTitle, reasons }) => {
+            {recommendations.map((recommendation) => {
+              const { article, feedTitle, reasons } = recommendation;
               const thumb = safeRecommendationThumbnail(resolveThumbnail(article, ogpCache));
               return (
                 <li key={article.id} className="border-t border-border-subtle px-2 py-2">
@@ -222,6 +248,15 @@ function RecommendationContent({
                         {feedTitle}
                       </span>
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${article.title}をおすすめした理由`}
+                    aria-haspopup="dialog"
+                    onClick={() => setReasonArticle(recommendation)}
+                    className="min-h-11 text-left text-[12px] text-text-default underline hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    おすすめした理由・話題を調整
                   </button>
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 pt-1 text-[11px] leading-relaxed text-text-muted">
@@ -276,6 +311,39 @@ function RecommendationContent({
             <p className="mt-1">
               「興味なし」は、このブラウザでこの記事だけを30日間非表示にします。
             </p>
+            <p className="mt-2">
+              話題の調整はこのアカウント・ブラウザに保存し、一覧とドパガキモードの新しい紹介枠に反映します。通知には同期しません。
+            </p>
+            {topicControls.preferences.map(({ topic, label }) => (
+              <RecommendationTopicControls
+                key={topic}
+                topic={topic}
+                label={label}
+                preferences={topicControls.preferences}
+                onChange={topicControls.update}
+              />
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!topicControls.preferences.length}
+                onClick={topicControls.reset}
+                className="min-h-11 text-left text-[12px] underline disabled:opacity-50"
+              >
+                話題の調整をすべてリセット
+              </button>
+              <button
+                type="button"
+                disabled={!topicControls.canUndo}
+                onClick={topicControls.undo}
+                className="min-h-11 text-left text-[12px] underline disabled:opacity-50"
+              >
+                話題の調整を元に戻す
+              </button>
+            </div>
+            {!topicControls.persisted && (
+              <p role="alert">話題の調整を保存できませんでした。今回の画面だけに反映しています。</p>
+            )}
             {dismissedIds.size > 0 && (
               <button
                 type="button"
