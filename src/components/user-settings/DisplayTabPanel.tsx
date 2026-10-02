@@ -1,5 +1,7 @@
 "use client";
 
+import SettingsCategoryPanel from "./SettingsCategoryPanel";
+import type { SettingsCategoryId } from "./settings-catalog";
 import type { FontSize, FontFamily } from "../../types";
 import type { ContentWidth, LineHeight } from "../../lib/reader-settings";
 import {
@@ -29,7 +31,7 @@ import { downloadBlob } from "../../lib/download";
 import { devError } from "../../lib/dev-log";
 
 interface DisplayTabPanelProps {
-  hidden: boolean;
+  activeCategory: SettingsCategoryId;
   // Theme (for preset 適用、UI で theme 単体変更はしない)
   theme: Theme;
   setTheme: (v: Theme) => void;
@@ -82,7 +84,7 @@ interface DisplayTabPanelProps {
 }
 
 export default function DisplayTabPanel({
-  hidden,
+  activeCategory,
   theme,
   setTheme,
   fontSize,
@@ -190,8 +192,8 @@ export default function DisplayTabPanel({
   };
 
   return (
-    <div id="panel-display" role="tabpanel" aria-labelledby="tab-display" hidden={hidden}>
-      <div className="flex flex-col gap-5 px-5 py-4">
+    <>
+      <SettingsCategoryPanel id="reading" hidden={activeCategory !== "reading"}>
         <PreviewArea
           fontSize={fontSize}
           fontFamily={fontFamily}
@@ -305,6 +307,18 @@ export default function DisplayTabPanel({
           onChangeTextJustify={onChangeTextJustify}
         />
 
+        <AutoReadSection
+          autoReadEnabled={autoReadEnabled}
+          toggleAutoRead={toggleAutoRead}
+          autoReadThreshold={autoReadThreshold}
+          onChangeAutoReadThreshold={onChangeAutoReadThreshold}
+        />
+
+        <p className="text-[11px] text-text-muted">
+          変更は即座にプレビューに反映され、自動的に保存されますわ。
+        </p>
+      </SettingsCategoryPanel>
+      <SettingsCategoryPanel id="gallery" hidden={activeCategory !== "gallery"}>
         <GallerySection
           galleryColumns={galleryColumns}
           onChangeGalleryColumns={onChangeGalleryColumns}
@@ -319,14 +333,8 @@ export default function DisplayTabPanel({
           galleryPageSize={galleryPageSize}
           onChangeGalleryPageSize={onChangeGalleryPageSize}
         />
-
-        <AutoReadSection
-          autoReadEnabled={autoReadEnabled}
-          toggleAutoRead={toggleAutoRead}
-          autoReadThreshold={autoReadThreshold}
-          onChangeAutoReadThreshold={onChangeAutoReadThreshold}
-        />
-
+      </SettingsCategoryPanel>
+      <SettingsCategoryPanel id="storage" hidden={activeCategory !== "storage"}>
         <ImageDlSection
           ttlDays={ttlDays}
           onChangeTtlDays={onChangeTtlDays}
@@ -339,14 +347,11 @@ export default function DisplayTabPanel({
           headerShareTargetIds={headerShareTargetIds}
           setHeaderShareTargetIds={setHeaderShareTargetIds}
         />
-
+      </SettingsCategoryPanel>
+      <SettingsCategoryPanel id="voice" hidden={activeCategory !== "voice"}>
         <TtsVoiceSection />
-
-        <p className="text-[11px] text-text-muted">
-          変更は即座にプレビューに反映され、自動的に保存されますわ。
-        </p>
-      </div>
+      </SettingsCategoryPanel>
       <TextInputModal {...textInputModalProps} />
-    </div>
+    </>
   );
 }

@@ -17,6 +17,8 @@ import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
 import RecommendationNotificationSettings from "./RecommendationNotificationSettings";
 import type { RecommendationPushSettings } from "../../hooks/useRecommendationPushSettings";
+import SettingsCategoryPanel from "./SettingsCategoryPanel";
+import type { SettingsCategoryId } from "./settings-catalog";
 import { SettingRow, ToggleSwitch } from "./shared";
 
 // Intl.supportedValuesOf("timeZone") はセッション不変な ~440 件の timezone 配列を返す。
@@ -43,6 +45,7 @@ const TIMEZONE_OPTIONS = TIMEZONES.map((tz) => (
 interface AiNotificationTabPanelProps {
   userId: string;
   hidden: boolean;
+  activeCategory?: SettingsCategoryId;
   autoTranslate: boolean;
   toggleAutoTranslate: () => void;
   autoSummarize: boolean;
@@ -59,6 +62,7 @@ interface AiNotificationTabPanelProps {
 export default function AiNotificationTabPanel({
   userId,
   hidden,
+  activeCategory,
   autoTranslate,
   toggleAutoTranslate,
   autoSummarize,
@@ -82,7 +86,7 @@ export default function AiNotificationTabPanel({
   } | null>(null);
 
   useEffect(() => {
-    if (hidden || aiProvider === "workers-ai") return;
+    if (hidden || activeCategory === "notifications" || aiProvider === "workers-ai") return;
     let cancelled = false;
     diagnoseTranslatorAvailability().then((value) => {
       if (!cancelled) setTranslatorDiag(value);
@@ -93,7 +97,7 @@ export default function AiNotificationTabPanel({
     return () => {
       cancelled = true;
     };
-  }, [hidden, aiProvider]);
+  }, [hidden, activeCategory, aiProvider]);
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [silentStart, setSilentStart] = useState("");
@@ -223,13 +227,11 @@ export default function AiNotificationTabPanel({
   }, [debouncedSilentStart, debouncedSilentEnd, debouncedTimezone]);
 
   return (
-    <div
-      id="panel-ai-notifications"
-      role="tabpanel"
-      aria-labelledby="tab-ai-notifications"
-      hidden={hidden}
-    >
-      <div className="flex flex-col gap-5 px-5 py-4">
+    <>
+      <SettingsCategoryPanel
+        id="ai"
+        hidden={hidden || (activeCategory !== undefined && activeCategory !== "ai")}
+      >
         <SettingRow label="AI の実行先">
           <select
             aria-label="AI の実行先"
@@ -333,7 +335,16 @@ export default function AiNotificationTabPanel({
             回までです。
           </span>
         </div>
-
+      </SettingsCategoryPanel>
+      <SettingsCategoryPanel
+        id="notifications"
+        hidden={hidden || (activeCategory !== undefined && activeCategory !== "notifications")}
+      >
+        {!pushEnabled && (
+          <p className="text-[12px] text-text-muted">
+            このブラウザは Push 通知に対応していません。
+          </p>
+        )}
         {pushEnabled && (
           <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
             <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
@@ -416,7 +427,7 @@ export default function AiNotificationTabPanel({
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </SettingsCategoryPanel>
+    </>
   );
 }

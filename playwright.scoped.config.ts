@@ -13,6 +13,7 @@ export default defineConfig({
     "immersive-quality.spec.ts",
     "reader-motion.spec.ts",
     "quick-reading-settings.spec.ts",
+    "settings-navigation.spec.ts",
     "feed-retry-status.spec.ts",
   ],
   timeout: 30_000,

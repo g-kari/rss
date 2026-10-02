@@ -25,12 +25,14 @@ export default function AutoReadSection({
           ariaLabel={autoReadEnabled ? "自動既読を OFF にする" : "自動既読を ON にする"}
         />
         {autoReadEnabled && (
-          <SegmentGroup
-            options={AUTO_READ_THRESHOLD_CYCLE.map((v) => ({ value: v, label: `${v}%` }))}
-            value={autoReadThreshold}
-            onChange={onChangeAutoReadThreshold}
-            ariaLabel="自動既読タイミング"
-          />
+          <div data-setting-id="auto-read-threshold" tabIndex={-1} aria-label="自動既読タイミング">
+            <SegmentGroup
+              options={AUTO_READ_THRESHOLD_CYCLE.map((v) => ({ value: v, label: `${v}%` }))}
+              value={autoReadThreshold}
+              onChange={onChangeAutoReadThreshold}
+              ariaLabel="自動既読タイミング"
+            />
+          </div>
         )}
       </div>
     </SettingRow>

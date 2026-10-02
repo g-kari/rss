@@ -17,7 +17,12 @@ export default function FeedManagementTabPanel({ hidden, feeds }: FeedManagement
     <>
       <div id="panel-feeds" role="tabpanel" aria-labelledby="tab-feeds" hidden={hidden}>
         <div className="flex flex-col gap-5 px-5 py-4">
-          <div className="flex items-center justify-between gap-4">
+          <div
+            data-setting-id="feed-health"
+            tabIndex={-1}
+            aria-label="フィードの健全性"
+            className="flex flex-wrap items-center justify-between gap-4"
+          >
             <div className="flex flex-col gap-0.5">
               <span className="text-[12px] text-text-default">
                 登録フィード:{" "}
