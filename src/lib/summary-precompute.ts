@@ -18,7 +18,7 @@ import { buildContentCacheKey } from "./fetch-article-content";
 import { matchCfCache } from "./cache-helper";
 import { sha256Hex } from "./r2";
 import { isValidFeedUrl } from "./url";
-import { MAX_SUMMARY_CACHE_URLS } from "./ai-summary-contract";
+import { APPROVED_SCHEDULED_SUMMARY_MODEL, MAX_SUMMARY_CACHE_URLS } from "./ai-summary-contract";
 import { claimPrecompute, finishPrecompute } from "./summary-precompute-lease";
 
 export interface SummaryPrecomputeEnv {
@@ -49,7 +49,7 @@ export async function runScheduledSummaryPrecompute(
   const config = summaryPrecomputeConfig(env, now);
   if (
     !config ||
-    config.model !== "@cf/google/gemma-4-26b-a4b-it" ||
+    config.model !== APPROVED_SCHEDULED_SUMMARY_MODEL ||
     config.maxArticles > 5 ||
     config.maxDailyArticles > 100 ||
     config.runMicros > 131075 ||
