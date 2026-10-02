@@ -8,7 +8,7 @@ export const COLLECTION_NAME_MAX_LENGTH = 50;
  * `PATCH /api/collections/:id` の `addArticleIds` で R2 オブジェクトが
  * 無制限に膨張するのを防ぐための上限。
  */
-export const MAX_ARTICLES_PER_COLLECTION = 1000;
+export { MAX_ARTICLES_PER_COLLECTION } from "./collection-limits";
 
 /**
 @internal production caller 0。同 file の `readCollections` / `writeCollections` が internal caller。

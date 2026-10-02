@@ -42,6 +42,7 @@ function SettingsPreview() {
               onClose={() => setOpen(false)}
               feeds={feeds}
               articles={[]}
+              notes={{}}
               setNote={record("note")}
               bookmarkIds={emptyIds}
               readingListIds={emptyIds}

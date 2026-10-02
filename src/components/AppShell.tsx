@@ -924,6 +924,7 @@ export default function AppShell({
                 showFeedSwitcher,
                 feeds,
                 articles,
+                notes,
                 setNote,
                 bookmarkIds,
                 readingListIds,

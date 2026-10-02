@@ -4,16 +4,11 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { useFullTextSearch } from "../../hooks/useFullTextSearch";
 import { downloadBlob } from "../../lib/download";
-import {
-  buildSavedSearchesJsonFile,
-  parseArticleStateJson,
-  parseCollectionArticlesJson,
-  parseSavedSearchesJson,
-} from "../../lib/export-json";
+import { buildSavedSearchesJsonFile, parseSavedSearchesJson } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
 import { devError } from "../../lib/dev-log";
 import type { Article, Collection } from "../../types";
-import { parseNotesJson } from "../../lib/export-json";
+import JsonRestoreControls from "./JsonRestoreControls";
 
 import SingleFileSettings from "./SingleFileSettings";
 
@@ -21,6 +16,7 @@ interface ImportExportTabPanelProps {
   userId: string;
   hidden: boolean;
   articles: Article[];
+  notes: Record<string, string>;
   setNote: (articleId: string, text: string) => void;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
@@ -34,6 +30,7 @@ export default function ImportExportTabPanel({
   userId,
   hidden,
   articles,
+  notes,
   setNote,
   bookmarkIds,
   readingListIds,
@@ -46,14 +43,8 @@ export default function ImportExportTabPanel({
   const { savedSearches, importSaved } = useFullTextSearch();
   const importRef = useRef<HTMLInputElement>(null);
   const savedSearchImportRef = useRef<HTMLInputElement>(null);
-  const notesImportRef = useRef<HTMLInputElement>(null);
-  const articleStateImportRef = useRef<HTMLInputElement>(null);
   const [opmlLoading, setOpmlLoading] = useState(false);
   const [savedSearchLoading, setSavedSearchLoading] = useState(false);
-  const [notesLoading, setNotesLoading] = useState(false);
-  const [articleStateLoading, setArticleStateLoading] = useState(false);
-  const [selectedCollectionId, setSelectedCollectionId] = useState("");
-  const collectionImportRef = useRef<HTMLInputElement>(null);
 
   const handleExport = async () => {
     if (opmlLoading) return;
@@ -138,111 +129,6 @@ export default function ImportExportTabPanel({
       toast.error("検索条件のインポートに失敗しました");
     } finally {
       setSavedSearchLoading(false);
-    }
-  };
-
-  const handleNotesImport = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("メモ JSON のサイズが大きすぎます（上限5MB）");
-      return;
-    }
-    setNotesLoading(true);
-    try {
-      const entries = parseNotesJson(await file.text());
-      const articleByUrl = new Map(articles.map((article) => [article.link, article]));
-      let imported = 0;
-      for (const entry of entries) {
-        const article = articleByUrl.get(entry.url);
-        if (!article) continue;
-        setNote(article.id, entry.note);
-        imported += 1;
-      }
-      if (imported === 0) {
-        toast.error("一致する記事のメモが見つかりません");
-      } else {
-        toast.success(`${imported}件のメモを取り込みました`);
-      }
-    } catch (err) {
-      devError("[ImportExportTabPanel] notes import failed", err);
-      toast.error("メモのインポートに失敗しました");
-    } finally {
-      setNotesLoading(false);
-    }
-  };
-
-  const handleArticleStateImport = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("記事状態 JSON のサイズが大きすぎます（上限5MB）");
-      return;
-    }
-    setArticleStateLoading(true);
-    try {
-      const parsed = parseArticleStateJson(await file.text());
-      if (!parsed) {
-        toast.error("ブックマークまたは後で読むの JSON ではありません");
-        return;
-      }
-      const articleByUrl = new Map(articles.map((article) => [article.link, article]));
-      const currentIds = parsed.mode === "bookmark" ? bookmarkIds : readingListIds;
-      const toggle = parsed.mode === "bookmark" ? toggleBookmark : toggleReadingList;
-      let imported = 0;
-      for (const url of parsed.urls) {
-        const article = articleByUrl.get(url);
-        if (!article || currentIds.has(article.id)) continue;
-        toggle(article.id);
-        imported += 1;
-      }
-      toast.success(
-        imported > 0
-          ? `${imported}件を${parsed.mode === "bookmark" ? "ブックマーク" : "後で読む"}に取り込みました`
-          : "一致する未登録の記事はありません",
-      );
-    } catch (err) {
-      devError("[ImportExportTabPanel] article state import failed", err);
-      toast.error("記事状態のインポートに失敗しました");
-    } finally {
-      setArticleStateLoading(false);
-    }
-  };
-
-  const handleCollectionImport = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    if (!selectedCollectionId) {
-      toast.error("取り込み先コレクションを選択してください");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("コレクション JSON のサイズが大きすぎます（上限5MB）");
-      return;
-    }
-    setArticleStateLoading(true);
-    try {
-      const parsed = parseCollectionArticlesJson(await file.text());
-      if (!parsed) {
-        toast.error("コレクションの JSON ではありません");
-        return;
-      }
-      const articleByUrl = new Map(articles.map((article) => [article.link, article]));
-      const target = collections.find((collection) => collection.id === selectedCollectionId);
-      const existing = new Set(target?.articleIds ?? []);
-      const articleIds = parsed.urls
-        .map((url) => articleByUrl.get(url)?.id)
-        .filter((id): id is string => typeof id === "string" && !existing.has(id));
-      await addArticlesToCollection(selectedCollectionId, articleIds);
-      toast.success(`${articleIds.length}件を「${target?.name ?? parsed.name}」に取り込みました`);
-    } catch (err) {
-      devError("[ImportExportTabPanel] collection import failed", err);
-      toast.error("コレクションのインポートに失敗しました");
-    } finally {
-      setArticleStateLoading(false);
     }
   };
 
@@ -370,91 +256,20 @@ export default function ImportExportTabPanel({
           </button>
         </div>
 
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-          メモ
-        </span>
-        <div data-setting-id="notes-import" tabIndex={-1} className="flex flex-col gap-2">
-          <p className="text-[12px] text-text-soft leading-relaxed">
-            記事 URL が一致するメモを JSON バックアップから復元できます。
-          </p>
-          <input
-            ref={notesImportRef}
-            type="file"
-            accept=".json,application/json"
-            className="hidden"
-            onChange={handleNotesImport}
-          />
-          <button
-            type="button"
-            disabled={notesLoading}
-            onClick={() => notesImportRef.current?.click()}
-            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            メモ JSON 取込
-          </button>
-        </div>
-
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-          ブックマーク / 後で読む
-        </span>
-        <div data-setting-id="article-state-import" tabIndex={-1} className="flex flex-col gap-2">
-          <p className="text-[12px] text-text-soft leading-relaxed">
-            記事 JSON エクスポートを読み込み、現在の記事 URL と一致する状態を復元できます。
-          </p>
-          <input
-            ref={articleStateImportRef}
-            type="file"
-            accept=".json,application/json"
-            className="hidden"
-            onChange={handleArticleStateImport}
-          />
-          <button
-            type="button"
-            disabled={articleStateLoading}
-            onClick={() => articleStateImportRef.current?.click()}
-            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            記事状態 JSON 取込
-          </button>
-        </div>
-
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
-          コレクション
-        </span>
-        <div data-setting-id="collections-import" tabIndex={-1} className="flex flex-col gap-2">
-          <p className="text-[12px] text-text-soft leading-relaxed">
-            コレクション JSON を既存コレクションへ URL 照合で追加します。
-          </p>
-          <select
-            value={selectedCollectionId}
-            onChange={(event) => setSelectedCollectionId(event.target.value)}
-            disabled={collections.length === 0 || articleStateLoading}
-            aria-label="コレクション JSON の取り込み先"
-            className="self-start px-2 py-1 text-[12px] rounded-md border border-border-default bg-surface-elevated text-text-default disabled:opacity-50"
-          >
-            <option value="">取り込み先を選択...</option>
-            {collections.map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.name}
-              </option>
-            ))}
-          </select>
-          <input
-            ref={collectionImportRef}
-            type="file"
-            accept=".json,application/json"
-            className="hidden"
-            onChange={handleCollectionImport}
-          />
-          <button
-            type="button"
-            disabled={collections.length === 0 || articleStateLoading}
-            onClick={() => collectionImportRef.current?.click()}
-            className="self-start flex items-center gap-1.5 px-3 py-1.5 max-md:min-h-[44px] lg:min-h-[24px] text-[12px] rounded-lg border border-border-default text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            コレクション JSON 取込
-          </button>
-        </div>
+        <JsonRestoreControls
+          key={`json-restore:${userId}`}
+          userId={userId}
+          hidden={hidden}
+          articles={articles}
+          notes={notes}
+          setNote={setNote}
+          bookmarkIds={bookmarkIds}
+          readingListIds={readingListIds}
+          toggleBookmark={toggleBookmark}
+          toggleReadingList={toggleReadingList}
+          collections={collections}
+          addArticlesToCollection={addArticlesToCollection}
+        />
 
         <SingleFileSettings key={userId} userId={userId} active={!hidden} />
       </div>

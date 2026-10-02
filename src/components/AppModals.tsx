@@ -25,6 +25,7 @@ interface Props {
   showFeedSwitcher: boolean;
   feeds: Feed[];
   articles: Article[];
+  notes: Record<string, string>;
   setNote: (articleId: string, text: string) => void;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
@@ -52,6 +53,7 @@ export default function AppModals({
   showFeedSwitcher,
   feeds,
   articles,
+  notes,
   setNote,
   bookmarkIds,
   readingListIds,
@@ -81,6 +83,7 @@ export default function AppModals({
           userId={userId}
           feeds={feeds}
           articles={articles}
+          notes={notes}
           setNote={setNote}
           bookmarkIds={bookmarkIds}
           readingListIds={readingListIds}

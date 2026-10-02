@@ -246,6 +246,7 @@ src/
     article-view/SelectionExcludePopup.tsx  # テキスト選択時に出る「引用をコピー」「除外」popup（keyboard navigation + WCAG AA 準拠、focus trap / Escape close / focus 復元）
     article-view/icons.tsx                  # article-view sub-components 共通の SVG アイコン群（DownloadIcon / ExternalLinkIcon 等）
     article-view/constants.ts               # ドロップダウン / コンテキストメニュー項目の共通スタイル定数（MENU_ITEM_CLS — ShareMenu / FilterMenu / GlobalFilterMenu / SnoozeMenu / ArticleContextMenu / GalleryContextMenu で共有）
+    user-settings/JsonRestoreControls.tsx # メモ・記事状態・コレクション JSON の read-only プレビューと明示的な復元、既存メモ保持・現在状態の再照合
     user-settings/           # ユーザー設定モーダルのサブコンポーネント群（AiNotificationTabPanel / DisplayTabPanel orchestrator + FontSection / LayoutSection / GallerySection / AutoReadSection / ImageDlSection / FeedManagementTabPanel / ImportExportTabPanel / TtsVoiceSection / shared、#880 で DisplayTabPanel を機能別 5 Section に分割）
   hooks/
     useAccessibilitySettings.ts  # 行間・テキスト均等割り設定（useUIState から分割）
@@ -472,6 +473,8 @@ src/
     push-silent-hours.ts     # Push 通知サイレント時間帯判定（isInSilentHours / isValidTimeHHMM / isValidIanaTimezone）
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
     export-readwise.ts       # メモ付き記事を Readwise CSV (Highlight/Title/Author/URL/Note/Date) としてダウンロード
+    collection-limits.ts     # コレクション記事数の client/server 共通上限（R2 helper を client へ取り込まない）
+    json-restore-plan.ts     # 読み込み済み記事への URL 照合、メモ競合・追加候補 / 登録済み / 未一致と同期サイズの純粋な復元計画
     export-json.ts           # ブックマーク・読書リスト記事 (buildArticlesJson) + メモ (buildNotesJson) を構造化 JSON としてダウンロード — バックアップ/連携用
     export-shared.ts         # export-markdown / readwise / json 共通の field 抽出純粋関数（buildFeedTitleMap / clampSummaryText — helper-drift 解消）
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)
