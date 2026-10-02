@@ -86,6 +86,34 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it.each(["miss", "error"] as const)(
+  "keeps real click focus inside through a %s retry control removal and Escape",
+  (kind) => {
+    const props = makeProps({
+      entry: kind === "miss" ? { kind: "miss" } : { kind: "error", message: "通信エラー" },
+    });
+    const view = render(<ImmersiveSummaryReader {...props} />);
+    const retry = screen.getByRole("button", { name: "保存済み要約を再確認" });
+    retry.focus(); // Native pointer clicks focus buttons; fireEvent.click alone does not.
+    expect(retry).toHaveFocus();
+    fireEvent.click(retry);
+    expect(props.onRetry).toHaveBeenCalledOnce();
+    const title = screen.getByRole("heading", { name: article.title });
+    expect(title).toHaveFocus();
+    view.rerender(<ImmersiveSummaryReader {...props} entry={{ kind: "loading" }} />);
+    expect(screen.queryByRole("button", { name: "保存済み要約を再確認" })).toBeNull();
+    expect(title).toHaveFocus();
+    view.rerender(
+      <ImmersiveSummaryReader {...props} entry={{ kind: "hit", summary: makeSummary() }} />,
+    );
+    expect(title).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(props.onClose).toHaveBeenCalledOnce();
+    expect(props.onReadBody).not.toHaveBeenCalled();
+    expect(effects.fetch).not.toHaveBeenCalled();
+  },
+);
+
 describe("saved summary rendering", () => {
   it("renders Markdown and final text while preserving the cached result", () => {
     const summary = makeSummary(

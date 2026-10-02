@@ -7,6 +7,7 @@
 - 遅れて見つかった要約は「ショートをAI要約にする」で切り替えられます。切り替え時は一時停止します
 - 保存済み要約がない場合はフィード説明や取得済み本文の抜粋を使い、要約パネルから本文表示を開けます
 - 入力の打ち切り、生成情報不明、本文全体の取得状況不明、ショート表示の短縮を区別して表示します
+- 狭い画面でも字幕を最低2行残し、長い表示情報は独立してスクロールできます。再確認中もキーボードのフォーカスを保持します
 
 ## Responsibilities and limits
 
@@ -17,6 +18,8 @@ Summary state is ephemeral, partitioned by account, preference ownership, authen
 `resolveImmersiveText` distinguishes saved AI text from loaded body, feed body, feed description and title-only fallbacks. One frozen active presentation drives captions, transcript and narration. A late cache result can update the availability panel without replacing the playing presentation. Explicit source changes pause/reset that presentation. Account, model and scope changes remove the previous presentation immediately.
 
 `ImmersiveSummaryReader` safely renders final saved output and applies shared reading typography. Opening it pauses playback, preserves focus, and never starts body extraction or AI generation. Only its explicit body action opens the existing inline body reader. The summary consumer does not enable or alter scheduled precomputation, browser AI, automatic translation, or automatic summarization.
+
+The existing body reader may request content and OGP only after the explicit body action; this is separate from summary availability reads. Synthetic request guards authorize only that exact body article, reject a repeated OGP attempt, and revoke the body window on close. Summary-only and prefetched paths continue to reject OGP/content requests.
 
 ## Acceptance and hold conditions
 

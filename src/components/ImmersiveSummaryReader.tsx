@@ -136,7 +136,12 @@ export default function ImmersiveSummaryReader({
               <button
                 type="button"
                 className="min-h-11 rounded border border-border-default px-3"
-                onClick={onRetry}
+                onClick={() => {
+                  // Loading removes this retry button. Keep keyboard focus in the pane
+                  // before the state change so Escape/Tab still reach the live trap.
+                  titleRef.current?.focus({ preventScroll: true });
+                  onRetry();
+                }}
               >
                 保存済み要約を再確認
               </button>

@@ -94,6 +94,11 @@ export default function CinematicArticle({
     onPause?.();
     setManualCaption(Math.max(0, Math.min(captions.length - 1, next)));
   };
+  const hasContext =
+    !!textPresentation?.metadata ||
+    textPresentation?.previewShortened ||
+    !motionAllowed ||
+    playback.failed;
   return (
     <div className="cinematic-article">
       <div
@@ -168,30 +173,44 @@ export default function CinematicArticle({
               </>
             )}
           </div>
-          {textPresentation?.metadata && (
-            <p className="cinematic-static" data-testid="caption-summary-provenance">
-              {textPresentation.metadata.inputTruncated === true
-                ? "入力は途中で打ち切り"
-                : textPresentation.metadata.inputTruncated === false
-                  ? "入力の打ち切りなし"
-                  : "入力の打ち切り有無不明"}{" "}
-              · 本文全体の取得状況不明
-            </p>
-          )}
-          {textPresentation?.previewShortened && (
-            <p className="cinematic-static">
-              {textPresentation.source === "cached-ai"
-                ? "表示は要約の抜粋です。続きは要約表示で確認できます。"
-                : "表示は説明・本文の抜粋です。本文から続きを確認できます。"}
-            </p>
-          )}
-          {(!motionAllowed || playback.failed) && (
-            <p className="cinematic-static">
-              {!motionAllowed
-                ? `画像の動きは停止中（${motionReason || "動き OFF"}）`
-                : "画像の動きを利用できません"}{" "}
-              · 記事の自動送りは再生ボタンで操作できます
-            </p>
+          {hasContext && (
+            <div
+              className="cinematic-context-scroll"
+              role="region"
+              tabIndex={0}
+              aria-label="記事の表示情報をスクロール"
+              onFocus={() => onPause?.()}
+              onKeyDown={(event) => {
+                if (["ArrowUp", "ArrowDown", "PageUp", "PageDown"].includes(event.key))
+                  event.stopPropagation();
+              }}
+            >
+              {textPresentation?.metadata && (
+                <p className="cinematic-static" data-testid="caption-summary-provenance">
+                  {textPresentation.metadata.inputTruncated === true
+                    ? "入力は途中で打ち切り"
+                    : textPresentation.metadata.inputTruncated === false
+                      ? "入力の打ち切りなし"
+                      : "入力の打ち切り有無不明"}{" "}
+                  · 本文全体の取得状況不明
+                </p>
+              )}
+              {textPresentation?.previewShortened && (
+                <p className="cinematic-static">
+                  {textPresentation.source === "cached-ai"
+                    ? "表示は要約の抜粋です。続きは要約表示で確認できます。"
+                    : "表示は説明・本文の抜粋です。本文から続きを確認できます。"}
+                </p>
+              )}
+              {(!motionAllowed || playback.failed) && (
+                <p className="cinematic-static">
+                  {!motionAllowed
+                    ? `画像の動きは停止中（${motionReason || "動き OFF"}）`
+                    : "画像の動きを利用できません"}{" "}
+                  · 記事の自動送りは再生ボタンで操作できます
+                </p>
+              )}
+            </div>
           )}
         </div>
         <div className="cinematic-progress" aria-hidden="true">

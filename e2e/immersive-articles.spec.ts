@@ -95,7 +95,7 @@ for (const viewport of [
         document.documentElement.dataset.theme = "dark";
       });
       await page.screenshot({ path: testInfo.outputPath("immersive-dark.png") });
-      await page.getByRole("region").evaluate((element) => {
+      await page.getByRole("region", { name: "おすすめ記事を縦にスワイプ" }).evaluate((element) => {
         element.scrollTop = element.clientHeight;
       });
       await expect(page.getByRole("status")).toHaveText("2 / 10件");

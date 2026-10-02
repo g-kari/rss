@@ -138,6 +138,24 @@ describe("CinematicArticle", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/本文から続きを/)).toBeNull();
   });
+  it("keeps overflow display information keyboard-reachable without article navigation", () => {
+    state.visual.motionReason = "静止表示";
+    const parentKey = vi.fn();
+    const pause = vi.fn();
+    render(
+      <div onKeyDown={parentKey}>
+        <CinematicArticle {...props} onPause={pause} />
+      </div>,
+    );
+    const information = screen.getByRole("region", { name: "記事の表示情報をスクロール" });
+    information.focus();
+    expect(information).toHaveFocus();
+    expect(pause).toHaveBeenCalledOnce();
+    for (const key of ["ArrowUp", "ArrowDown", "PageUp", "PageDown"])
+      fireEvent.keyDown(information, { key });
+    expect(parentKey).not.toHaveBeenCalled();
+    expect(information).toHaveTextContent("画像の動きは停止中");
+  });
   it("refreshes captions from a newly loaded cache when returning from inline reading", () => {
     const current = {
       ...article,

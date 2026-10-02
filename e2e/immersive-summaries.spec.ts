@@ -46,6 +46,7 @@ interface Diagnostics {
   behavior: "hit" | "mixed" | "error" | "deferred";
   allowedContent: Set<string>;
   content: string[];
+  ogp: string[];
   makeHit: (url: string, model: WorkersAiModelId) => CachedSummary;
 }
 interface SpeechState {
@@ -132,6 +133,7 @@ test.beforeEach(async ({ page }) => {
     behavior: "hit",
     allowedContent: new Set(),
     content: [],
+    ogp: [],
     makeHit,
   };
   diagnostics.set(page, state);
@@ -220,11 +222,20 @@ test.beforeEach(async ({ page }) => {
       mainFrame &&
       ["fetch", "xhr"].includes(request.resourceType()) &&
       url.origin === origin &&
-      url.pathname === "/api/content" &&
+      (url.pathname === "/api/content" || url.pathname === "/api/ogp") &&
       [...url.searchParams.keys()].length === 1 &&
       url.searchParams.has("url") &&
       knownUrls.has(url.searchParams.get("url")!)
     ) {
+      if (url.pathname === "/api/ogp") {
+        const article = url.searchParams.get("url")!;
+        if (state.ogp.includes(article)) {
+          state.rejected.push(`Repeated explicit-body OGP: ${article}`);
+          return route.abort();
+        }
+        state.ogp.push(article);
+        return route.fulfill({ contentType: "application/json", body: "{}" });
+      }
       state.content.push(url.searchParams.get("url")!);
       return route.fulfill({
         contentType: "application/json",
@@ -321,7 +332,7 @@ test.afterEach(async ({ page }) => {
   const state = diagnostics.get(page)!;
   expect(
     state.rejected,
-    "No generation, translation, browser AI, auth mutation, media, OGP or external requests",
+    "No generation, translation, browser AI, auth mutation, media or external requests; content/OGP require explicit matching body action",
   ).toEqual([]);
   expect(state.errors, "Production-component JavaScript exceptions must remain visible").toEqual(
     [],
@@ -556,6 +567,15 @@ for (const theme of ["light", "dark"]) {
         ".immersive-toolbar button, .immersive-toolbar select, .immersive-footer button",
       );
       await captionReadability(page);
+      const information = activeSlide(page).getByRole("region", {
+        name: "記事の表示情報をスクロール",
+      });
+      await information.focus();
+      await expect(information).toBeFocused();
+      await page.keyboard.press("PageDown");
+      await page.clock.runFor(80);
+      await expect(position(page)).toHaveText("2 / 10件");
+      await expect(information).toContainText("本文全体の取得状況不明");
       expect(await ids(page)).toEqual(["0", "1"]);
       expect(state.content).toEqual([]);
     });
@@ -746,6 +766,7 @@ test("body reader interruption keeps a late hit separate and restores queue, spe
   await expect(position(page)).toHaveText("1 / 10件");
   await page.keyboard.press("Escape");
   await expect(body).toHaveCount(0);
+  state.allowedContent.delete(articleUrl(0));
   await expect(position(page)).toBeVisible();
   await page.clock.runFor(40);
   await expect(here).toBeFocused();
@@ -756,6 +777,7 @@ test("body reader interruption keeps a late hit separate and restores queue, spe
   await requireHit(summaryDialog(page), 0);
   await closeSummary(page);
   expect(state.content).toEqual([articleUrl(0)]);
+  expect(state.ogp).toEqual([articleUrl(0)]);
   expect(await ids(page)).toEqual(["0"]);
 });
 
@@ -784,6 +806,9 @@ test("mixed hit/miss cache inspection offers an explicit cache-only retry and bo
     .getByRole("button", { name: "保存済み要約を再確認", exact: true })
     .click();
   await requireHit(summaryDialog(page), 1);
+  await expect(
+    summaryDialog(page).getByRole("heading", { name: /^要約テスト記事 2：/ }),
+  ).toBeFocused();
   expect(state.requests.length).toBe(initialCount + 1);
   expect(state.requests.at(-1)!.urls).toEqual([articleUrl(1)]);
   await closeSummary(page);
@@ -799,12 +824,15 @@ test("mixed hit/miss cache inspection offers an explicit cache-only retry and bo
   await expect(summaryDialog(page)).toHaveCount(0);
   const body = page.getByRole("dialog", { name: "ここで記事の本文を読む" });
   await expect(body).toContainText("明示操作で取得した本文です");
+  await page.clock.runFor(80);
   await page.keyboard.press("Escape");
   await expect(body).toHaveCount(0);
+  state.allowedContent.delete(articleUrl(2));
   await expect(position(page)).toBeVisible();
   await page.clock.runFor(40);
   await expect(summaryButton(page)).toBeFocused();
   expect(state.content).toEqual([articleUrl(2)]);
+  expect(state.ogp).toEqual([articleUrl(2)]);
   expect(await ids(page)).toEqual(["0", "1", "2"]);
 });
 
@@ -834,6 +862,9 @@ test("cache error stays an honest fallback and manual retry never calls generati
     .getByRole("button", { name: "保存済み要約を再確認", exact: true })
     .click();
   await requireHit(summaryDialog(page), 0);
+  await expect(
+    summaryDialog(page).getByRole("heading", { name: /^要約テスト記事 1：/ }),
+  ).toBeFocused();
   expect(state.requests.at(-1)).toEqual({ urls: [articleUrl(0)], model: DEFAULT_AI_MODEL });
   await closeSummary(page);
   await expect(transcript(page)).toContainText(feedText(0));
