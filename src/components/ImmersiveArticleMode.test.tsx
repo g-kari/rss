@@ -115,7 +115,7 @@ describe("ImmersiveArticleMode", () => {
   });
   it("responds to native vertical scrolling and rapid keyboard changes without selection/read side effects", () => {
     render(<ImmersiveArticleMode {...props} />);
-    const scroller = screen.getByRole("region");
+    const scroller = screen.getByRole("region", { name: "おすすめ記事を縦にスワイプ" });
     Object.defineProperty(scroller, "clientHeight", { value: 400 });
     scroller.scrollTop = 400;
     fireEvent.scroll(scroller);
@@ -147,7 +147,7 @@ describe("ImmersiveArticleMode", () => {
         session={{ remaining: [], served: [articles[0]], paused: true, speed: 1 }}
       />,
     );
-    const scroller = screen.getByRole("region");
+    const scroller = screen.getByRole("region", { name: "おすすめ記事を縦にスワイプ" });
     Object.defineProperty(scroller, "clientHeight", { value: 400 });
     let alignedAfterInsertion = false;
     // Model the hosted browser retaining the persistent end-section snap target at its new offset.
@@ -181,7 +181,7 @@ describe("ImmersiveArticleMode", () => {
       button.focus();
       fireEvent.click(button);
       expect(button).toBeDisabled();
-      expect(screen.getByRole("region")).toHaveFocus();
+      expect(screen.getByRole("region", { name: "おすすめ記事を縦にスワイプ" })).toHaveFocus();
       fireEvent.keyDown(document.activeElement!, { key: "Escape" });
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(trigger).toHaveFocus();
@@ -194,7 +194,7 @@ describe("ImmersiveArticleMode", () => {
       advance(22);
       const stable = screen.getByRole(name === "再生速度" ? "combobox" : "button", { name });
       stable.focus();
-      const scroller = screen.getByRole("region");
+      const scroller = screen.getByRole("region", { name: "おすすめ記事を縦にスワイプ" });
       Object.defineProperty(scroller, "clientHeight", { value: 400 });
       scroller.scrollTop = 9200;
       fireEvent.scroll(scroller);
@@ -208,7 +208,7 @@ describe("ImmersiveArticleMode", () => {
       start();
       advance(22);
       screen.getByRole("button", { name }).focus();
-      const scroller = screen.getByRole("region");
+      const scroller = screen.getByRole("region", { name: "おすすめ記事を縦にスワイプ" });
       Object.defineProperty(scroller, "clientHeight", { value: 400 });
       scroller.scrollTop = 9200;
       fireEvent.scroll(scroller);

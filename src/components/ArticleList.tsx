@@ -65,6 +65,7 @@ interface Props {
   recommendationContext?: {
     scopeKey?: string;
     userId: string;
+    summaryAccess?: boolean;
     readBeforeTimestamp: string | null;
     likeIds: Set<string>;
     historyIds: Set<string>;

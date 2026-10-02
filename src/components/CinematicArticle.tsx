@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Article } from "../types";
+import type { ImmersiveTextPresentation } from "../lib/immersive-summary";
 import {
   immersiveCaptions,
   immersiveExcerpt,
@@ -15,6 +16,7 @@ import CinematicVideo from "./CinematicVideo";
 
 interface Props {
   article: Article;
+  textPresentation?: ImmersiveTextPresentation;
   thumb?: string;
   thumbnailFallbacks?: string[];
   feedTitle: string;
@@ -29,6 +31,7 @@ interface Props {
 
 export default function CinematicArticle({
   article,
+  textPresentation,
   thumb,
   thumbnailFallbacks,
   feedTitle,
@@ -53,7 +56,7 @@ export default function CinematicArticle({
   }, [paused]);
   const fallback = useCallback(() => setVideoFailed(true), []);
   const video = useMemo(() => immersiveVideoSource(article), [article]);
-  const excerpt = immersiveExcerpt(article);
+  const excerpt = textPresentation?.text ?? immersiveExcerpt(article);
   const captions = useMemo(() => immersiveCaptions(article, excerpt), [article, excerpt]);
   const captionTimes = captions.map((caption) => Math.max(5000, Array.from(caption).length * 90));
   const readingDuration = captionTimes.reduce((total, time) => total + time, 0);
@@ -91,6 +94,11 @@ export default function CinematicArticle({
     onPause?.();
     setManualCaption(Math.max(0, Math.min(captions.length - 1, next)));
   };
+  const hasContext =
+    !!textPresentation?.metadata ||
+    textPresentation?.previewShortened ||
+    !motionAllowed ||
+    playback.failed;
   return (
     <div className="cinematic-article">
       <div
@@ -141,7 +149,8 @@ export default function CinematicArticle({
           </div>
           <div className="cinematic-caption-navigation">
             <span>
-              読み込み済みの説明・抜粋 {captionIndex + 1} / {captions.length}
+              {textPresentation?.sourceLabel ?? "読み込み済みの説明・抜粋"} {captionIndex + 1} /{" "}
+              {captions.length}
             </span>
             {captions.length > 1 && (
               <>
@@ -164,13 +173,44 @@ export default function CinematicArticle({
               </>
             )}
           </div>
-          {(!motionAllowed || playback.failed) && (
-            <p className="cinematic-static">
-              {!motionAllowed
-                ? `画像の動きは停止中（${motionReason || "動き OFF"}）`
-                : "画像の動きを利用できません"}{" "}
-              · 記事の自動送りは再生ボタンで操作できます
-            </p>
+          {hasContext && (
+            <div
+              className="cinematic-context-scroll"
+              role="region"
+              tabIndex={0}
+              aria-label="記事の表示情報をスクロール"
+              onFocus={() => onPause?.()}
+              onKeyDown={(event) => {
+                if (["ArrowUp", "ArrowDown", "PageUp", "PageDown"].includes(event.key))
+                  event.stopPropagation();
+              }}
+            >
+              {textPresentation?.metadata && (
+                <p className="cinematic-static" data-testid="caption-summary-provenance">
+                  {textPresentation.metadata.inputTruncated === true
+                    ? "入力は途中で打ち切り"
+                    : textPresentation.metadata.inputTruncated === false
+                      ? "入力の打ち切りなし"
+                      : "入力の打ち切り有無不明"}{" "}
+                  · 本文全体の取得状況不明
+                </p>
+              )}
+              {textPresentation?.previewShortened && (
+                <p className="cinematic-static">
+                  {textPresentation.source === "cached-ai"
+                    ? "表示は要約の抜粋です。続きは要約表示で確認できます。"
+                    : "表示は説明・本文の抜粋です。本文から続きを確認できます。"}
+                </p>
+              )}
+              {(!motionAllowed || playback.failed) && (
+                <p className="cinematic-static">
+                  {!motionAllowed
+                    ? `画像の動きは停止中（${motionReason || "動き OFF"}）`
+                    : "画像の動きを利用できません"}{" "}
+                  · 記事の自動送りは再生ボタンで操作できます
+                </p>
+              )}
+            </div>
           )}
         </div>
         <div className="cinematic-progress" aria-hidden="true">
@@ -178,7 +218,7 @@ export default function CinematicArticle({
         </div>
       </div>
       <p className="cinematic-transcript sr-only">
-        <span>読み込み済みの説明・抜粋</span>
+        <span>{textPresentation?.sourceLabel ?? "読み込み済みの説明・抜粋"}</span>
         {excerpt || "短い説明はありません。「本文を読む」から記事を開けます。"}
       </p>
     </div>

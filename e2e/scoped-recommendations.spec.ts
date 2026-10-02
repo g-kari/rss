@@ -219,7 +219,11 @@ for (const viewport of [
       ).toHaveCount(0);
       await expect(dialog.getByRole("status")).toHaveText("1 / 1件");
       await expect
-        .poll(() => dialog.getByRole("region").evaluate((element) => element.scrollTop))
+        .poll(() =>
+          dialog
+            .getByRole("region", { name: "おすすめ記事を縦にスワイプ" })
+            .evaluate((element) => element.scrollTop),
+        )
         .toBe(0);
       await expect(page.getByTestId("shown-ids")).toHaveText('["in-scope","second"]');
       await page.screenshot({ path: testInfo.outputPath("continued-one-item-batch.png") });

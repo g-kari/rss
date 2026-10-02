@@ -1008,6 +1008,7 @@ export default function AppShell({
               articleListProps={{
                 recommendationContext: {
                   userId: user.id,
+                  summaryAccess: !sessionExpired,
                   likeIds,
                   historyIds,
                   readBeforeTimestamp: effectiveReadBeforeTimestamp,

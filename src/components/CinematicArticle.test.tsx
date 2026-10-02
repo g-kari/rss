@@ -114,6 +114,48 @@ describe("CinematicArticle", () => {
     expect(screen.getByText(/短い説明はありません/)).toBeInTheDocument();
     expect(screen.queryByRole("img")).toBeNull();
   });
+  it("labels shortened cached summaries separately from loaded excerpt previews", () => {
+    const presentation = {
+      text: "取得済みの説明です。",
+      source: "excerpt" as const,
+      sourceLabel: "フィード説明の抜粋",
+      metadata: null,
+      previewShortened: true,
+    };
+    const { rerender } = render(<CinematicArticle {...props} textPresentation={presentation} />);
+    expect(
+      screen.getByText("表示は説明・本文の抜粋です。本文から続きを確認できます。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/続きは要約表示/)).toBeNull();
+    rerender(
+      <CinematicArticle
+        {...props}
+        textPresentation={{ ...presentation, source: "cached-ai", sourceLabel: "保存済みのAI要約" }}
+      />,
+    );
+    expect(
+      screen.getByText("表示は要約の抜粋です。続きは要約表示で確認できます。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/本文から続きを/)).toBeNull();
+  });
+  it("keeps overflow display information keyboard-reachable without article navigation", () => {
+    state.visual.motionReason = "静止表示";
+    const parentKey = vi.fn();
+    const pause = vi.fn();
+    render(
+      <div onKeyDown={parentKey}>
+        <CinematicArticle {...props} onPause={pause} />
+      </div>,
+    );
+    const information = screen.getByRole("region", { name: "記事の表示情報をスクロール" });
+    information.focus();
+    expect(information).toHaveFocus();
+    expect(pause).toHaveBeenCalledOnce();
+    for (const key of ["ArrowUp", "ArrowDown", "PageUp", "PageDown"])
+      fireEvent.keyDown(information, { key });
+    expect(parentKey).not.toHaveBeenCalled();
+    expect(information).toHaveTextContent("画像の動きは停止中");
+  });
   it("refreshes captions from a newly loaded cache when returning from inline reading", () => {
     const current = {
       ...article,

@@ -7,6 +7,7 @@ export default defineConfig({
     "scoped-recommendations.spec.ts",
     "immersive-articles.spec.ts",
     "immersive-continuity.spec.ts",
+    "immersive-summaries.spec.ts",
     "immersive-autoplay-narration.spec.ts",
     "immersive-native-video.spec.ts",
     "immersive-quality.spec.ts",
