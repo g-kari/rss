@@ -381,7 +381,7 @@ export function useFilteredArticles({
     ],
   );
 
-  const { filtered, strictStateIds } = useMemo(
+  const { filtered, strictStateIds, recommendationDisplayCandidates } = useMemo(
     () => {
       const options: Parameters<typeof applyStateFilterAndSort>[1] = {
         feedId,
@@ -412,6 +412,13 @@ export function useFilteredArticles({
       );
       return {
         filtered: applyStateFilterAndSort(structuralFiltered, options),
+        // Painted immersive cards may outlive only their own unread transition. Every
+        // structural and saved/liked/note/digest predicate still applies to retention.
+        recommendationDisplayCandidates: applyStateFilterAndSort(recommendationSources, {
+          ...options,
+          activeIds: EMPTY_SET,
+          unreadOnly: false,
+        }),
         strictStateIds: new Set(
           applyStateFilterAndSort(
             options.digestMode || isDigestFeed ? recommendationSources : activeArticles,
@@ -552,6 +559,7 @@ export function useFilteredArticles({
   return useMemo<FilterState>(
     () => ({
       recommendationCandidates,
+      recommendationDisplayCandidates,
       recommendationSources,
       filtered: deduplicated,
       visible,
@@ -592,6 +600,7 @@ export function useFilteredArticles({
     }),
     [
       recommendationCandidates,
+      recommendationDisplayCandidates,
       recommendationSources,
       deduplicated,
       visible,
@@ -636,6 +645,8 @@ export function useFilteredArticles({
 export interface FilterState {
   /** Exact displayed scope, without the reader's retained-active-article exceptions. */
   recommendationCandidates?: Article[];
+  /** Strict state/content scope, relaxing only unread filtering for already painted cards. */
+  recommendationDisplayCandidates?: Article[];
   /** Content/view filters applied, before read-state filters; local recommendation evidence. */
   recommendationSources?: Article[];
   filtered: Article[];

@@ -35,5 +35,5 @@ it("does not stretch tiny fullscreen images and clears sizing for a new larger s
   rerender(
     <ArticleThumbnail thumb="https://example.com/large.jpg" className="thumb" limitUpscale />,
   );
-  expect(image.style.width).toBe("");
+  expect(container.querySelector("img")!.style.width).toBe("");
 });

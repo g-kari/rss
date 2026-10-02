@@ -311,26 +311,20 @@ it("starts newly available candidates when reopening a session that has never co
   expect(screen.queryByRole("button", { name: "次の10件を見る" })).toBeNull();
 });
 
-it("keeps an occupied or consumed queue stable when same-scope candidates are added", () => {
+it("adds same-scope candidates without replacing the current card or replaying consumed items", () => {
   const { rerender } = render(<ArticleRecommendations {...props} candidates={[articles[0]]} />);
   const entry = screen.getByRole("button", { name: "ドパガキモード" });
   fireEvent.click(entry);
   rerender(<ArticleRecommendations {...props} candidates={articles} />);
-  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
-  fireEvent.click(entry);
-  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(1);
+  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(3);
   expect(screen.getByRole("heading", { name: "記事 a" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "本文を読む" }));
   fireEvent.click(entry);
-  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(0);
-  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
   expect(document.querySelectorAll(".immersive-slide")).toHaveLength(2);
   expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
 });
 
-it("does not restart an exhausted served batch when same-scope candidates arrive later", () => {
+it("resumes an exhausted session with newly arrived candidates but never restarts served articles", () => {
   const { rerender } = render(<ArticleRecommendations {...props} candidates={[articles[0]]} />);
   const entry = screen.getByRole("button", { name: "ドパガキモード" });
   fireEvent.click(entry);
@@ -338,9 +332,6 @@ it("does not restart an exhausted served batch when same-scope candidates arrive
   fireEvent.click(screen.getByRole("button", { name: "ここで終わる" }));
   rerender(<ArticleRecommendations {...props} candidates={articles} />);
   fireEvent.click(entry);
-  expect(document.querySelectorAll(".immersive-slide")).toHaveLength(0);
-  expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
   expect(document.querySelectorAll(".immersive-slide")).toHaveLength(2);
   expect(screen.queryByRole("heading", { name: "記事 a" })).toBeNull();
 });

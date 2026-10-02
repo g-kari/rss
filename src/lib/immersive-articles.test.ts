@@ -182,3 +182,14 @@ it("keeps a valid reordered proxy after HTML entity normalization alongside malf
     ),
   ).toEqual([`/api/image-proxy?width=800&url=${encoded}`]);
 });
+
+it("does not let missing or broken metadata mask the list's YouTube fallback", () => {
+  const article = {
+    ...articles[0],
+    link: "https://www.youtube.com/watch?v=abcde12345F",
+    ogImage: "https://example.com/broken.jpg",
+  };
+  expect(immersiveThumbnailSources(article, {})).toContain(
+    "https://i.ytimg.com/vi/abcde12345F/mqdefault.jpg",
+  );
+});

@@ -9,7 +9,7 @@ import { isProxiedImageUrl } from "./image-proxy-url";
 import { collectImageUrlsFromHtml } from "./image-extractor";
 import { contentLruCache } from "./lru-cache";
 import { getProviderContentCacheId } from "./slide-providers";
-import { resolveThumbnail } from "./article-utils";
+import { resolveThumbnailSources } from "./article-utils";
 import { isClipImageUrl } from "./clip-image-url";
 import { isValidPublicUrl } from "./url";
 import { immersiveSentences, sentenceExcerpt } from "./immersive-text";
@@ -33,7 +33,7 @@ export function getImmersiveCandidates(options: ArticleRecommendationOptions): A
   });
 }
 
-/** Explicit batches only: serving a card is neither a read nor an engagement signal. */
+/** Small local queue replenishments; queued cards are not read or engagement signals. */
 export function createImmersiveBatch(options: ArticleRecommendationOptions, served: Article[]) {
   const seenIds = new Set(served.map((article) => article.id));
   const seenLinks = new Set(served.map((article) => article.link).filter(Boolean));
@@ -116,12 +116,10 @@ export function immersiveThumbnailSources(
 ): string[] {
   const cachedBody = contentLruCache.get(getProviderContentCacheId(article.id, article.link));
   const candidates = [
-    article.link ? ogpCache[article.link] : undefined,
-    article.ogImage,
+    ...resolveThumbnailSources(article, ogpCache),
     ...collectImageUrlsFromHtml(cachedBody || "", { preferResponsive: true }),
     ...collectImageUrlsFromHtml(article.content || "", { preferResponsive: true }),
     ...collectImageUrlsFromHtml(article.summary, { preferResponsive: true }),
-    resolveThumbnail(article, {}),
   ];
   const safe = Array.from(
     new Set(
@@ -137,7 +135,7 @@ export function immersiveThumbnailSources(
   return [
     ...safe.filter((source) => !isSmallImmersiveImage(source)),
     ...safe.filter(isSmallImmersiveImage),
-  ];
+  ].slice(0, 8);
 }
 
 function isSmallImmersiveImage(source: string): boolean {

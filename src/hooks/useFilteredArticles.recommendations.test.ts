@@ -210,6 +210,7 @@ describe("strict scoped recommendation candidates", () => {
     act(() => result.current[toggle]());
     expect(ids(result.current.filtered)).toEqual(["picked", "active"]);
     expect(ids(result.current.recommendationCandidates)).toEqual(["picked"]);
+    expect(ids(result.current.recommendationDisplayCandidates)).toEqual(["picked"]);
   });
 
   it.each([
