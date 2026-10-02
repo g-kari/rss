@@ -80,6 +80,7 @@ const props = {
   onClose: vi.fn(),
   feeds: [],
   articles: [],
+  notes: {},
   setNote: vi.fn(),
   bookmarkIds: new Set<string>(),
   readingListIds: new Set<string>(),

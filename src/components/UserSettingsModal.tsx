@@ -17,6 +17,7 @@ interface Props {
   onClose: () => void;
   feeds: Feed[];
   articles: Article[];
+  notes: Record<string, string>;
   setNote: (articleId: string, text: string) => void;
   bookmarkIds: Set<string>;
   readingListIds: Set<string>;
@@ -38,6 +39,7 @@ export default function UserSettingsModal({
   onClose,
   feeds,
   articles,
+  notes,
   setNote,
   bookmarkIds,
   readingListIds,
@@ -240,6 +242,7 @@ export default function UserSettingsModal({
           userId={userId}
           hidden={activeCategory !== "import-export"}
           articles={articles}
+          notes={notes}
           setNote={setNote}
           bookmarkIds={bookmarkIds}
           readingListIds={readingListIds}
