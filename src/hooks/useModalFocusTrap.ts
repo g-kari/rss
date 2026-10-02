@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 import { FOCUSABLE_SELECTOR } from "../lib/modal-focus";
 
+// Only dialogs that actually own a live trap may consume a parent overlay's Escape.
+const activeDialogRefs = new Set<RefObject<HTMLDivElement | null>>();
+
 interface UseModalFocusTrapOptions {
   /** Modal close handler (Escape キーで発火) */
   onClose: () => void;
@@ -30,6 +33,8 @@ interface UseModalFocusTrapOptions {
    * 省略時は Modal open 前の document.activeElement に戻る。
    */
   returnFocusEl?: HTMLElement | null;
+  /** Preserve the current reader scroll position when returning from a small settings panel. */
+  preventScrollOnReturn?: boolean;
 }
 
 interface UseModalFocusTrapResult {
@@ -55,7 +60,14 @@ export function useModalFocusTrap(
   dialogRef: RefObject<HTMLDivElement | null>,
   options: UseModalFocusTrapOptions,
 ): UseModalFocusTrapResult {
-  const { onClose, isOpen, initialFocusRef, captureEscape = false, returnFocusEl } = options;
+  const {
+    onClose,
+    isOpen,
+    initialFocusRef,
+    captureEscape = false,
+    returnFocusEl,
+    preventScrollOnReturn = false,
+  } = options;
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // open / mount 時に focus セットアップ + returnFocusRef 保存。
@@ -64,6 +76,7 @@ export function useModalFocusTrap(
   const openState = isOpen === undefined ? true : isOpen;
   useEffect(() => {
     if (openState) {
+      activeDialogRefs.add(dialogRef);
       // 開く前のフォーカス位置を保存
       returnFocusRef.current = document.activeElement as HTMLElement | null;
       const target =
@@ -72,12 +85,13 @@ export function useModalFocusTrap(
         dialogRef.current;
       target?.focus();
       return () => {
+        activeDialogRefs.delete(dialogRef);
         // 閉じる時にトリガー要素へフォーカスを戻す。
         // returnFocusEl が指定されている場合はそちらを優先 (SnoozeModal のように open 後に元要素が DOM から消えるケース)。
         const ret = returnFocusEl ?? returnFocusRef.current;
         returnFocusRef.current = null;
         if (ret && typeof ret.focus === "function" && document.contains(ret)) {
-          ret.focus();
+          ret.focus({ preventScroll: preventScrollOnReturn });
         }
       };
     }
@@ -91,6 +105,12 @@ export function useModalFocusTrap(
     if (!captureEscape || !openState) return;
     function onCaptureKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // A nested (including portaled) dialog owns Escape before its reader overlay.
+        const activeRefs = Array.from(activeDialogRefs);
+        let owner = e.target instanceof Element ? e.target : null;
+        while (owner && !activeRefs.some((ref) => ref.current === owner))
+          owner = owner.parentElement;
+        if (owner && owner !== dialogRef.current) return;
         e.stopPropagation();
         onClose();
       }

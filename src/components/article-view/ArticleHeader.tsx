@@ -10,6 +10,7 @@ import ArticleHeaderMeta from "./ArticleHeaderMeta";
 import ArticleHeaderAiTts from "./ArticleHeaderAiTts";
 import ArticleHeaderShare from "./ArticleHeaderShare";
 import ArticleHeaderEngagement from "./ArticleHeaderEngagement";
+import QuickReadingSettings from "../QuickReadingSettings";
 
 interface Props {
   article: Article;
@@ -198,6 +199,7 @@ export default function ArticleHeader({
         data-print="hide"
         className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap"
       >
+        <QuickReadingSettings key={article.id} />
         <ArticleHeaderAiTts
           article={article}
           hasContent={hasContent}

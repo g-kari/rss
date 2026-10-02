@@ -162,6 +162,7 @@ src/
     GalleryContextMenu.tsx   # ギャラリーレイアウト右クリックメニュー（画像保存・既読切替）
     ArticleContextMenu.tsx   # compact / list / card / magazine の汎用右クリックメニュー（既読・ブックマーク・後で読む・一覧から削除）
     LoadMoreButton.tsx       # 追加読み込みボタン（IntersectionObserver 自動トリガー）
+    QuickReadingSettings.tsx # 通常本文・immersive 本文の表示設定パネル（既存設定と永続化を共有）
     ArticleView.tsx          # 記事本文
     Modal.tsx                # 汎用モーダル基盤コンポーネント
     ConfirmModal.tsx         # 確認ダイアログモーダル（window.confirm 代替。useConfirm hook と組み合わせて使う）

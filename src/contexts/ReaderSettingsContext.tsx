@@ -107,3 +107,8 @@ export function useReaderSettings(): ReaderSettings {
   }
   return ctx;
 }
+
+/** Standalone immersive previews can render without the application's settings provider. */
+export function useOptionalReaderSettings(): ReaderSettings | null {
+  return useContext(ReaderSettingsContext);
+}

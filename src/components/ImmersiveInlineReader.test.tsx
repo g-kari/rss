@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { makeArticle } from "../../e2e/helpers/article";
+import { TestReaderSettings } from "../../e2e/helpers/reader-settings";
 import ImmersiveInlineReader from "./ImmersiveInlineReader";
 const state = vi.hoisted(() => ({
   storedContent: null as string | null,
@@ -109,5 +110,31 @@ it("reuses fetched content and does not extract native media or unsafe URLs", ()
       onClose={vi.fn()}
     />,
   );
+  expect(state.fetchFullContent).not.toHaveBeenCalled();
+});
+
+it("applies shared reading settings to inline body without remounting it or fetching again", () => {
+  state.storedContent = "<p>設定と同期する本文</p>";
+  const onClose = vi.fn();
+  const { container } = render(
+    <TestReaderSettings>
+      <ImmersiveInlineReader article={article} onClose={onClose} />
+    </TestReaderSettings>,
+  );
+  const body = container.querySelector(".article-content");
+  const documentView = screen.getByRole("document");
+  documentView.scrollTop = 80;
+  fireEvent.click(screen.getByRole("button", { name: "読書設定" }));
+  fireEvent.change(screen.getByLabelText("文字サイズ"), { target: { value: "large" } });
+  fireEvent.change(screen.getByLabelText("フォント"), { target: { value: "serif" } });
+  fireEvent.change(screen.getByLabelText("行間"), { target: { value: "loose" } });
+  fireEvent.change(screen.getByLabelText("本文の幅"), { target: { value: "wide" } });
+  expect(container.querySelector(".article-content")).toBe(body);
+  expect(body).toHaveClass("text-[19px]", "font-serif");
+  expect(body).toHaveStyle({ lineHeight: "2.3" });
+  expect(body?.parentElement).toHaveStyle({ maxWidth: "900px" });
+  expect(documentView.scrollTop).toBe(80);
+  fireEvent.keyDown(screen.getByLabelText("文字サイズ"), { key: "Escape" });
+  expect(onClose).not.toHaveBeenCalled();
   expect(state.fetchFullContent).not.toHaveBeenCalled();
 });

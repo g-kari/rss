@@ -10,6 +10,7 @@ export default defineConfig({
     "immersive-native-video.spec.ts",
     "immersive-quality.spec.ts",
     "reader-motion.spec.ts",
+    "quick-reading-settings.spec.ts",
     "feed-retry-status.spec.ts",
   ],
   timeout: 30_000,
