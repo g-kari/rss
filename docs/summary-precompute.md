@@ -27,20 +27,30 @@ Legacy R2 summary keys remain `ai-cache/summary/model-url-{sha256([model,url])}`
 
 A publisher's full body cannot be proven available after extraction. New records therefore say `unknown`, or `truncated` when the input was definitely shortened. Old model-specific plaintext records remain usable with all provenance fields unknown/null. Unknown-model URL-only caches are never used for an explicitly selected model. Oversized/malformed/version-mismatched records and unsafe thinking output are ignored. New string cache readers transparently unwrap versioned summaries, then fall back to legacy text. An older deployment never sees a JSON envelope after rollback; new-only records become cache misses for it. Translation cache keys are unchanged.
 
-## Production state: OFF
+## Approved production rollout
 
-This change does not enable precompute or add a schedule/binding/service. The shipped `SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED = false` code gate makes production cron summary inference unconditionally OFF, including if unknown retained operator variables are present. All `RSS_SUMMARY_PRECOMPUTE_*` configuration remains unset in `wrangler.toml`. Default and malformed activation values are OFF, meaning zero new summary inference. Existing article prefetch/extraction may still use its pre-existing toMarkdown fallback; this gate does not disable unrelated AI features. The existing 30-minute cron's body/OGP prefetch remains unchanged; an optional subsequent step can reuse its selected URLs and already-cached article bodies.
+The separately reviewed activation enables the existing 30-minute cron's downstream summary step for **Gemma 4 only**, after explicit approval of at most 100 articles per UTC day and USD 1 monthly conservative application reservations. No schedule, credential, permission, service or binding is added. The selected UI model is independent; immersive reading still only reads cached summaries for its explicitly selected model and never generates on a miss.
 
-Enabling requires a separately reviewed code activation of the rollout gate and an operator action with an explicitly approved model and budget. It requires all of:
+The explicit shipped configuration is:
 
-- `RSS_SUMMARY_PRECOMPUTE_ENABLED`: exactly `true`
-- `RSS_SUMMARY_PRECOMPUTE_MODEL`: a freshly priced eligible model, explicitly selected
-- `RSS_SUMMARY_PRECOMPUTE_RUN_USD`, `RSS_SUMMARY_PRECOMPUTE_DAY_USD`, `RSS_SUMMARY_PRECOMPUTE_MONTH_USD`: positive decimal USD limits, at most six fractional digits, ordered run ≤ day ≤ month
-- `RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES`: explicit integer 1–12
+- `RSS_SUMMARY_PRECOMPUTE_ENABLED=true`
+- `RSS_SUMMARY_PRECOMPUTE_MODEL=@cf/google/gemma-4-26b-a4b-it`
+- `RSS_SUMMARY_PRECOMPUTE_RUN_USD=0.131075`
+- `RSS_SUMMARY_PRECOMPUTE_DAY_USD=1`
+- `RSS_SUMMARY_PRECOMPUTE_MONTH_USD=1`
+- `RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES=5`
+- `RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES=100`
+- `RSS_SUMMARY_PRECOMPUTE_CONCURRENCY=1`
 
-Do not populate these variables merely to test this feature. No paid job, credentials, additional permissions or infrastructure are needed to leave it OFF. Since `keep_vars` preserves operator-managed variables, inspect effective deployed variables before any future gate activation. The current fixed code gate independently guarantees that this new scheduled summary step is OFF.
+The production wrapper rejects any configuration that broadens the approved model, five-per-run, 100-per-day, one-concurrent-invocation or USD 1 monthly envelope. Missing, malformed, disabled or unpriced configuration stops before storage or AI. Limits can be reduced or disabled. The daily count includes failed reservations and is derived from the ledger's run counters, independently of dollar limits. Run/day/month decimal USD values must remain positive and ordered run ≤ day ≤ month.
 
-The price snapshot is deliberately valid only from 2026-10-02 through 2026-10-31 UTC. Revalidate provider contracts, prices and bounds before extending it. Unknown models or stale/missing estimates fail closed.
+**USD 1 allows at most 38 reservations per month**, not 100 successful articles each day. Five reservations cost USD 0.131075, and 38 cost USD 0.996170. Failures remain reserved, so successful articles may be fewer. The USD 1 daily limit is redundant under the tighter monthly allowance but stays explicit. The entire context bound is intentionally conservative; it is not a provider invoice cap.
+
+A global R2 CAS lease serializes scheduled invocations, including overlapping/replayed cron deliveries. Each invocation still processes provider calls sequentially. Manual calls for unrelated articles are outside this scheduled concurrency limit and reservation budget; manual and scheduled generation of the same model/URL share the existing duplicate-generation claim.
+
+Cloudflare settings were inspected before activation: the existing `rss-reader` script had no summary precompute variables, and the R2 budget/global lease prefixes were empty. With `keep_vars`, explicit deployment values override retained values, and the effective deployed variables must be verified after deployment. Existing article prefetch/extraction may use its pre-existing toMarkdown fallback; these limits apply to the new summary step.
+
+The freshly checked primary Gemma 4 model/pricing pages confirm 256000 context tokens, USD 0.10/M input and USD 0.30/M output on 2026-10-02. The snapshot remains valid only through 2026-10-31 UTC and **automatically stops new work on 2026-11-01** unless prices/contracts are revalidated in another reviewed change. The clock and UTC day are checked immediately before every reservation; delayed events crossing midnight are skipped.
 
 ## Costs: estimates versus reservations
 
@@ -58,8 +68,8 @@ These are application usage reservations, **not a guaranteed Cloudflare invoice 
 
 ## Accounting and duplicate-generation safety
 
-- One strongly consistent R2 monthly ledger, shared across precompute models, records UTC day/run reservations in integer micro-USD before inference. Run IDs come from the trusted scheduled timestamp; a delayed event crossing a UTC month boundary is skipped to prevent a single run bypassing its limit in two monthly ledgers. Null conditional writes, malformed ledgers or storage errors fail closed. Failed/ambiguous jobs are not refunded.
-- The candidate scan is bounded to the existing maximum 150 prefetched URLs. Cache hits and known unavailable generation claims are skipped without spending reservations, so a cached/failed leading URL does not starve later articles. Actual reserved calls are bounded by the configured run count and run/day/month limits.
+- One strongly consistent R2 monthly ledger, shared across precompute models, records UTC day/run reservations in integer micro-USD before inference. Run IDs come from the trusted scheduled timestamp; delayed events crossing a UTC day boundary are skipped. Per-day run sums must match daily money totals, making article counts auditable without changing the legacy version-1 ledger schema. Null conditional writes, malformed ledgers or storage errors fail closed. Failed/ambiguous jobs are not refunded.
+- The candidate scan is bounded to the existing maximum 150 prefetched URLs. Cache hits and known unavailable generation claims are skipped without spending reservations, so a cached/failed leading URL does not starve later articles. Actual reserved calls are bounded by the configured run and daily article counts and run/day/month money limits.
 - Precompute reads only existing body-cache hits. Missing, malformed, oversized, empty or fewer-than-200-character effective body inputs are skipped. It does not re-extract or crawl a missing body.
 - Explicit manual summaries and precompute share a model/URL generation claim using R2 conditional create/ETag compare-and-swap, following the project's existing conditional-put pattern. [R2 documents strong consistency and null returns for unmet put preconditions](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/).
 - An active pending claim has no automatic timeout takeover: a slow original call must not overlap a second generation. After a terminal AI rejection or invalid output, a CAS marks it failed with a five-minute cooldown. Cron never automatically retries failed claims; a later explicit manual request may claim one after the cooldown. Manual cooldown responses include `Retry-After` and retry eligibility.
@@ -67,8 +77,10 @@ These are application usage reservations, **not a guaranteed Cloudflare invoice 
 
 ## Recovery and rollout checks
 
-Before an operator recovers a pending claim, pause precompute, confirm no manual/scheduled invocation can still be running, inspect provider/Worker logs and the model-specific cache, and reconcile the retained reservation. Do not delete a live claim, expire it by wall-clock alone, erase the budget ledger or refund a possibly billed call. If completion cannot be established, keep the hold. Recovery should conditionally update the inspected claim's exact ETag after confirming the old invocation ended; no public reset endpoint is provided.
+The global concurrency object is `ai-cache/summary-precompute/active.json`. Normal settled invocations conditionally transition it to `finished`; a terminated invocation or ambiguous release retains `pending`. It has no wall-clock takeover. Later scheduled runs log an active-invocation/operator hold and do no summary inference. This can pause all scheduled summaries until inspection and recovery; it must not be reported as normal completion. The completed-run log records the trusted run ID and generated count, without article content.
 
-Before enabling, check current eligible pricing/token contracts and effective deployment variables, explicitly choose a model/run/day/month budget, validate with mocks, then observe/reconcile a small approved run. Disable immediately on accounting anomalies. Turning OFF prevents new summary work; drain already-running invocations before assuming activity stopped. Reverting code does not cancel a provider request already in flight.
+Before an operator recovers a pending article claim or global invocation lease, set `RSS_SUMMARY_PRECOMPUTE_ENABLED=false`, verify the disabled deployment, and pause precompute, confirm no manual/scheduled invocation can still be running, inspect provider/Worker logs and the model-specific cache, and reconcile the retained reservation. Do not delete a live claim, expire it by wall-clock alone, erase the budget ledger or refund a possibly billed call. If completion cannot be established, keep the hold. The global lease may be conditionally marked `finished` only after confirming the original invocation and all provider promises ended; preserve its owner/run ID and require the exact inspected ETag. Recovery should conditionally update the inspected claim's exact ETag after confirming the old invocation ended; no public reset endpoint is provided.
 
-Regression coverage includes provider shapes/parameters, thinking rejection, authentication and URL/batch validation, zero-AI cache miss/OFF/unset budget, R2 CAS concurrency/failure, model isolation, short/unavailable bodies, truncation metadata, legacy compatibility, cooldown/operator recovery and cached-candidate starvation. Tests use mocks only.
+Hold publication on a failed exact-head production build, affected tests, type/lint checks or independent review. After merge, verify the deployment version and all eight effective summary variables, then observe the next natural cron and reconcile the lease, ledger and safe summary provenance. Do not trigger extra manual AI calls for verification. Disable immediately on accounting anomalies. Turning OFF prevents new summary work; drain already-running invocations before assuming activity stopped. Reverting code does not cancel a provider request already in flight.
+
+Regression coverage includes provider shapes/parameters, thinking rejection, authentication and URL/batch validation, zero-AI cache miss/OFF/unset budget, global overlapping-cron R2 CAS concurrency/release failure, 5/run, 100/day and 38/month boundaries, model isolation, short/unavailable bodies, truncation metadata, legacy compatibility, cooldown/operator recovery and cached-candidate starvation. Tests use mocks only.
