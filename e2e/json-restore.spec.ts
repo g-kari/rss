@@ -127,7 +127,7 @@ test("rechecks current bookmark membership and makes repeat imports add-only", a
   };
   await file(page, "記事状態 JSON ファイル", backup);
   await page.evaluate(() => window.registerRestoreBookmark());
-  await expect(page.getByText("追加可能: 1件 / 登録済み: 1件")).toBeVisible();
+  await expect(page.getByText("追加候補: 1件 / 登録済み: 1件")).toBeVisible();
   await page.getByRole("button", { name: "ブックマークに追加 (1件)" }).click();
   expect(await page.evaluate(() => window.restoreActions)).toEqual(["bookmark:two"]);
   await file(page, "記事状態 JSON ファイル", backup);
@@ -152,7 +152,7 @@ test("shows the selected collection and skips current members and unloaded URLs"
   };
   await file(page, "コレクション JSON ファイル", backup);
   await expect(page.getByText("取り込み先: 復元先コレクション")).toBeVisible();
-  await expect(page.getByText("追加可能: 1件 / 登録済み: 1件")).toBeVisible();
+  await expect(page.getByText("追加候補: 1件 / 登録済み: 1件")).toBeVisible();
   expect(await page.evaluate(() => window.restoreActions)).toEqual([]);
   await page.getByRole("button", { name: "コレクションに追加 (1件)" }).click();
   expect(await page.evaluate(() => window.restoreActions)).toEqual(["collection:collection:one"]);
@@ -174,5 +174,39 @@ test("category change, Escape and reopen discard pending restoration without wri
   await expect(page.getByRole("button", { name: "バックアップを開く", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "バックアップを開く", exact: true }).click();
   await expect(page.getByRole("region", { name: "JSON 復元プレビュー" })).toHaveCount(0);
+  expect(await page.evaluate(() => window.restoreActions)).toEqual([]);
+});
+
+test("rechecks collection capacity without truncating the requested batch", async ({ page }) => {
+  await open(page);
+  await page
+    .getByRole("combobox", { name: "コレクション JSON の取り込み先" })
+    .selectOption("collection");
+  await file(page, "コレクション JSON ファイル", {
+    label: "元",
+    articles: [{ url: "https://example.test/one" }, { url: "https://example.test/two" }],
+  });
+  await page.evaluate(() => window.fillRestoreCollection(999));
+  await expect(page.getByRole("alert")).toContainText("空き1件に対して追加候補2件");
+  await expect(page.getByRole("button", { name: "コレクションに追加 (2件)" })).toBeDisabled();
+  expect(await page.evaluate(() => window.restoreActions)).toEqual([]);
+  await page.evaluate(() => window.fillRestoreCollection(998));
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "コレクションに追加 (2件)" }).click();
+  expect(await page.evaluate(() => window.restoreActions)).toEqual([
+    "collection:collection:one,two",
+  ]);
+});
+
+test("does not queue an import whose known notes snapshot exceeds the sync request bound", async ({
+  page,
+}) => {
+  await open(page);
+  await page.evaluate(() => window.enlargeRestoreNotes());
+  await file(page, "メモ JSON ファイル", {
+    notes: [{ url: "https://example.test/one", note: "新規" }],
+  });
+  await expect(page.getByRole("alert")).toContainText("同期データの上限（512K文字）を超えています");
+  await expect(page.getByRole("button", { name: "メモを復元 (1件)" })).toBeDisabled();
   expect(await page.evaluate(() => window.restoreActions)).toEqual([]);
 });

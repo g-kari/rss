@@ -13,6 +13,8 @@ declare global {
   interface Window {
     restoreActions: string[];
     registerRestoreBookmark: () => void;
+    fillRestoreCollection: (count: number) => void;
+    enlargeRestoreNotes: () => void;
   }
 }
 window.restoreActions = [];
@@ -42,6 +44,19 @@ function RestorePreview() {
   ]);
   const toast = useToastState();
   window.registerRestoreBookmark = () => setBookmarks(new Set(["one"]));
+  window.fillRestoreCollection = (count) =>
+    setCollections((current) =>
+      current.map((collection) => ({
+        ...collection,
+        articleIds: Array.from({ length: count }, (_, index) => `existing-${index}`),
+      })),
+    );
+  window.enlargeRestoreNotes = () =>
+    setNotes(
+      Object.fromEntries(
+        Array.from({ length: 263 }, (_, index) => [`existing-${index}`, "a".repeat(2000)]),
+      ),
+    );
   return (
     <ToastProvider value={toast}>
       <main className="min-h-dvh bg-surface-base p-4 text-text-strong">

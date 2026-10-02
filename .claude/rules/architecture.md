@@ -473,7 +473,8 @@ src/
     push-silent-hours.ts     # Push 通知サイレント時間帯判定（isInSilentHours / isValidTimeHHMM / isValidIanaTimezone）
     export-markdown.ts       # ブックマーク・読書リスト記事を Markdown ファイルとしてダウンロード
     export-readwise.ts       # メモ付き記事を Readwise CSV (Highlight/Title/Author/URL/Note/Date) としてダウンロード
-    json-restore-plan.ts     # 読み込み済み記事への URL 照合、メモ競合と追加可能 / 登録済み / 未一致の純粋な復元計画
+    collection-limits.ts     # コレクション記事数の client/server 共通上限（R2 helper を client へ取り込まない）
+    json-restore-plan.ts     # 読み込み済み記事への URL 照合、メモ競合・追加候補 / 登録済み / 未一致と同期サイズの純粋な復元計画
     export-json.ts           # ブックマーク・読書リスト記事 (buildArticlesJson) + メモ (buildNotesJson) を構造化 JSON としてダウンロード — バックアップ/連携用
     export-shared.ts         # export-markdown / readwise / json 共通の field 抽出純粋関数（buildFeedTitleMap / clampSummaryText — helper-drift 解消）
     rate-limit.ts            # KV ベースのクールダウン・スライディングウィンドウ レートリミット (checkAndUpdateCooldown / checkSlidingWindow)

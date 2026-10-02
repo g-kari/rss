@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeArticle } from "../../e2e/helpers/article";
-import { planArticleRestore, planNoteRestore } from "./json-restore-plan";
+import {
+  MAX_RESTORE_SYNC_JSON_LENGTH,
+  planArticleRestore,
+  planNoteRestore,
+  planRestoreSync,
+} from "./json-restore-plan";
 import { parseArticleStateJson, parseNotesJson } from "./export-json";
 import { MAX_NOTE_LENGTH } from "./validation";
+import { emptyPendingSets, serializeReadState } from "./read-state-storage";
+vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: vi.fn() }));
+import { parseJsonBody } from "./server-auth";
 
 const articles = [
   makeArticle({ id: "one", link: "https://example.test/one", title: "一番目" }),
@@ -13,6 +21,72 @@ const note = (url: string, value: string) => ({
   note: value,
   title: "exported",
   feedTitle: "source",
+});
+
+it("checks the entire prospective notes snapshot and minimum state delta serialization", () => {
+  const notes = { old: "a".repeat(MAX_NOTE_LENGTH) };
+  const update = [{ articleId: "one", note: "b".repeat(MAX_NOTE_LENGTH) }];
+  const added = emptyPendingSets();
+  added.bookmarks.add("one");
+  const body = serializeReadState(
+    added,
+    emptyPendingSets(),
+    null,
+    null,
+    {},
+    { ...notes, one: update[0].note },
+    { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
+    false,
+    0,
+  );
+  expect(planRestoreSync(notes, update, "bookmark", ["one"])).toEqual({
+    noteCount: 2,
+    jsonLength: body.length,
+  });
+  expect(notes).toEqual({ old: "a".repeat(MAX_NOTE_LENGTH) });
+});
+
+it("matches the actual server parser at the exact JSON request-text limit and +1", async () => {
+  for (const extra of [0, 1]) {
+    const body = JSON.stringify("a".repeat(MAX_RESTORE_SYNC_JSON_LENGTH - 2 + extra));
+    const result = await parseJsonBody(
+      new Request("https://example.test/", { method: "POST", body }),
+    );
+    expect(result.ok).toBe(extra === 0);
+    if (!result.ok) expect(result.error.status).toBe(413);
+  }
+});
+
+it("includes the real sync envelope at the exact note snapshot boundary without other pending changes", async () => {
+  const notes = Object.fromEntries(
+    Array.from({ length: 259 }, (_, index) => [String(index).padStart(16, "0"), "a".repeat(2000)]),
+  );
+  const envelope = (value: Record<string, string>) =>
+    serializeReadState(
+      emptyPendingSets(),
+      emptyPendingSets(),
+      null,
+      null,
+      {},
+      value,
+      { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
+      false,
+      0,
+    );
+  const baseLength = envelope({ ...notes, boundary: "" }).length;
+  const remaining = MAX_RESTORE_SYNC_JSON_LENGTH - baseLength;
+  expect(remaining).toBeGreaterThan(0);
+  expect(remaining + 1).toBeLessThan(MAX_NOTE_LENGTH);
+  for (const extra of [0, 1]) {
+    const note = "b".repeat(remaining + extra);
+    const projected = { ...notes, boundary: note };
+    const plan = planRestoreSync(notes, [{ articleId: "boundary", note }]);
+    expect(plan.jsonLength).toBe(MAX_RESTORE_SYNC_JSON_LENGTH + extra);
+    const parsed = await parseJsonBody(
+      new Request("https://example.test/", { method: "POST", body: envelope(projected) }),
+    );
+    expect(parsed.ok).toBe(extra === 0);
+  }
 });
 
 describe("note restore plans", () => {

@@ -1,11 +1,44 @@
 import type { Article } from "../types";
-import type { ExportedNoteJson } from "./export-json";
+import type { ArticleStateImportMode, ExportedNoteJson } from "./export-json";
 import { MAX_NOTE_LENGTH } from "./validation";
+import { emptyPendingSets, serializeReadState } from "./read-state-storage";
 
 interface NoteUpdate {
   articleId: string;
   title: string;
   note: string;
+}
+
+// Existing parseJsonBody request-text bound. A boundary test invokes that actual
+// parser so this client preflight cannot silently drift from the server contract.
+export const MAX_RESTORE_SYNC_JSON_LENGTH = 512 * 1024;
+
+/** Minimum sync body includes the entire notes snapshot, not only changed notes.
+ * Other pending fields and remote conflicts still use the normal sync checks. */
+export function planRestoreSync(
+  notes: Readonly<Record<string, string>>,
+  updates: readonly Pick<NoteUpdate, "articleId" | "note">[],
+  mode?: ArticleStateImportMode,
+  articleIds: readonly string[] = [],
+) {
+  const entries = new Map(Object.entries(notes));
+  for (const update of updates) entries.set(update.articleId, update.note);
+  const added = emptyPendingSets();
+  if (mode) added[mode === "bookmark" ? "bookmarks" : "readingList"] = new Set(articleIds);
+  const body = serializeReadState(
+    added,
+    emptyPendingSets(),
+    null,
+    null,
+    {},
+    Object.fromEntries(entries),
+    { changedKeys: new Set(), removedKeys: new Set(), currentTags: {} },
+    false,
+    0,
+  );
+  // ttlDays=0 is the shortest valid value, so unknown state/settings can only
+  // enlarge this lower bound. The existing sync layer remains authoritative.
+  return { noteCount: entries.size, jsonLength: body.length };
 }
 
 /** Plans against the current loaded articles only; never fetches or mutates state. */

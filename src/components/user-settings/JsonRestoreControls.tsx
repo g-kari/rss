@@ -10,9 +10,20 @@ import {
   type ArticleStateImportMode,
   type ExportedNoteJson,
 } from "../../lib/export-json";
-import { planArticleRestore, planNoteRestore } from "../../lib/json-restore-plan";
+import {
+  MAX_RESTORE_SYNC_JSON_LENGTH,
+  planArticleRestore,
+  planNoteRestore,
+  planRestoreSync,
+} from "../../lib/json-restore-plan";
 import { devError } from "../../lib/dev-log";
-import { MAX_NOTE_LENGTH } from "../../lib/validation";
+import {
+  MAX_NOTE_LENGTH,
+  MAX_NOTES,
+  MAX_BOOKMARK_IDS,
+  MAX_READING_LIST_IDS,
+} from "../../lib/validation";
+import { MAX_ARTICLES_PER_COLLECTION } from "../../lib/collection-limits";
 import type { Article, Collection } from "../../types";
 
 interface Props {
@@ -91,6 +102,34 @@ export default function JsonRestoreControls(props: Props) {
         )
       : null;
   const count = notePlan?.updates.length ?? statePlan?.additions.length ?? 0;
+  const syncPlan =
+    pending && pending.kind !== "collections"
+      ? planRestoreSync(
+          props.notes,
+          notePlan?.updates ?? [],
+          pending.kind === "article-state" ? pending.mode : undefined,
+          statePlan?.additions.map((entry) => entry.articleId) ?? [],
+        )
+      : null;
+  const noteTotal = syncPlan?.noteCount ?? 0;
+  const collectionRoom = Math.max(
+    0,
+    MAX_ARTICLES_PER_COLLECTION - (target?.articleIds.length ?? 0),
+  );
+  const stateLimit =
+    pending?.kind === "article-state" && pending.mode === "bookmark"
+      ? MAX_BOOKMARK_IDS
+      : MAX_READING_LIST_IDS;
+  const capacityError =
+    syncPlan && noteTotal > MAX_NOTES
+      ? `メモ同期上限${MAX_NOTES}件: 取り込み後は${noteTotal}件になります。既存メモを整理してから取り込んでください`
+      : pending?.kind === "collections" && target && count > collectionRoom
+        ? `コレクション上限${MAX_ARTICLES_PER_COLLECTION}件: 空き${collectionRoom}件に対して追加候補${count}件です。別の取り込み先を選ぶか、ファイルを分けてください`
+        : pending?.kind === "article-state" && count > stateLimit
+          ? `一度の追加上限${stateLimit}件を超えています。ファイルを分けて取り込んでください`
+          : syncPlan && syncPlan.jsonLength > MAX_RESTORE_SYNC_JSON_LENGTH
+            ? "同期データの上限（512K文字）を超えています。ファイルを分けるか、既存メモを整理してから取り込んでください"
+            : "";
   const label =
     pending?.kind === "notes"
       ? "メモを復元"
@@ -171,6 +210,7 @@ export default function JsonRestoreControls(props: Props) {
       applying.current ||
       busy ||
       !count ||
+      capacityError ||
       props.hidden ||
       pending.userId !== props.userId ||
       (pending.kind === "collections" && !target)
@@ -313,7 +353,7 @@ export default function JsonRestoreControls(props: Props) {
               statePlan && (
                 <>
                   <p>
-                    追加可能: {statePlan.additions.length}件 / 登録済み:{" "}
+                    追加候補: {statePlan.additions.length}件 / 登録済み:{" "}
                     {statePlan.alreadyPresentCount}件
                   </p>
                   <p>読み込み済みの記事にない URL: {statePlan.missingCount}件</p>
@@ -321,6 +361,11 @@ export default function JsonRestoreControls(props: Props) {
               )
             )}
           </div>
+          {capacityError && (
+            <p role="alert" className="mt-2 text-[12px] leading-relaxed text-status-error">
+              {capacityError}
+            </p>
+          )}
           {notePlan && (
             <label className="mt-3 flex min-h-[44px] items-center gap-2">
               <input
@@ -350,7 +395,9 @@ export default function JsonRestoreControls(props: Props) {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy || !count || (pending.kind === "collections" && !target)}
+              disabled={
+                busy || !count || !!capacityError || (pending.kind === "collections" && !target)
+              }
               onClick={() => void apply()}
               className={`${buttonClass} bg-ink text-ink-text hover:bg-ink-hover`}
             >
