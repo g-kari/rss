@@ -278,6 +278,14 @@ body {
   will-change: contents;
 }
 
+/* Keep the explicit reader font above the unlayered .article-content default. */
+.article-content.font-serif {
+  font-family: var(--font-serif);
+}
+.article-content.font-mono {
+  font-family: var(--font-mono);
+}
+
 /* #817 Phase 2: 遅延ロードで本文に後から挿入される OGP / link preview 画像を
  * フェードインさせ、reflow による視覚的 flash を緩和する。
  * (画像本体は load 後に DOM 挿入されるため、CSS animation でフェードイン演出。) */

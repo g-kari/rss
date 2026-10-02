@@ -7,6 +7,10 @@ import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { processContent } from "../lib/embed-utils";
 import { isValidPublicUrl } from "../lib/url";
 import { prepareImmersiveInlineContent } from "../lib/immersive-inline-content";
+import { useOptionalReaderSettings } from "../contexts/ReaderSettingsContext";
+import { FONT_SIZE_CLASSES, FONT_FAMILY_CLASSES } from "../lib/article-utils";
+import { getLineHeightStyle, getContentWidthStyle } from "../lib/reader-settings";
+import QuickReadingSettings from "./QuickReadingSettings";
 
 /** Uses the existing content API/cache and sanitizing pipeline, without reader read/AI effects. */
 export default function ImmersiveInlineReader({
@@ -19,6 +23,7 @@ export default function ImmersiveInlineReader({
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const attempted = useRef<string | undefined>(undefined);
+  const settings = useOptionalReaderSettings();
   const {
     storedContent,
     fetching,
@@ -29,9 +34,10 @@ export default function ImmersiveInlineReader({
     resolvedOgImage,
   } = useArticleContent(article?.id, article?.link, article?.ogImage);
   const theme =
-    typeof document !== "undefined" && document.documentElement.dataset.theme === "light"
+    settings?.theme ??
+    (typeof document !== "undefined" && document.documentElement.dataset.theme === "light"
       ? "light"
-      : "dark";
+      : "dark");
   const { processedContent, embedInfo } = useArticleViewContent(
     article,
     storedContent,
@@ -79,8 +85,9 @@ export default function ImmersiveInlineReader({
         handleKeyDown(event);
       }}
     >
-      <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-border-default p-4">
+      <header className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border-default p-4">
         <p className="text-[13px]">本文を開いている間は自動再生・読み上げを一時停止します</p>
+        <QuickReadingSettings key={article.id} />
         <button
           type="button"
           className="min-h-11 flex-shrink-0 rounded border border-border-default px-3"
@@ -90,37 +97,49 @@ export default function ImmersiveInlineReader({
         </button>
       </header>
       <div role="document" className="min-h-0 flex-1 overflow-y-auto p-5">
-        <h3 ref={titleRef} tabIndex={-1} className="mb-6 text-xl font-medium">
-          {article.title}
-        </h3>
-        {fetching && <p role="status">全文を取得中…</p>}
-        {fetchError && <p role="alert">全文を取得できませんでした: {fetchError}</p>}
-        <p className="mb-4 text-[13px] text-text-muted">
-          {storedContent
-            ? "取得済みの記事本文"
-            : "フィードに含まれる本文・説明を表示しています。全文とは限りません。"}
-        </p>
-        <div className="article-content" dangerouslySetInnerHTML={{ __html: content }} />
-        {canFetch && !fetching && (
-          <button
-            type="button"
-            className="mt-5 min-h-11 rounded border border-border-default px-3"
-            disabled={!!fetchError && !fetchRetryable}
-            onClick={() => void fetchFullContent()}
-          >
-            {fetchError ? "全文取得を再試行" : "全文を取得"}
-          </button>
-        )}
-        {isValidPublicUrl(article.link) && (
-          <a
-            className="ml-3 underline"
-            href={article.link}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            元記事を開く
-          </a>
-        )}
+        <div
+          className="mx-auto w-full"
+          style={getContentWidthStyle(settings?.contentWidth ?? "medium")}
+        >
+          <h3 ref={titleRef} tabIndex={-1} className="mb-6 text-xl font-medium">
+            {article.title}
+          </h3>
+          {fetching && <p role="status">全文を取得中…</p>}
+          {fetchError && <p role="alert">全文を取得できませんでした: {fetchError}</p>}
+          <p className="mb-4 text-[13px] text-text-muted">
+            {storedContent
+              ? "取得済みの記事本文"
+              : "フィードに含まれる本文・説明を表示しています。全文とは限りません。"}
+          </p>
+          <div
+            className={`article-content ${FONT_SIZE_CLASSES[settings?.fontSize ?? "medium"]} ${FONT_FAMILY_CLASSES[settings?.fontFamily ?? "sans"]}`}
+            style={{
+              ...getLineHeightStyle(settings?.lineHeight ?? "normal"),
+              textAlign: settings?.textJustify ? "justify" : "left",
+            }}
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+          {canFetch && !fetching && (
+            <button
+              type="button"
+              className="mt-5 min-h-11 rounded border border-border-default px-3"
+              disabled={!!fetchError && !fetchRetryable}
+              onClick={() => void fetchFullContent()}
+            >
+              {fetchError ? "全文取得を再試行" : "全文を取得"}
+            </button>
+          )}
+          {isValidPublicUrl(article.link) && (
+            <a
+              className="ml-3 underline"
+              href={article.link}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              元記事を開く
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
