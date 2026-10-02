@@ -183,7 +183,7 @@ describe("purpose-based settings navigation", () => {
     const writes = vi.spyOn(Storage.prototype, "setItem");
     writes.mockClear();
     search("　文字　大きさ　");
-    fireEvent.click(screen.getByRole("button", { name: /^フォントサイズ/ }));
+    fireEvent.click(screen.getByRole("button", { name: "フォントサイズ 読書・表示" }));
     expect(font.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toHaveAttribute("aria-checked", "true");
     expect(document.activeElement).toHaveAttribute("tabindex", "0");

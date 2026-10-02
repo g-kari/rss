@@ -115,6 +115,8 @@ export default function SettingsNavigation({
             <li key={setting.id}>
               <button
                 type="button"
+                aria-label={`${setting.label} ${SETTINGS_CATEGORIES.find((category) => category.id === setting.category)!.label}`}
+                aria-describedby={`${searchId}-${setting.id}-description`}
                 onClick={() => {
                   onSettingSelect(setting);
                   setQuery("");
@@ -122,7 +124,7 @@ export default function SettingsNavigation({
                 className="w-full rounded-lg px-3 py-2 text-left hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-ink"
               >
                 <span className="block text-[13px] font-medium text-text-default">
-                  {setting.label}
+                  {setting.label}{" "}
                   <span className="ml-2 text-[12px] font-normal text-text-muted">
                     {
                       SETTINGS_CATEGORIES.find((category) => category.id === setting.category)!
@@ -130,7 +132,10 @@ export default function SettingsNavigation({
                     }
                   </span>
                 </span>
-                <span className="mt-0.5 block text-[12px] text-text-muted">
+                <span
+                  id={`${searchId}-${setting.id}-description`}
+                  className="mt-0.5 block text-[12px] text-text-muted"
+                >
                   {setting.description}
                 </span>
               </button>
