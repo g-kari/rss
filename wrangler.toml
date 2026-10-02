@@ -24,8 +24,16 @@ service = "findme-rss"
 binding = "IMAGES"
 
 [vars]
-# Summary precompute intentionally remains OFF (fixed code rollout gate + all variables unset).
-# Enable only after explicit model/budget approval and docs/summary-precompute.md review.
+# Approved conservative app reservations; these are not a Cloudflare billing hard cap.
+# Full-context reservation is $0.026215/call: $1/month permits at most 38 reservations.
+RSS_SUMMARY_PRECOMPUTE_ENABLED = "true"
+RSS_SUMMARY_PRECOMPUTE_MODEL = "@cf/google/gemma-4-26b-a4b-it"
+RSS_SUMMARY_PRECOMPUTE_RUN_USD = "0.131075"
+RSS_SUMMARY_PRECOMPUTE_DAY_USD = "1"
+RSS_SUMMARY_PRECOMPUTE_MONTH_USD = "1"
+RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES = "5"
+RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES = "100"
+RSS_SUMMARY_PRECOMPUTE_CONCURRENCY = "1"
 # RSS_FEED_WRITES_PAUSED is intentionally NOT defaulted here. Unset/"false" = running;
 # "true" = paused; malformed configured values fail closed. Never add a hardcoded false
 # during a paused rollout. See docs/migrations/feed-writer-maintenance.md.

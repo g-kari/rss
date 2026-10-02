@@ -19,6 +19,7 @@ import { matchCfCache } from "./cache-helper";
 import { sha256Hex } from "./r2";
 import { isValidFeedUrl } from "./url";
 import { MAX_SUMMARY_CACHE_URLS } from "./ai-summary-contract";
+import { claimPrecompute, finishPrecompute } from "./summary-precompute-lease";
 
 export interface SummaryPrecomputeEnv {
   RSS_DATA: R2Bucket;
@@ -29,12 +30,14 @@ export interface SummaryPrecomputeEnv {
   RSS_SUMMARY_PRECOMPUTE_DAY_USD?: string;
   RSS_SUMMARY_PRECOMPUTE_MONTH_USD?: string;
   RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES?: string;
+  RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES?: string;
+  RSS_SUMMARY_PRECOMPUTE_CONCURRENCY?: string;
 }
 
-/** Release gate: enable only in a separately reviewed activation change after budget approval. */
-export const SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED: boolean = false;
+/** Approved rollout: Gemma 4, at most 5/run, 100/UTC day, concurrency 1 and USD 1/month. */
+export const SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED: boolean = true;
 
-/** Production cron is OFF even if an uninspected retained variable was previously set. */
+/** Retained configuration cannot broaden the approved model, count or reservation limits. */
 export async function runScheduledSummaryPrecompute(
   env: SummaryPrecomputeEnv,
   urls: string[],
@@ -42,7 +45,40 @@ export async function runScheduledSummaryPrecompute(
   scheduledTime: number,
 ): Promise<number> {
   if (!SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED) return 0;
-  return runSummaryPrecompute(env, urls, origin, scheduledTime);
+  const now = Date.now();
+  const config = summaryPrecomputeConfig(env, now);
+  if (
+    !config ||
+    config.model !== "@cf/google/gemma-4-26b-a4b-it" ||
+    config.maxArticles > 5 ||
+    config.maxDailyArticles > 100 ||
+    config.runMicros > 131075 ||
+    config.monthMicros > 1_000_000 ||
+    env.RSS_SUMMARY_PRECOMPUTE_CONCURRENCY !== "1" ||
+    !validSchedule(scheduledTime, now)
+  )
+    return 0;
+  try {
+    const claim = await claimPrecompute(env.RSS_DATA, new Date(scheduledTime).toISOString());
+    if (!claim) {
+      console.warn("[summary-precompute] active invocation or operator-recovery hold");
+      return 0;
+    }
+    let generated: number;
+    try {
+      generated = await runSummaryPrecompute(env, urls, origin, scheduledTime, now);
+    } finally {
+      await finishPrecompute(env.RSS_DATA, claim);
+    }
+    console.info("[summary-precompute] completed", { runId: claim.runId, generated });
+    return generated;
+  } catch (error) {
+    console.warn(
+      "[summary-precompute] rollout failed closed; inspect lease and ledger",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return 0;
+  }
 }
 
 // Primary Cloudflare model + pricing pages verified 2026-10-02. No cached-input discount.
@@ -78,6 +114,7 @@ interface PrecomputeConfig {
   dayMicros: number;
   monthMicros: number;
   maxArticles: number;
+  maxDailyArticles: number;
   reservationMicros: number;
 }
 
@@ -113,6 +150,7 @@ export function summaryPrecomputeConfig(
   const dayMicros = usdMicros(env.RSS_SUMMARY_PRECOMPUTE_DAY_USD);
   const monthMicros = usdMicros(env.RSS_SUMMARY_PRECOMPUTE_MONTH_USD);
   const maxArticles = Number(env.RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES);
+  const maxDailyArticles = Number(env.RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES);
   if (
     !reservationMicros ||
     !runMicros ||
@@ -122,10 +160,21 @@ export function summaryPrecomputeConfig(
     dayMicros > monthMicros ||
     !Number.isInteger(maxArticles) ||
     maxArticles < 1 ||
-    maxArticles > MAX_SUMMARY_CACHE_URLS
+    maxArticles > MAX_SUMMARY_CACHE_URLS ||
+    !/^[1-9]\d?$/.test(env.RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES ?? "") ||
+    !/^(?:[1-9]\d?|100)$/.test(env.RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES ?? "") ||
+    maxArticles > maxDailyArticles
   )
     return null;
-  return { model, reservationMicros, runMicros, dayMicros, monthMicros, maxArticles };
+  return {
+    model,
+    reservationMicros,
+    runMicros,
+    dayMicros,
+    monthMicros,
+    maxArticles,
+    maxDailyArticles,
+  };
 }
 
 interface UsageLedger {
@@ -165,6 +214,7 @@ function validLedger(value: UsageLedger, month: string): boolean {
     if (!Number.isSafeInteger(dailyTotal)) return false;
   }
   let runTotal = 0;
+  const runDailyTotals: Record<string, number> = {};
   for (const [id, run] of Object.entries(value.runs)) {
     const parsed = Date.parse(id);
     if (
@@ -180,9 +230,16 @@ function validLedger(value: UsageLedger, month: string): boolean {
     )
       return false;
     runTotal += run.micros;
+    const day = id.slice(0, 10);
+    runDailyTotals[day] = (runDailyTotals[day] ?? 0) + run.micros;
     if (!Number.isSafeInteger(runTotal)) return false;
   }
-  return dailyTotal === value.micros && runTotal === value.micros;
+  return (
+    dailyTotal === value.micros &&
+    runTotal === value.micros &&
+    Object.entries(runDailyTotals).every(([day, amount]) => value.days[day] === amount) &&
+    Object.entries(value.days).every(([day, amount]) => (runDailyTotals[day] ?? 0) === amount)
+  );
 }
 
 /** Reserve once before any inference. Conflicts/errors fail closed; failures are never refunded. */
@@ -203,11 +260,15 @@ async function reserveUsage(
   if (!validLedger(ledger, month)) throw new Error("Invalid summary usage ledger");
   const run = ledger.runs[runId] ?? { micros: 0, calls: 0 };
   const amount = config.reservationMicros;
+  const dailyCalls = Object.entries(ledger.runs)
+    .filter(([id]) => id.startsWith(day))
+    .reduce((total, [, entry]) => total + entry.calls, 0);
   if (
     ledger.micros + amount > config.monthMicros ||
     (ledger.days[day] ?? 0) + amount > config.dayMicros ||
     run.micros + amount > config.runMicros ||
     run.calls >= config.maxArticles ||
+    dailyCalls >= config.maxDailyArticles ||
     (!ledger.runs[runId] && Object.keys(ledger.runs).length >= 2000)
   )
     return false;
@@ -221,17 +282,26 @@ async function reserveUsage(
   return !!saved;
 }
 
-/** OFF by default. Only reads article bodies already fetched by existing cron prefetch. */
+function validSchedule(scheduledTime: number, now: number): boolean {
+  return (
+    Number.isFinite(scheduledTime) &&
+    Number.isFinite(now) &&
+    Math.abs(now - scheduledTime) <= 60 * 60 * 1000 &&
+    new Date(scheduledTime).toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10)
+  );
+}
+
+/** Only reads article bodies already fetched by existing cron prefetch. */
 export async function runSummaryPrecompute(
   env: SummaryPrecomputeEnv,
   urls: string[],
   origin: string,
   scheduledTime: number,
   now = Date.now(),
+  clock = Date.now,
 ): Promise<number> {
   const config = summaryPrecomputeConfig(env, now);
-  if (!config || !Number.isFinite(scheduledTime) || Math.abs(now - scheduledTime) > 60 * 60 * 1000)
-    return 0;
+  if (!config || !validSchedule(scheduledTime, now)) return 0;
   const runId = new Date(scheduledTime).toISOString();
   if (runId.slice(0, 7) !== new Date(now).toISOString().slice(0, 7)) return 0;
   let generated = 0;
@@ -263,8 +333,23 @@ export async function runSummaryPrecompute(
         await finishSummaryGeneration(env.RSS_DATA, claim);
         continue;
       }
-      if (!(await reserveUsage(env.RSS_DATA, config, now, runId))) {
+      const reservationNow = clock();
+      if (
+        !validSchedule(scheduledTime, reservationNow) ||
+        !summaryPrecomputeConfig(env, reservationNow) ||
+        !(await reserveUsage(env.RSS_DATA, config, reservationNow, runId))
+      ) {
         await finishSummaryGeneration(env.RSS_DATA, claim); // No AI was started.
+        break;
+      }
+      // R2 reservation I/O may itself cross midnight or the pricing expiry.
+      // Keep the reservation, but do not start inference under an expired bound.
+      const inferenceNow = clock();
+      if (
+        !validSchedule(scheduledTime, inferenceNow) ||
+        !summaryPrecomputeConfig(env, inferenceNow)
+      ) {
+        await finishSummaryGeneration(env.RSS_DATA, claim);
         break;
       }
       inferenceStarted = true;
