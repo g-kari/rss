@@ -105,6 +105,7 @@ export async function runCronPrefetch(
   ctx: ExecutionContext,
   opts: PrefetchOptions = DEFAULT_PREFETCH_OPTIONS,
   origin = "https://rss.0g0.xyz",
+  afterPrefetch?: (urls: string[]) => Promise<unknown>,
 ): Promise<void> {
   try {
     const { feedUserMap } = await buildFeedUserMapCached(env.RSS_DATA, env.RATE_LIMIT);
@@ -158,6 +159,8 @@ export async function runCronPrefetch(
     );
 
     console.log(`[cron-prefetch] prefetched ${urls.length} articles from ${topFeeds.length} feeds`);
+    // Optional downstream work only sees this existing bounded selection.
+    if (afterPrefetch) await afterPrefetch(urls);
   } catch (err) {
     console.error("[cron-prefetch] error:", formatError(err));
   }

@@ -274,32 +274,48 @@ test("pause and speed survive replenishment; hidden time does not advance; autop
 test("empty and exhausted queues accept newly loaded articles without closing or replaying served cards", async ({
   page,
 }) => {
+  async function expectPaintedIds(expected: string[], name = "read-ids") {
+    let paintAdvances = 0;
+    await expect
+      .poll(
+        async () => {
+          // React replenishes the queue after the new card commits. Only then can its
+          // two-frame acknowledgement be scheduled; keep fake-clock progress bounded.
+          if (paintAdvances < 3) {
+            paintAdvances++;
+            await painted(page);
+          }
+          return ids(page, name);
+        },
+        { timeout: 1500, intervals: [50, 100, 200] },
+      )
+      .toEqual(expected);
+  }
   await open(page, "empty");
   await expect(page.getByRole("heading", { name: "いま紹介できる記事はありません" })).toBeVisible();
   await expect(next(page)).toBeDisabled();
   expect(await ids(page, "read-events")).toEqual([]);
   await setArticleCount(page, 2);
-  await painted(page);
   await expect(position(page)).toHaveText("1 / 2件");
   await expect(page.getByRole("heading", { name: /^記事 1：/ })).toBeVisible();
-  expect(await ids(page)).toEqual(["0"]);
+  await expectPaintedIds(["0"]);
   await next(page).click();
-  await painted(page);
+  await expect(page.getByRole("heading", { name: /^記事 2：/ })).toBeVisible();
+  await expectPaintedIds(["0", "1"]);
   await next(page).click();
   await expect(page.getByRole("heading", { name: "読み込み済みの記事はここまで" })).toBeVisible();
   await setArticleCount(page, 5);
-  await painted(page);
   await expect(position(page)).toHaveText("3 / 5件");
   await expect(page.getByRole("heading", { name: /^記事 3：/ })).toBeVisible();
-  expect(await ids(page)).toEqual(["0", "1", "2"]);
+  await expectPaintedIds(["0", "1", "2"]);
   expect(await ids(page, "session-served-ids")).toEqual(["0", "1", "2", "3", "4"]);
   await next(page).click();
-  await painted(page);
+  await expect(page.getByRole("heading", { name: /^記事 4：/ })).toBeVisible();
+  await expectPaintedIds(["0", "1", "2", "3"]);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "ドパガキモードを開く" }).click();
-  await painted(page);
   await expect(page.getByRole("heading", { name: /^記事 5：/ })).toBeVisible();
-  expect(await ids(page, "read-events")).toEqual(["0", "1", "2", "3", "4"]);
+  await expectPaintedIds(["0", "1", "2", "3", "4"], "read-events");
 });
 
 test("missing/broken OGP uses loaded body or YouTube then placeholder, with bounded image attempts", async ({

@@ -11,6 +11,14 @@ export const AI_MODELS = [
   { id: "@cf/google/gemma-4-26b-a4b-it", label: "Gemma 4 26B A4B（汎用・低コスト）" },
   // https://developers.cloudflare.com/workers-ai/models/glm-5.3/
   { id: "@cf/zai-org/glm-5.3", label: "GLM 5.3（推論・有料アクセス必須）" },
+  // Workers AI model docs verified 2026-10-02; both use max_tokens.
+  // https://developers.cloudflare.com/workers-ai/models/mistral-small-3.1-24b-instruct/
+  {
+    id: "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    label: "Mistral Small 3.1 24B（多言語・要約）",
+  },
+  // https://developers.cloudflare.com/workers-ai/models/qwen3-30b-a3b-fp8/
+  { id: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen3 30B A3B（多言語・低コスト）" },
 ] as const;
 
 export type WorkersAiModelId = (typeof AI_MODELS)[number]["id"];

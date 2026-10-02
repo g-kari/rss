@@ -15,12 +15,15 @@ describe("Workers AI model catalog", () => {
     }
   });
 
-  it.each(["@cf/qwen/qwen3.8-27b", "@cf/google/gemma-4-26b-a4b-it", "@cf/zai-org/glm-5.3"])(
-    "allows the documented model %s",
-    (model) => {
-      expect(isWorkersAiModelId(model)).toBe(true);
-    },
-  );
+  it.each([
+    "@cf/qwen/qwen3.8-27b",
+    "@cf/google/gemma-4-26b-a4b-it",
+    "@cf/zai-org/glm-5.3",
+    "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    "@cf/qwen/qwen3-30b-a3b-fp8",
+  ])("allows the documented model %s", (model) => {
+    expect(isWorkersAiModelId(model)).toBe(true);
+  });
 
   it("labels GLM paid access and applies conservative limits to costly models", () => {
     expect(AI_MODELS.find((model) => String(model.id) === "@cf/zai-org/glm-5.3")?.label).toContain(

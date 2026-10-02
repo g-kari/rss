@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { parseJsonBody, type AuthSession } from "@/lib/server-auth";
-import { getAiCacheByUrl, setAiCacheByUrl, type AiCacheType } from "@/lib/ai-cache";
-import { toPlainText } from "@/lib/html";
+import {
+  getAiCacheByUrl,
+  setAiCacheByUrl,
+  setAiSummaryByUrl,
+  type AiCacheType,
+} from "@/lib/ai-cache";
 import { fetchArticleContent } from "@/lib/fetch-article-content";
 import { isValidFeedUrl } from "@/lib/url";
-import { aiRateLimitKey } from "@/lib/r2";
+import { aiRateLimitKey, sha256Hex } from "@/lib/r2";
 import { checkSlidingWindow } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-error";
 
@@ -13,9 +17,22 @@ import {
   type WorkersAiModelId,
   DEFAULT_AI_MODEL,
   LARGE_MODEL_IDS,
-  CHAT_COMPLETION_MODEL_IDS,
-  REASONING_MODEL_IDS,
 } from "./ai-models";
+
+import {
+  buildAiInputs,
+  prepareAiArticle,
+  SUMMARY_PROMPT_VERSION,
+  type AiMessage,
+} from "./ai-generation";
+import { getAiResponseText, getAiUsage } from "./ai-output";
+import {
+  claimSummaryGeneration,
+  finishSummaryGeneration,
+  failSummaryGeneration,
+  summaryGenerationRetryAfter,
+  type ClaimedGeneration,
+} from "./ai-generation-lease";
 
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_CALLS = 20;
@@ -25,21 +42,6 @@ const AI_MAX_CALLS = 20;
 // 70B / Qwen 3.8 / GLM 5.3 は課金コストが高いため、同じ保守的な制限を適用。
 // Cloudflare AI 課金計画に応じて調整可。
 const AI_MAX_CALLS_LARGE = 5;
-
-type AiMessage = { role: "system" | "user"; content: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Accept only generated text, never reasoning/tool calls or arbitrary objects. */
-function getAiResponseText(response: unknown): string {
-  if (!isRecord(response)) return "";
-  if (typeof response.response === "string") return response.response;
-  const choice = Array.isArray(response.choices) ? response.choices[0] : undefined;
-  if (!isRecord(choice) || !isRecord(choice.message)) return "";
-  return typeof choice.message.content === "string" ? choice.message.content : "";
-}
 
 function isAiError(err: unknown): err is { status: number; headers?: Record<string, string> } {
   return (
@@ -125,32 +127,52 @@ export async function runAiJob(
   // 3. < > をエスケープしてデリミタ破壊を防止 (escape を先に、slice を後に — 末尾境界で
   //    `&lt;` (4 文字) が途中で切られて壊れる不正 entity を避ける)
   // 4. <article> デリミタで囲んでユーザーコンテンツ境界を明示
-  const escaped = toPlainText(content)
-    .replace(/<\|[^|]*\|>/g, "") // Llama-3 / Qwen 系 instruct control tokens
-    .replace(/\[\/?INST\]/g, "") // Mistral / Llama-2 instruct delimiter
-    .replace(/<<\/?SYS>>/g, "") // Llama-2 system role delimiter
-    .replace(/<\/?s>/g, "") // sentence boundary (Mistral / Llama)
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const sanitized = escaped.slice(0, 8000);
-  const plain = `<article>\n${sanitized}\n</article>`;
+  const article = prepareAiArticle(content);
+  if (
+    article.body.length < (cacheType === "summary" ? 200 : 1) ||
+    article.inputCharacters < (cacheType === "summary" ? 200 : 1)
+  )
+    return apiError("記事本文が短すぎるため処理できません", 422, { code: "CONTENT_TOO_SHORT" });
 
   let result: string;
+  let usage: ReturnType<typeof getAiUsage> = null;
+  let claim: ClaimedGeneration | null = null;
   try {
-    const response: unknown = await env.AI.run(model as AiModelId, {
-      messages: buildMessages(plain),
-      ...(CHAT_COMPLETION_MODEL_IDS.has(model)
-        ? { max_completion_tokens: 2048 }
-        : { max_tokens: 2048 }),
-      ...(REASONING_MODEL_IDS.has(model) ? { reasoning_effort: "low" } : {}),
-      // Gemma 4 defaults to thinking without effort levels. Article tasks need the
-      // bounded completion budget for visible text, not an intermediate reasoning trace.
-      ...(model === "@cf/google/gemma-4-26b-a4b-it"
-        ? { chat_template_kwargs: { enable_thinking: false } }
-        : {}),
-    });
+    if (cacheType === "summary") {
+      claim = await claimSummaryGeneration(env.RSS_DATA, url, model, { retryFailed: true });
+      if (!claim) {
+        const retryAfter = await summaryGenerationRetryAfter(env.RSS_DATA, url, model);
+        const response = apiError(
+          retryAfter === null
+            ? "要約の生成中です。長時間続く場合は管理者による処理状況の確認が必要です"
+            : `前回の要約処理に失敗しました。${retryAfter}秒後にもう一度お試しください`,
+          409,
+          {
+            code: "SUMMARY_GENERATION_PENDING",
+            retryable: retryAfter !== null,
+            ...(retryAfter !== null ? { retryAfter } : { recoveryRequired: true }),
+          },
+        );
+        if (retryAfter !== null) response.headers.set("Retry-After", String(retryAfter));
+        return response;
+      }
+      const filled = await getAiCacheByUrl(env.RSS_DATA, url, cacheType, model);
+      if (filled) {
+        await finishSummaryGeneration(env.RSS_DATA, claim);
+        return NextResponse.json({ result: filled });
+      }
+    }
+    const response: unknown = await env.AI.run(
+      model as AiModelId,
+      buildAiInputs(model, buildMessages(article.plain)),
+    );
     result = getAiResponseText(response);
+    usage = getAiUsage(response);
   } catch (err) {
+    if (claim)
+      await failSummaryGeneration(env.RSS_DATA, claim).catch(() => {
+        console.warn("[runAiJob] generation status needs operator recovery");
+      });
     console.error("[runAiJob] AI.run failed:", err);
     if (isAiError(err)) {
       if (err.status === 429) {
@@ -182,6 +204,10 @@ export async function runAiJob(
   }
 
   if (!result.trim()) {
+    if (claim)
+      await failSummaryGeneration(env.RSS_DATA, claim).catch(() => {
+        console.warn("[runAiJob] generation status needs operator recovery");
+      });
     console.warn("[runAiJob] AI returned empty response, treating as AI_ERROR", { url, model });
     return apiError("AI処理中にエラーが発生しました", 502, {
       code: "AI_ERROR",
@@ -189,7 +215,25 @@ export async function runAiJob(
     });
   }
 
-  ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType, model));
+  if (cacheType === "summary" && claim) {
+    const bodyHash = await sha256Hex(article.body);
+    const ownedClaim = claim;
+    ctx.waitUntil(
+      setAiSummaryByUrl(env.RSS_DATA, url, result, {
+        version: 1,
+        model,
+        promptVersion: SUMMARY_PROMPT_VERSION,
+        bodyHash,
+        generatedAt: new Date().toISOString(),
+        inputCharacters: article.inputCharacters,
+        inputTruncated: article.inputTruncated,
+        completeness: article.inputTruncated ? "truncated" : "unknown",
+        usage,
+      }).then(() => finishSummaryGeneration(env.RSS_DATA, ownedClaim)),
+    );
+  } else {
+    ctx.waitUntil(setAiCacheByUrl(env.RSS_DATA, url, result, cacheType, model));
+  }
 
   return NextResponse.json({ result });
 }

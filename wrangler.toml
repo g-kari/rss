@@ -24,6 +24,8 @@ service = "findme-rss"
 binding = "IMAGES"
 
 [vars]
+# Summary precompute intentionally remains OFF (fixed code rollout gate + all variables unset).
+# Enable only after explicit model/budget approval and docs/summary-precompute.md review.
 # RSS_FEED_WRITES_PAUSED is intentionally NOT defaulted here. Unset/"false" = running;
 # "true" = paused; malformed configured values fail closed. Never add a hardcoded false
 # during a paused rollout. See docs/migrations/feed-writer-maintenance.md.
