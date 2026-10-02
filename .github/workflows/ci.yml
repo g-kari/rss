@@ -41,6 +41,9 @@ jobs:
       - name: ユニットテスト（全体・並列数を制限）
         run: pnpm run test:unit --maxWorkers=2
 
+      - name: 同一ニュース判定のオフライン評価契約（通信・課金なし）
+        run: node --test scripts/evaluations/jev-news-grouping/policy.test.mjs
+
       - name: production ビルド
         run: pnpm run build
 
