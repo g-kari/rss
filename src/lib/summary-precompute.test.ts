@@ -12,6 +12,8 @@ import { getAiSummaryByUrl, setAiSummaryByUrl } from "./ai-cache";
 import { claimSummaryGeneration } from "./ai-generation-lease";
 import { matchCfCache } from "./cache-helper";
 import { DEFAULT_AI_MODEL } from "./ai-models";
+import { SUMMARY_PRECOMPUTE_LEASE_KEY } from "./summary-precompute-lease";
+import { readFileSync } from "node:fs";
 
 vi.mock("./cache-helper", () => ({ matchCfCache: vi.fn() }));
 vi.mock("./fetch-article-content", () => ({
@@ -34,6 +36,7 @@ let env: SummaryPrecomputeEnv;
 let sequence: number;
 let conditionalConflict = false;
 beforeEach(() => {
+  vi.restoreAllMocks();
   vi.resetAllMocks();
   sequence = 0;
   conditionalConflict = false;
@@ -70,6 +73,8 @@ beforeEach(() => {
     RSS_SUMMARY_PRECOMPUTE_DAY_USD: "2",
     RSS_SUMMARY_PRECOMPUTE_MONTH_USD: "3",
     RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES: "2",
+    RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES: "100",
+    RSS_SUMMARY_PRECOMPUTE_CONCURRENCY: "1",
   };
   run.mockResolvedValue({
     choices: [{ message: { content: "<think>private</think>要約です。" } }],
@@ -78,7 +83,7 @@ beforeEach(() => {
   vi.mocked(matchCfCache).mockImplementation(async () => Response.json({ content: body }));
 });
 const execute = (urls = [url], scheduledTime = now, clock = now) =>
-  runSummaryPrecompute(env, urls, "https://rss.example.com", scheduledTime, clock);
+  runSummaryPrecompute(env, urls, "https://rss.example.com", scheduledTime, clock, () => clock);
 const ledger = () => JSON.parse(store.get("ai-cache/summary-budget/2026-10.json")!.value);
 
 describe("summary precompute fail-closed gates", () => {
@@ -99,6 +104,7 @@ describe("summary precompute fail-closed gates", () => {
     "RSS_SUMMARY_PRECOMPUTE_DAY_USD",
     "RSS_SUMMARY_PRECOMPUTE_MONTH_USD",
     "RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES",
+    "RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES",
   ] as const)("requires explicit %s", async (key) => {
     delete env[key];
     expect(await execute()).toBe(0);
@@ -414,13 +420,193 @@ describe("shared manual and cron generation ownership", () => {
   });
 });
 
-describe("immutable production rollout hold", () => {
-  it("keeps scheduled inference OFF even with every retained variable enabled", async () => {
-    expect(SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED).toBe(false);
-    expect(await runScheduledSummaryPrecompute(env, [url], "https://rss.example.com", now)).toBe(0);
+describe("approved scheduled rollout", () => {
+  function approvedEnv(): SummaryPrecomputeEnv {
+    const config = readFileSync(new URL("../../wrangler.toml", import.meta.url), "utf8");
+    for (const line of config.split("\n")) {
+      const match = /^(RSS_SUMMARY_PRECOMPUTE_\w+) = "([^"]+)"$/.exec(line);
+      if (match) Object.assign(env, { [match[1]]: match[2] });
+    }
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    return env;
+  }
+  const scheduled = (urls = [url], time = now) =>
+    runScheduledSummaryPrecompute(env, urls, "https://rss.example.com", time);
+
+  it("ships the approved explicit limits and enables the guarded scheduled path", async () => {
+    expect(SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED).toBe(true);
+    expect(approvedEnv()).toMatchObject({
+      RSS_SUMMARY_PRECOMPUTE_ENABLED: "true",
+      RSS_SUMMARY_PRECOMPUTE_MODEL: "@cf/google/gemma-4-26b-a4b-it",
+      RSS_SUMMARY_PRECOMPUTE_RUN_USD: "0.131075",
+      RSS_SUMMARY_PRECOMPUTE_DAY_USD: "1",
+      RSS_SUMMARY_PRECOMPUTE_MONTH_USD: "1",
+      RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES: "5",
+      RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES: "100",
+      RSS_SUMMARY_PRECOMPUTE_CONCURRENCY: "1",
+    });
+    expect(await scheduled()).toBe(1);
+    expect(run.mock.calls[0][0]).toBe("@cf/google/gemma-4-26b-a4b-it");
+    expect(ledger().micros).toBe(26215);
+  });
+  it.each([
+    ["RSS_SUMMARY_PRECOMPUTE_ENABLED", "false"],
+    ["RSS_SUMMARY_PRECOMPUTE_MONTH_USD", undefined],
+    ["RSS_SUMMARY_PRECOMPUTE_MODEL", model],
+    ["RSS_SUMMARY_PRECOMPUTE_RUN_USD", "0.2"],
+    ["RSS_SUMMARY_PRECOMPUTE_MONTH_USD", "1.000001"],
+    ["RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES", "6"],
+    ["RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES", "101"],
+    ["RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES", "1e2"],
+    ["RSS_SUMMARY_PRECOMPUTE_CONCURRENCY", "2"],
+    ["RSS_SUMMARY_PRECOMPUTE_CONCURRENCY", undefined],
+  ] as const)("rejects unapproved/missing %s=%s before storage and AI", async (key, value) => {
+    approvedEnv();
+    env[key] = value;
+    expect(await scheduled()).toBe(0);
     expect(bucket.get).not.toHaveBeenCalled();
     expect(bucket.put).not.toHaveBeenCalled();
     expect(matchCfCache).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+  });
+  it("serializes distinct overlapping cron runs globally, then releases after settlement", async () => {
+    approvedEnv();
+    let resolve!: (output: unknown) => void;
+    run.mockImplementationOnce(() => new Promise((done) => (resolve = done)));
+    const first = scheduled();
+    await vi.waitFor(() => expect(run).toHaveBeenCalledOnce());
+    expect(await scheduled([url + "/different"], now + 1000)).toBe(0);
+    expect(run).toHaveBeenCalledOnce();
+    resolve({ choices: [{ message: { content: "要約" } }] });
+    expect(await first).toBe(1);
+    expect(await scheduled([url + "/different"], now + 1000)).toBe(1);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+  it("retains an ambiguous global release as an operator hold", async () => {
+    approvedEnv();
+    const completed = vi.spyOn(console, "info");
+    const put = vi.mocked(bucket.put).getMockImplementation()!;
+    vi.mocked(bucket.put).mockImplementation(async (...args) => {
+      if (
+        args[0] === SUMMARY_PRECOMPUTE_LEASE_KEY &&
+        JSON.parse(String(args[1])).status === "finished"
+      )
+        throw new Error("ambiguous release");
+      return put(...args);
+    });
+    expect(await scheduled()).toBe(0);
+    expect(JSON.parse(store.get(SUMMARY_PRECOMPUTE_LEASE_KEY)!.value).status).toBe("pending");
+    expect(await scheduled([url + "/different"], now + 1000)).toBe(0);
+    expect(run).toHaveBeenCalledOnce();
+    expect(ledger().micros).toBe(26215);
+    expect(completed).not.toHaveBeenCalled();
+  });
+  it("rejects malformed global lease and CAS conflicts without inference", async () => {
+    approvedEnv();
+    store.set(SUMMARY_PRECOMPUTE_LEASE_KEY, {
+      value: JSON.stringify({ status: "finished" }),
+      etag: "bad",
+    });
+    expect(await scheduled()).toBe(0);
+    store.clear();
+    conditionalConflict = true;
+    expect(await scheduled()).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(matchCfCache).not.toHaveBeenCalled();
+  });
+  it("USD 1 monthly admits at most 38 reservations, five per run", async () => {
+    approvedEnv();
+    for (let batch = 0; batch < 8; batch++) {
+      const time = now + batch * 30 * 60 * 1000;
+      vi.mocked(Date.now).mockReturnValue(time);
+      const urls = Array.from({ length: 6 }, (_, index) => url + "/" + batch + "/" + index);
+      expect(await scheduled(urls, time)).toBe(batch === 7 ? 3 : 5);
+    }
+    expect(await scheduled([url + "/exhausted"], now + 8 * 30 * 60 * 1000)).toBe(0);
+    expect(run).toHaveBeenCalledTimes(38);
+    expect(ledger().micros).toBe(996170);
+    expect(
+      Object.values(ledger().runs).every(
+        (entry: unknown) => (entry as { calls: number }).calls <= 5,
+      ),
+    ).toBe(true);
+  });
+  it("cache misses and OFF retain zero AI calls after activation", async () => {
+    approvedEnv();
+    vi.mocked(matchCfCache).mockResolvedValue(null);
+    expect(await scheduled()).toBe(0);
+    env.RSS_SUMMARY_PRECOMPUTE_ENABLED = "false";
+    expect(await scheduled([url + "/other"])).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(store.has("ai-cache/summary-budget/2026-10.json")).toBe(false);
+  });
+});
+
+describe("daily article and clock boundaries", () => {
+  it("retains a reservation but skips inference if ledger I/O crosses price expiry", async () => {
+    const start = Date.parse("2026-10-31T23:59:59Z");
+    let time = start;
+    const put = vi.mocked(bucket.put).getMockImplementation()!;
+    vi.mocked(bucket.put).mockImplementation(async (...args) => {
+      const result = await put(...args);
+      if (args[0] === "ai-cache/summary-budget/2026-10.json") time = start + 2000;
+      return result;
+    });
+    expect(
+      await runSummaryPrecompute(env, [url], "https://rss.example.com", start, start, () => time),
+    ).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(ledger().micros).toBe(2354);
+    expect(await claimSummaryGeneration(bucket, url, model)).not.toBeNull();
+  });
+  it("daily 100 counts failed reservations across distinct runs", async () => {
+    env.RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES = "1";
+    const runs = Object.fromEntries(
+      Array.from({ length: 99 }, (_, index) => [
+        new Date(Date.parse("2026-10-02T00:00:00Z") + index * 1000).toISOString(),
+        { micros: 2354, calls: 1 },
+      ]),
+    );
+    store.set("ai-cache/summary-budget/2026-10.json", {
+      value: JSON.stringify({
+        version: 1,
+        month: "2026-10",
+        micros: 99 * 2354,
+        days: { "2026-10-02": 99 * 2354 },
+        runs,
+      }),
+      etag: "seed",
+    });
+    run.mockRejectedValueOnce(new Error("terminal failure"));
+    expect(await execute()).toBe(0);
+    expect(await execute([url + "/101"], now + 1000)).toBe(0);
+    expect(run).toHaveBeenCalledOnce();
+    expect(ledger().micros).toBe(100 * 2354);
+    const nextDay = Date.parse("2026-10-03T04:00:00Z");
+    expect(await execute([url + "/next-day"], nextDay, nextDay)).toBe(1);
+  });
+  it("does not assign a delayed prior-day run to a new daily counter", async () => {
+    const clock = Date.parse("2026-10-03T00:05:00Z");
+    expect(await execute([url], clock - 10 * 60 * 1000, clock)).toBe(0);
+    expect(bucket.put).not.toHaveBeenCalled();
+  });
+  it("checks expiry and the UTC day again immediately before reservation", async () => {
+    const start = Date.parse("2026-10-31T23:59:59Z");
+    const clock = vi.fn().mockReturnValue(start);
+    run.mockImplementationOnce(async () => {
+      clock.mockReturnValue(start + 2000);
+      return { choices: [{ message: { content: "要約" } }] };
+    });
+    expect(
+      await runSummaryPrecompute(
+        env,
+        [url, url + "/next"],
+        "https://rss.example.com",
+        start,
+        start,
+        clock,
+      ),
+    ).toBe(1);
+    expect(run).toHaveBeenCalledOnce();
   });
 });

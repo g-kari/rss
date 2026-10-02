@@ -25,6 +25,8 @@ interface CloudflareEnv extends Partial<SearchIndexEnv> {
   RSS_SUMMARY_PRECOMPUTE_DAY_USD?: string;
   RSS_SUMMARY_PRECOMPUTE_MONTH_USD?: string;
   RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES?: string;
+  RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES?: string;
+  RSS_SUMMARY_PRECOMPUTE_CONCURRENCY?: string;
   RSS_DATA: R2Bucket;
   /** レートリミット用 KV namespace */
   RATE_LIMIT: KVNamespace;
