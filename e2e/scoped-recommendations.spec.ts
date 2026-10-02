@@ -204,18 +204,18 @@ for (const viewport of [
       await page.keyboard.press("Escape");
       await count.selectOption("2");
       await entry.click();
-      // New arrivals wait for the next explicit batch instead of changing the held queue.
-      await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
+      // Newly loaded same-scope articles replenish automatically, preserving the current card.
+      await expect(dialog.locator(".immersive-slide")).toHaveCount(2);
       await dialog.getByRole("button", { name: "次の記事", exact: true }).click();
-      await expect(dialog.getByRole("status")).toHaveText("区切り");
-      await expect(dialog.getByRole("region")).toBeFocused();
+      await expect(dialog.getByRole("status")).toHaveText("2 / 2件");
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(entry).toBeFocused();
       await entry.click();
-      await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
-      await dialog.getByRole("button", { name: "次の10件を見る", exact: true }).click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
+      await expect(dialog.getByRole("button", { name: "次の10件を見る", exact: true })).toHaveCount(
+        0,
+      );
       await expect(
         dialog.getByRole("heading", { name: "追加の対象記事", exact: true }),
       ).toBeVisible();
@@ -226,7 +226,6 @@ for (const viewport of [
       await expect
         .poll(() => dialog.getByRole("region").evaluate((element) => element.scrollTop))
         .toBe(0);
-      await expect(dialog.getByRole("region")).toBeFocused();
       await page.screenshot({ path: testInfo.outputPath("continued-one-item-batch.png") });
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);

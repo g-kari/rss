@@ -267,12 +267,24 @@ export function resolveThumbnail(
   article: Article,
   ogpCache: Record<string, string>,
 ): string | undefined {
-  // OGP 画像を優先（実際のページメタデータから取得した画像）
-  if (article.link && ogpCache[article.link]) return ogpCache[article.link];
-  if (article.ogImage) return article.ogImage;
+  return resolveThumbnailSources(article, ogpCache)[0];
+}
+
+/** Derive each existing list fallback independently, including after an image load error. */
+export function resolveThumbnailSources(
+  article: Article,
+  ogpCache: Record<string, string>,
+): string[] {
   const videoId = article.link ? extractYouTubeVideoId(article.link) : null;
-  if (videoId) return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
-  return undefined;
+  return Array.from(
+    new Set(
+      [
+        article.link ? ogpCache[article.link] : undefined,
+        article.ogImage,
+        videoId ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : undefined,
+      ].filter((source): source is string => !!source),
+    ),
+  );
 }
 
 /**

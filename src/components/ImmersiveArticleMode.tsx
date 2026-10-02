@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Article } from "../types";
 import type {
@@ -26,6 +26,7 @@ export interface ImmersiveSessionSnapshot {
   served: Article[];
   paused: boolean;
   speed: number;
+  failedThumbnails?: string[];
 }
 
 interface Props extends ArticleRecommendationOptions {
@@ -33,6 +34,7 @@ interface Props extends ArticleRecommendationOptions {
   session?: ImmersiveSessionSnapshot | null;
   onSessionChange?: (session: ImmersiveSessionSnapshot) => void;
   onSelectArticle: (article: Article) => void;
+  onMarkRead?: (id: string) => void;
   onToggleReadingList?: (id: string) => void;
   onDismiss: (id: string) => void;
   onRestore: (id: string) => void;
@@ -44,6 +46,7 @@ export default function ImmersiveArticleMode(props: Props) {
   const {
     onClose,
     onSelectArticle,
+    onMarkRead,
     onToggleReadingList,
     onDismiss,
     onRestore,
@@ -64,17 +67,29 @@ export default function ImmersiveArticleMode(props: Props) {
   useEffect(() => {
     if (prefersPause) setPaused(true);
   }, [prefersPause]);
-  // An empty pool has no playback history to preserve when articles become available later.
-  // Occupied or consumed queues still retain their finite batch and served exclusions.
-  const hasSessionQueue = !!session && (session.remaining.length > 0 || session.served.length > 0);
-  const [batch, setBatch] = useState(() => {
-    if (!hasSessionQueue || !session) return createImmersiveBatch(props, []);
+  // Reserve only small local batches. Serving/queueing is separate from painted read state.
+  const [queue, setQueue] = useState(() => {
+    const hasQueue = !!session && (session.remaining.length > 0 || session.served.length > 0);
+    if (!hasQueue || !session) {
+      const batch = createImmersiveBatch(props, []);
+      return { batch, served: batch.map(({ article }) => article) };
+    }
     const eligibleIds = new Set(getImmersiveCandidates(props).map((article) => article.id));
-    return session.remaining.filter((item) => eligibleIds.has(item.article.id));
+    return {
+      batch: session.remaining.filter((item) => eligibleIds.has(item.article.id)),
+      served: session.served,
+    };
   });
-  const [served, setServed] = useState<Article[]>(() =>
-    hasSessionQueue && session ? session.served : batch.map(({ article }) => article),
+  const { batch, served } = queue;
+  const [displayedIds, setDisplayedIds] = useState(new Set<string>());
+  const [failedThumbnails, setFailedThumbnails] = useState(
+    () => new Set(session?.failedThumbnails),
   );
+  const thumbnailFailed = useCallback((source: string) => {
+    setFailedThumbnails((previous) =>
+      previous.has(source) ? previous : new Set([...previous, source]),
+    );
+  }, []);
   const [index, setIndex] = useState(0);
   const indexRef = useSyncedRef(index);
   const [lastDismissed, setLastDismissed] = useState<string | null>(null);
@@ -101,7 +116,59 @@ export default function ImmersiveArticleMode(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- readerTtsRef is stable.
   }, []);
   const current = batch[index];
-  const activeArticle = current ? eligible.get(current.article.id) : undefined;
+  const displayed = useMemo(() => {
+    if (!displayedIds.size) return new Map<string, Article>();
+    // The unread-only candidate pool shrinks after our own read update. Keep already shown
+    // cards for this open session, while rechecking strict source, mute and dismiss rules.
+    return new Map(
+      getImmersiveCandidates({
+        ...props,
+        candidates: (props.displayCandidates ?? props.candidates).filter((article) =>
+          displayedIds.has(article.id),
+        ),
+        readIds: new Set([...props.readIds].filter((id) => !displayedIds.has(id))),
+      }).map((article) => [article.id, article]),
+    );
+  }, [props, displayedIds]);
+  const activeArticle = current
+    ? (eligible.get(current.article.id) ?? displayed.get(current.article.id))
+    : undefined;
+  const activeArticleRef = useSyncedRef(activeArticle);
+  const pageVisibleRef = useSyncedRef(pageVisible);
+  const markReadRef = useSyncedRef(onMarkRead);
+  useEffect(() => {
+    if (
+      !onMarkRead ||
+      !activeArticle ||
+      !pageVisible ||
+      inlineOpen ||
+      displayedIds.has(activeArticle.id)
+    )
+      return;
+    const article = activeArticle;
+    let secondFrame = 0;
+    // Two frames allow the active card to paint. Rapid navigation/teardown cancels both,
+    // and hidden/queued neighbors never produce read writes.
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        if (
+          !pageVisibleRef.current ||
+          document.visibilityState === "hidden" ||
+          activeArticleRef.current?.id !== article.id ||
+          !dialogRef.current?.isConnected
+        )
+          return;
+        setDisplayedIds((previous) => new Set([...previous, article.id]));
+        markReadRef.current?.(article.id);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+    // Stable synced refs give callbacks the latest account/scope values; parent interrupts unmount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeArticle?.id, onMarkRead, pageVisible, inlineOpen, displayedIds]);
   useEffect(() => {
     if (inlineOpen && !activeArticle) setInlineOpen(false);
   }, [inlineOpen, activeArticle]);
@@ -112,20 +179,29 @@ export default function ImmersiveArticleMode(props: Props) {
     pageVisible,
     speed,
   );
-  const servedKeys = useMemo(
-    () => ({
-      ids: new Set(served.map((article) => article.id)),
-      links: new Set(served.map((article) => article.link).filter(Boolean)),
-    }),
-    [served],
-  );
-  const nextAvailable = Array.from(eligible.values()).some(
-    (article) =>
-      !servedKeys.ids.has(article.id) && (!article.link || !servedKeys.links.has(article.link)),
-  );
   useEffect(() => {
-    onSessionChange?.({ remaining: batch.slice(index), served, paused, speed });
-  }, [batch, index, served, paused, speed, onSessionChange]);
+    if (batch.length - index > 2) return;
+    const next = createImmersiveBatch(props, served);
+    if (!next.length) return;
+    // Atomic identity guard prevents duplicate reservation during repeated/Strict Mode effects.
+    setQueue((previous) =>
+      previous !== queue
+        ? previous
+        : {
+            batch: [...previous.batch, ...next],
+            served: [...previous.served, ...next.map(({ article }) => article)],
+          },
+    );
+  }, [index, queue, batch.length, props, served]);
+  useEffect(() => {
+    onSessionChange?.({
+      remaining: batch.slice(index).filter((item) => !displayedIds.has(item.article.id)),
+      served,
+      paused,
+      speed,
+      failedThumbnails: [...failedThumbnails],
+    });
+  }, [batch, index, served, paused, speed, displayedIds, failedThumbnails, onSessionChange]);
   useLayoutEffect(() => {
     const element = scrollRef.current;
     // Align after the new slides exist: an empty queue's persistent end section must not
@@ -155,6 +231,12 @@ export default function ImmersiveArticleMode(props: Props) {
     if (element) element.scrollTop = element.clientHeight * value;
   };
   useEffect(() => {
+    // A current card removed by an external state/content change has no media timer.
+    // Keep autoplay moving; explicit pause/dismissal/hidden state still holds the queue.
+    if (current && !activeArticle && canAdvance) {
+      moveTo(index + 1);
+      return;
+    }
     if (activeArticle && mediaFinished === activeArticle.id && !narration.holding && canAdvance)
       moveTo(index + 1);
   });
@@ -214,7 +296,7 @@ export default function ImmersiveArticleMode(props: Props) {
           ドパガキモード
         </h2>
         <p id={helpId} className="sr-only">
-          自動再生・縦スワイプ・↑↓で移動。スペースで一時停止。最大10件で停止します。
+          自動再生・縦スワイプ・↑↓で移動。スペースで一時停止。読み込み済みの未読記事を続けて表示します。表示した記事は既読になります。
         </p>
         <div className="immersive-playback-controls">
           <button
@@ -274,7 +356,7 @@ export default function ImmersiveArticleMode(props: Props) {
         }}
       >
         {batch.map((item, itemIndex) => {
-          const article = eligible.get(item.article.id);
+          const article = eligible.get(item.article.id) ?? displayed.get(item.article.id);
           const thumbnails = article ? immersiveThumbnailSources(article, ogpCache) : [];
           const thumb = thumbnails[0];
           return (
@@ -293,6 +375,8 @@ export default function ImmersiveArticleMode(props: Props) {
                         article={article}
                         thumb={thumb}
                         thumbnailFallbacks={thumbnails.slice(1)}
+                        failedThumbnails={failedThumbnails}
+                        onThumbnailFailure={thumbnailFailed}
                         feedTitle={item.feedTitle}
                         active={itemIndex === index}
                         paused={playbackPaused}
@@ -321,14 +405,14 @@ export default function ImmersiveArticleMode(props: Props) {
           className="immersive-end flex h-full snap-start snap-always flex-col items-center justify-center gap-4 overflow-y-auto p-6 text-center"
         >
           <h3 className="text-xl font-medium">
-            {batch.length ? "ここでひと区切り" : "いま紹介できる記事はありません"}
+            {batch.length || served.length
+              ? "読み込み済みの記事はここまで"
+              : "いま紹介できる記事はありません"}
           </h3>
           <p className="max-w-sm text-[16px] leading-relaxed">
-            {nextAvailable
-              ? "続けたいときだけ、次の最大10件を表示できます。"
-              : "読み込み済みのおすすめはここまでです。一覧から記事を追加で読み込めます。"}
+            現在のフィルター内に、まだ紹介していない読み込み済みの記事はありません。一覧から追加で読み込むと続けられます。
           </p>
-          <p className="text-[14px]">スワイプしただけでは既読になりません</p>
+          <p className="text-[14px]">実際に表示した記事は既読になります</p>
         </section>
       </div>
       <footer className="immersive-footer" inert={inlineOpen || undefined}>
@@ -340,7 +424,15 @@ export default function ImmersiveArticleMode(props: Props) {
                   type="button"
                   className={secondaryButton}
                   onClick={() => {
-                    onSessionChange?.({ remaining: batch.slice(index + 1), served, paused, speed });
+                    onSessionChange?.({
+                      remaining: batch
+                        .slice(index + 1)
+                        .filter((item) => !displayedIds.has(item.article.id)),
+                      served,
+                      paused,
+                      speed,
+                      failedThumbnails: [...failedThumbnails],
+                    });
                     onClose();
                     onSelectArticle(activeArticle);
                   }}
@@ -386,28 +478,6 @@ export default function ImmersiveArticleMode(props: Props) {
                 </button>
               </>
             )}
-            {index === batch.length && nextAvailable && (
-              <button
-                type="button"
-                className={secondaryButton}
-                onClick={() => {
-                  const next = createImmersiveBatch(props, served);
-                  setBatch(next);
-                  setServed((previous) => [...previous, ...next.map(({ article }) => article)]);
-                  indexRef.current = 0;
-                  setIndex(0);
-                  setPaused(prefersPause);
-                  setMediaFinished(undefined);
-                  setMessage("");
-                  if (scrollRef.current) {
-                    // This button is removed by the new batch; keep keyboard events in the mode.
-                    scrollRef.current.focus({ preventScroll: true });
-                  }
-                }}
-              >
-                次の10件を見る
-              </button>
-            )}
             {index === batch.length && (
               <button type="button" onClick={onClose} className={secondaryButton}>
                 ここで終わる
@@ -430,7 +500,7 @@ export default function ImmersiveArticleMode(props: Props) {
               aria-atomic="true"
               className="text-center text-[14px]"
             >
-              {index < batch.length ? `${index + 1} / ${batch.length}件` : "区切り"}
+              {index < batch.length ? `${index + 1} / ${batch.length}件` : "ここまで"}
             </span>
             <button
               type="button"

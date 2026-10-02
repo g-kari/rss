@@ -99,18 +99,16 @@ describe("ImmersiveArticleMode", () => {
     expect(props.onSelectArticle).not.toHaveBeenCalled();
     expect(getPopupOpenCount()).toBe(1);
   });
-  it("keeps batches finite and requires an explicit next-batch action", () => {
+  it("continues through all loaded articles without a next-batch confirmation", () => {
     render(<ImmersiveArticleMode {...props} />);
     advance(10);
-    expect(screen.getByRole("heading", { name: "ここでひと区切り" })).toBeInTheDocument();
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowDown" });
-    expect(screen.getByRole("button", { name: "次の記事" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
     expect(screen.getByRole("heading", { name: "記事 10" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("11 / 20件");
     advance(10);
-    fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
-    expect(screen.getByRole("status")).toHaveTextContent("1 / 3件");
+    expect(screen.getByRole("status")).toHaveTextContent("21 / 23件");
     advance(3);
+    expect(screen.getByRole("heading", { name: "読み込み済みの記事はここまで" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "次の記事" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "次の10件を見る" })).toBeNull();
     expect(props.onSelectArticle).not.toHaveBeenCalled();
     expect(props.onDismiss).not.toHaveBeenCalled();
@@ -129,22 +127,23 @@ describe("ImmersiveArticleMode", () => {
     expect(scroller.scrollTop).toBe(800);
     expect(props.onSelectArticle).not.toHaveBeenCalled();
   });
-  it("keeps keyboard focus inside the mode after the focused next-batch button disappears", () => {
+  it("retains navigation focus as the next local batch is appended", () => {
     const trigger = start();
-    advance(10);
-    const nextBatch = screen.getByRole("button", { name: "次の10件を見る" });
-    nextBatch.focus();
-    fireEvent.click(nextBatch);
-    expect(screen.getByRole("region")).toHaveFocus();
+    advance(7);
+    const next = screen.getByRole("button", { name: "次の記事" });
+    next.focus();
+    fireEvent.click(next);
+    expect(next).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("9 / 20件");
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
   });
   it("aligns the new batch after slides replace an empty queue instead of retaining the end snap target", () => {
-    render(
+    const { rerender } = render(
       <ImmersiveArticleMode
         {...props}
-        candidates={articles.slice(0, 2)}
+        candidates={[]}
         session={{ remaining: [], served: [articles[0]], paused: true, speed: 1 }}
       />,
     );
@@ -159,7 +158,13 @@ describe("ImmersiveArticleMode", () => {
         if (value === 0 && scroller.querySelector(".immersive-slide")) alignedAfterInsertion = true;
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
+    rerender(
+      <ImmersiveArticleMode
+        {...props}
+        candidates={articles.slice(0, 2)}
+        session={{ remaining: [], served: [articles[0]], paused: true, speed: 1 }}
+      />,
+    );
     fireEvent.scroll(scroller);
     expect(screen.getByRole("heading", { name: "記事 1" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("1 / 1件");
@@ -169,7 +174,7 @@ describe("ImmersiveArticleMode", () => {
     "keeps keyboard focus when the %s navigation control becomes disabled",
     (edge) => {
       const trigger = start();
-      advance(edge === "end" ? 9 : 1);
+      advance(edge === "end" ? 22 : 1);
       const button = screen.getByRole("button", {
         name: edge === "end" ? "次の記事" : "前の記事",
       });
@@ -186,13 +191,14 @@ describe("ImmersiveArticleMode", () => {
     "retains the stable %s control focus when native scrolling reaches the end",
     (name) => {
       start();
+      advance(22);
       const stable = screen.getByRole(name === "再生速度" ? "combobox" : "button", { name });
       stable.focus();
       const scroller = screen.getByRole("region");
       Object.defineProperty(scroller, "clientHeight", { value: 400 });
-      scroller.scrollTop = 4000;
+      scroller.scrollTop = 9200;
       fireEvent.scroll(scroller);
-      expect(screen.getByRole("status")).toHaveTextContent("区切り");
+      expect(screen.getByRole("status")).toHaveTextContent("ここまで");
       expect(stable).toHaveFocus();
     },
   );
@@ -200,13 +206,14 @@ describe("ImmersiveArticleMode", () => {
     "repairs the unavailable %s control focus when native scrolling reaches the end",
     (name) => {
       start();
+      advance(22);
       screen.getByRole("button", { name }).focus();
       const scroller = screen.getByRole("region");
       Object.defineProperty(scroller, "clientHeight", { value: 400 });
-      scroller.scrollTop = 4000;
+      scroller.scrollTop = 9200;
       fireEvent.scroll(scroller);
       expect(scroller).toHaveFocus();
-      expect(screen.getByRole("status")).toHaveTextContent("区切り");
+      expect(screen.getByRole("status")).toHaveTextContent("ここまで");
     },
   );
   it("saves without reordering, dismisses with a focused undo, and restores the same card", () => {

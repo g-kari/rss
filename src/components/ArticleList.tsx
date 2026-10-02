@@ -188,6 +188,7 @@ function ArticleList({
   const {
     filtered,
     recommendationCandidates,
+    recommendationDisplayCandidates,
     recommendationSources,
     visible,
     hasMore,
@@ -731,6 +732,9 @@ function ArticleList({
           <ArticleRecommendations
             {...recommendationContext}
             candidates={recommendationCandidates ?? filtered}
+            displayCandidates={
+              recommendationDisplayCandidates ?? recommendationCandidates ?? filtered
+            }
             articles={recommendationSources ?? filtered}
             feeds={feeds}
             readIds={readIds}
@@ -740,6 +744,7 @@ function ArticleList({
             onToggleReadingList={onToggleReadingList}
             onSelectArticle={onSelectArticle}
             onReadArticle={onReadImmersiveArticle}
+            onMarkRead={onMarkRead}
             status={
               loading
                 ? "loading"

@@ -80,7 +80,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("immersive autoplay session", () => {
-  it("runs in the normal reader skin, advances once per completion and stops at ten", () => {
+  it("runs in the normal reader skin, advances once per completion beyond ten until exhaustion", () => {
     render(<ImmersiveArticleMode {...props} />);
     expect(screen.getByRole("button", { name: "自動再生を一時停止" })).toBeEnabled();
     const first = state.cards.get("0")!.onComplete;
@@ -91,15 +91,16 @@ describe("immersive autoplay session", () => {
     expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
     for (let index = 1; index < 10; index++)
       act(() => state.cards.get(String(index))!.onComplete());
-    expect(screen.getByRole("status")).toHaveTextContent("区切り");
+    expect(screen.getByRole("status")).toHaveTextContent("11 / 12件");
+    expect(state.cards.get("10")?.paused).toBe(false);
+    act(() => state.cards.get("9")!.onComplete());
+    expect(screen.getByRole("status")).toHaveTextContent("11 / 12件");
+    act(() => state.cards.get("10")!.onComplete());
+    act(() => state.cards.get("11")!.onComplete());
+    expect(screen.getByRole("status")).toHaveTextContent("ここまで");
     expect(screen.getByRole("button", { name: "次の記事" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "自動再生を一時停止" })).toBeDisabled();
-    act(() => state.cards.get("9")!.onComplete());
-    expect(screen.getByRole("status")).toHaveTextContent("区切り");
-    expect(state.cards.has("10")).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "次の10件を見る" }));
-    expect(screen.getByRole("status")).toHaveTextContent("1 / 2件");
-    expect(state.cards.get("10")?.paused).toBe(false);
+    expect(screen.queryByRole("button", { name: "次の10件を見る" })).toBeNull();
     expect(props.onSelectArticle).not.toHaveBeenCalled();
     expect(props.onDismiss).not.toHaveBeenCalled();
   });
@@ -182,4 +183,33 @@ it("closes an inline panel safely if the active article leaves the eligible scop
   rerender(<ImmersiveArticleMode {...props} readIds={new Set(["0"])} />);
   expect(screen.queryByRole("dialog", { name: "ここで記事の本文を読む" })).toBeNull();
   expect(document.querySelector(".immersive-footer")).not.toHaveAttribute("inert");
+});
+
+it("skips an externally excluded current card during autoplay but preserves a paused session", () => {
+  const { rerender } = render(<ImmersiveArticleMode {...props} />);
+  const staleComplete = state.cards.get("0")!.onComplete;
+  rerender(<ImmersiveArticleMode {...props} readIds={new Set(["0"])} />);
+  expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
+  act(() => staleComplete());
+  expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
+  fireEvent.click(screen.getByRole("button", { name: "自動再生を一時停止" }));
+  rerender(<ImmersiveArticleMode {...props} readIds={new Set(["0", "1"])} />);
+  expect(screen.getByRole("status")).toHaveTextContent("2 / 10件");
+  fireEvent.click(screen.getByRole("button", { name: "次の記事" }));
+  expect(state.cards.get("2")?.paused).toBe(true);
+});
+
+it("walks consecutive external exclusions to exhaustion and resumes skipping after a hidden hold", () => {
+  const { rerender } = render(<ImmersiveArticleMode {...props} />);
+  state.visual.pageVisible = false;
+  rerender(<ImmersiveArticleMode {...props} readIds={new Set(["0", "1"])} />);
+  expect(screen.getByRole("status")).toHaveTextContent("1 / 10件");
+  state.visual.pageVisible = true;
+  rerender(<ImmersiveArticleMode {...props} readIds={new Set(["0", "1"])} />);
+  expect(screen.getByRole("status")).toHaveTextContent("3 / 10件");
+  rerender(
+    <ImmersiveArticleMode {...props} readIds={new Set(articles.map((article) => article.id))} />,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("ここまで");
+  expect(screen.getByRole("button", { name: "次の記事" })).toBeDisabled();
 });

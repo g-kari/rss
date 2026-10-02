@@ -6,6 +6,7 @@ export default defineConfig({
   testMatch: [
     "scoped-recommendations.spec.ts",
     "immersive-articles.spec.ts",
+    "immersive-continuity.spec.ts",
     "immersive-autoplay-narration.spec.ts",
     "immersive-native-video.spec.ts",
     "immersive-quality.spec.ts",

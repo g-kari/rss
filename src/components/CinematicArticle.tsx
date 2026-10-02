@@ -23,6 +23,8 @@ interface Props {
   speed?: number;
   onComplete?: () => void;
   onPause?: () => void;
+  failedThumbnails?: ReadonlySet<string>;
+  onThumbnailFailure?: (source: string) => void;
 }
 
 export default function CinematicArticle({
@@ -35,6 +37,8 @@ export default function CinematicArticle({
   speed = 1,
   onComplete,
   onPause,
+  failedThumbnails,
+  onThumbnailFailure,
 }: Props) {
   const { motionEnabled, motionReason, pageVisible } = useVisualMode();
   // Opening immersive mode opts in independently of the normal reader's visual skin.
@@ -99,6 +103,8 @@ export default function CinematicArticle({
             fallbacks={thumbnailFallbacks}
             className="h-full w-full object-cover"
             limitUpscale
+            failedSources={failedThumbnails}
+            onSourceFailure={onThumbnailFailure}
           />
         </div>
         {nativeVideo && (
