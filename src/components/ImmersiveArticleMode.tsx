@@ -27,6 +27,8 @@ import {
   resolveImmersiveText,
   type ImmersiveTextPresentation,
 } from "../lib/immersive-summary";
+import type { useRecommendationTopics } from "../hooks/useRecommendationTopics";
+import RecommendationReasonDialog from "./RecommendationReasonDialog";
 import ImmersiveSummaryReader from "./ImmersiveSummaryReader";
 
 export interface ImmersiveSessionSnapshot {
@@ -38,6 +40,7 @@ export interface ImmersiveSessionSnapshot {
 }
 
 interface Props extends ArticleRecommendationOptions {
+  topicControls?: ReturnType<typeof useRecommendationTopics>;
   onClose: () => void;
   session?: ImmersiveSessionSnapshot | null;
   onSessionChange?: (session: ImmersiveSessionSnapshot) => void;
@@ -69,7 +72,7 @@ export default function ImmersiveArticleMode(props: Props) {
   const prefersPause =
     !motionEnabled || motionReason === "端末の動きを減らす設定" || motionReason === "静止表示";
   const [paused, setPaused] = useState(session?.paused ?? prefersPause);
-  const [inlineView, setInlineView] = useState<"body" | "summary" | null>(null);
+  const [inlineView, setInlineView] = useState<"body" | "summary" | "reasons" | null>(null);
   const inlineOpen = inlineView !== null;
   const inlineTriggerRef = useRef<HTMLElement | null>(null);
   const settings = useOptionalReaderSettings();
@@ -577,6 +580,19 @@ export default function ImmersiveArticleMode(props: Props) {
                     {readingListIds.has(activeArticle.id) ? "保存済み" : "後で読む"}
                   </button>
                 )}
+                {props.topicControls && current && (
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    aria-haspopup="dialog"
+                    onClick={(event) => {
+                      inlineTriggerRef.current = event.currentTarget;
+                      setInlineView("reasons");
+                    }}
+                  >
+                    おすすめ理由
+                  </button>
+                )}
                 <button
                   type="button"
                   className={secondaryButton}
@@ -656,6 +672,14 @@ export default function ImmersiveArticleMode(props: Props) {
           )}
         </div>
       </footer>
+      {inlineView === "reasons" && activeArticle && current && props.topicControls && (
+        <RecommendationReasonDialog
+          recommendation={current}
+          controls={props.topicControls}
+          onClose={() => setInlineView(null)}
+          returnFocusEl={inlineTriggerRef.current}
+        />
+      )}
       {inlineView === "summary" && activeArticle && (
         <ImmersiveSummaryReader
           key={presentationKey}

@@ -146,3 +146,103 @@ describe("rankArticleRecommendations", () => {
     expect(dismissed).toEqual(without);
   });
 });
+
+describe("actual explanations and explicit topic ranking", () => {
+  it("returns the exact scorer contributions including publisher diversity", () => {
+    const signal = article("signal", "a", 4, ["Unity"]);
+    const result = rank([article("a1", "a", 0, ["Unity"]), article("a2", "a", 0, ["Unity"])], {
+      articles: [signal],
+      bookmarkIds: new Set(["signal"]),
+      feeds: feeds.map((feed) => ({ ...feed, priority: "high" })),
+    });
+    const first = result[0].explanation!;
+    expect(first.freshness.points).toBe(8);
+    expect(first.interest.points).toBe(4.5);
+    expect(first.feed.points).toBe(3);
+    expect(first.priorityPoints).toBe(2);
+    expect(first.interest.saved).toBe(true);
+    expect(first.total).toBe(17.5);
+    const second = result[1].explanation!;
+    expect(second.diversityPenalty).toBe(14);
+    expect(second.total).toBe(3.5);
+    for (const { explanation: detail } of result) {
+      expect(detail!.total).toBeCloseTo(
+        detail!.freshness.points +
+          detail!.interest.points +
+          detail!.feed.points +
+          detail!.priorityPoints +
+          detail!.preferencePoints -
+          detail!.diversityPenalty,
+      );
+    }
+  });
+  it("more/less really change order and neutral restores the original ranking", () => {
+    const candidates = [article("a", "a", 0, ["Cooking"]), article("z", "b", 0, ["Ｕｎｉｔｙ"])];
+    const baseline = rank(candidates);
+    const more = rank(candidates, {
+      topicPreferences: [{ topic: "unity", label: "Unity", value: "more" }],
+    });
+    expect(baseline[0].article.id).toBe("a");
+    expect(more[0].article.id).toBe("z");
+    expect(more[0].explanation!.preferencePoints).toBe(6);
+    const less = rank(candidates, {
+      topicPreferences: [{ topic: "cooking", label: "Cooking", value: "less" }],
+    });
+    expect(less[0].article.id).toBe("z");
+    expect(less).toHaveLength(2);
+    expect(rank(candidates, { topicPreferences: [] })).toEqual(baseline);
+  });
+  it("caps multi-tag adjustments, cancels opposing choices and uses feed categories", () => {
+    const preferences = ["Unity", "AI", "Tools"].map((label) => ({
+      topic: label.toLowerCase(),
+      label,
+      value: "more" as const,
+    }));
+    const result = rank([article("tags", "a", 0, ["Unity", "unity", "AI", "Tools"])], {
+      topicPreferences: preferences,
+    });
+    expect(result[0].explanation!.preferencePoints).toBe(6);
+    expect(result[0].explanation!.preferences).toHaveLength(3);
+    const opposing = rank([article("mixed", "a", 0, ["AI", "Tools"])], {
+      topicPreferences: [preferences[1], { ...preferences[2], value: "less" }],
+    });
+    expect(opposing[0].explanation!.preferencePoints).toBe(0);
+    expect(opposing[0].reasons.join(" ")).not.toContain("増やしたい");
+    expect(
+      rank([article("feed-tag")], {
+        feeds: feeds.map((feed) => ({ ...feed, category: "Unity" })),
+        topicPreferences: preferences,
+      })[0].explanation!.preferencePoints,
+    ).toBe(6);
+  });
+  it("cannot escape candidate/read/dismiss/mute filters or train from bulk read", () => {
+    const preference = [{ topic: "unity", label: "Unity", value: "more" as const }];
+    const excluded = article("excluded", "a", 0, ["Unity"]);
+    expect(rank([], { articles: [excluded], topicPreferences: preference })).toEqual([]);
+    expect(
+      rank([excluded], { readIds: new Set(["excluded"]), topicPreferences: preference }),
+    ).toEqual([]);
+    expect(
+      rank([excluded], { dismissedIds: new Set(["excluded"]), topicPreferences: preference }),
+    ).toEqual([]);
+    const result = rank([article("only", "b", 0, ["Unity"])], {
+      articles: [excluded],
+      readIds: new Set(["excluded"]),
+      topicPreferences: preference,
+    });
+    expect(result[0].explanation!.interest.points).toBe(0);
+  });
+  it("explains missing, future and invalid dates without inventing freshness", () => {
+    const missing = rank([{ ...article("missing"), publishedAt: null }])[0];
+    expect(missing.explanation!.freshness.source).toBe("received");
+    expect(missing.reasons).toContain("24時間以内に取得");
+    for (const articleValue of [
+      article("future", "a", -1),
+      { ...article("invalid"), publishedAt: "bad" },
+    ]) {
+      const detail = rank([articleValue])[0].explanation!;
+      expect(detail.freshness.ageHours).toBeNull();
+      expect(detail.freshness.points).toBe(0);
+    }
+  });
+});
