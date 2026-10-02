@@ -6,11 +6,13 @@ const mocks = vi.hoisted(() => ({
   fetchAll: vi.fn(),
   prefetch: vi.fn(),
   recommendations: vi.fn(),
+  summary: vi.fn(),
 }));
 vi.mock("../.open-next/worker.js", () => ({ default: { fetch: mocks.delegate } }));
 vi.mock("./cron/fetch", () => ({ fetchAllFeeds: mocks.fetchAll }));
 vi.mock("./cron/recommendations", () => ({ runRecommendationPush: mocks.recommendations }));
 vi.mock("./lib/cron-prefetch", () => ({ runCronPrefetch: mocks.prefetch }));
+vi.mock("./lib/summary-precompute", () => ({ runScheduledSummaryPrecompute: mocks.summary }));
 import worker from "../worker";
 
 function workerRequest(input: string, init?: RequestInit): Parameters<typeof worker.fetch>[0] {
@@ -32,10 +34,27 @@ beforeEach(() => {
   mocks.fetchAll.mockResolvedValue(undefined);
   mocks.prefetch.mockResolvedValue(undefined);
   mocks.recommendations.mockResolvedValue(undefined);
+  mocks.summary.mockResolvedValue(0);
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Worker maintenance boundary", () => {
+  it("passes existing prefetched URLs and the trusted scheduled run ID to gated summary work", async () => {
+    mocks.prefetch.mockImplementationOnce(async (_env, _ctx, _opts, _origin, afterPrefetch) =>
+      afterPrefetch(["https://example.com/article"]),
+    );
+    const scheduledTime = Date.parse("2026-10-02T04:00:00Z");
+    const activeEnv = { ...env, RSS_FEED_WRITES_PAUSED: "false" };
+    await worker.scheduled({ scheduledTime } as ScheduledController, activeEnv, ctx);
+    await Promise.all(vi.mocked(ctx.waitUntil).mock.calls.map(([promise]) => promise));
+    expect(mocks.summary).toHaveBeenCalledWith(
+      activeEnv,
+      ["https://example.com/article"],
+      "https://rss.0g0.xyz",
+      scheduledTime,
+    );
+  });
+
   it("keeps existing prefetch running if recommendation setup fails", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     mocks.recommendations.mockRejectedValueOnce(new Error("R2 unavailable"));
@@ -140,6 +159,9 @@ describe("Worker maintenance boundary", () => {
       expect(mocks.prefetch).toHaveBeenCalledWith(
         { RSS_DATA: env.RSS_DATA, RATE_LIMIT: env.RATE_LIMIT },
         ctx,
+        undefined,
+        "https://rss.0g0.xyz",
+        expect.any(Function),
       );
       expect(mocks.fetchAll.mock.invocationCallOrder[0]).toBeLessThan(
         mocks.prefetch.mock.invocationCallOrder[0],

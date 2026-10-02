@@ -18,6 +18,13 @@ interface CloudflareEnv extends Partial<SearchIndexEnv> {
   RSS_ARTICLE_SEARCH_INDEX?: string;
   /** Operator-controlled feed-writer pause. Unset/"false" allows writes; other values pause. */
   RSS_FEED_WRITES_PAUSED?: string;
+  /** Summary precompute requires an explicit model and all budget limits; unset is OFF. */
+  RSS_SUMMARY_PRECOMPUTE_ENABLED?: string;
+  RSS_SUMMARY_PRECOMPUTE_MODEL?: string;
+  RSS_SUMMARY_PRECOMPUTE_RUN_USD?: string;
+  RSS_SUMMARY_PRECOMPUTE_DAY_USD?: string;
+  RSS_SUMMARY_PRECOMPUTE_MONTH_USD?: string;
+  RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES?: string;
   RSS_DATA: R2Bucket;
   /** レートリミット用 KV namespace */
   RATE_LIMIT: KVNamespace;

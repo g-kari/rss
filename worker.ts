@@ -4,6 +4,7 @@ import { fetchAllFeeds } from "./src/cron/fetch";
 import { runRecommendationPush } from "./src/cron/recommendations";
 import { runCronPrefetch } from "./src/lib/cron-prefetch";
 import { feedWriteMaintenanceResponse, isFeedWritesPaused } from "./src/lib/feed-write-maintenance";
+import { runScheduledSummaryPrecompute } from "./src/lib/summary-precompute";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 const openNextFetch = handler.fetch as NonNullable<ExportedHandler<CloudflareEnv>["fetch"]>;
@@ -17,7 +18,7 @@ export default {
   },
 
   async scheduled(
-    _controller: ScheduledController,
+    controller: ScheduledController,
     env: CloudflareEnv,
     ctx: ExecutionContext,
   ): Promise<void> {
@@ -44,6 +45,15 @@ export default {
     // #803 Phase 2: RSS 取得後に top-N feed の最新記事 content/OGP を prefetch
     // (subrequest 上限 1000 件を考慮して topN=50 / maxArticlesPerFeed=3 で約 300 件 / 実行)
     // 失敗は無視 (本体の RSS 取得を阻害しない、ctx.waitUntil で非同期実行)
-    ctx.waitUntil(runCronPrefetch({ RSS_DATA: env.RSS_DATA, RATE_LIMIT: env.RATE_LIMIT }, ctx));
+    ctx.waitUntil(
+      runCronPrefetch(
+        { RSS_DATA: env.RSS_DATA, RATE_LIMIT: env.RATE_LIMIT },
+        ctx,
+        undefined,
+        "https://rss.0g0.xyz",
+        (urls) =>
+          runScheduledSummaryPrecompute(env, urls, "https://rss.0g0.xyz", controller.scheduledTime),
+      ),
+    );
   },
 } satisfies ExportedHandler<CloudflareEnv>;

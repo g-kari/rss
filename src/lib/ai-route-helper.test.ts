@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 import { runAiJob } from "./ai-route-helper";
 import { DEFAULT_AI_MODEL } from "./ai-models";
-import { getAiCacheByUrl, setAiCacheByUrl } from "./ai-cache";
+import { getAiCacheByUrl, setAiCacheByUrl, setAiSummaryByUrl } from "./ai-cache";
 import { fetchArticleContent } from "./fetch-article-content";
+import { claimSummaryGeneration, summaryGenerationRetryAfter } from "./ai-generation-lease";
 import { checkSlidingWindow } from "./rate-limit";
 
 vi.mock("./server-auth", () => ({
@@ -13,11 +14,20 @@ vi.mock("./server-auth", () => ({
 vi.mock("./ai-cache", () => ({
   getAiCacheByUrl: vi.fn(),
   setAiCacheByUrl: vi.fn(),
+  setAiSummaryByUrl: vi.fn(),
 }));
 vi.mock("./fetch-article-content", () => ({ fetchArticleContent: vi.fn() }));
 vi.mock("./rate-limit", () => ({ checkSlidingWindow: vi.fn() }));
 vi.mock("./html", () => ({ toPlainText: (text: string) => text }));
 
+vi.mock("./ai-generation-lease", () => ({
+  claimSummaryGeneration: vi.fn(async () => ({ key: "lease", owner: "owner", etag: "etag" })),
+  finishSummaryGeneration: vi.fn(async () => {}),
+  failSummaryGeneration: vi.fn(async () => {}),
+  summaryGenerationRetryAfter: vi.fn(async () => 300),
+}));
+
+const articleBody = "article body ".repeat(20).trim();
 const url = "https://example.com/article";
 const run = vi.fn();
 const waitUntil = vi.fn();
@@ -50,26 +60,65 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(getAiCacheByUrl).mockResolvedValue(null);
   vi.mocked(setAiCacheByUrl).mockResolvedValue(undefined);
-  vi.mocked(fetchArticleContent).mockResolvedValue("article body");
+  vi.mocked(setAiSummaryByUrl).mockResolvedValue(undefined);
+  vi.mocked(fetchArticleContent).mockResolvedValue(articleBody);
   vi.mocked(checkSlidingWindow).mockResolvedValue(null);
   run.mockResolvedValue({ response: "legacy result" });
 });
 
 describe("runAiJob model handling", () => {
+  it("returns explicit manual retry eligibility/cooldown without duplicate AI", async () => {
+    vi.mocked(claimSummaryGeneration).mockResolvedValueOnce(null);
+    vi.mocked(summaryGenerationRetryAfter).mockResolvedValueOnce(300);
+    const response = await execute();
+    expect(response.status).toBe(409);
+    expect(response.headers.get("Retry-After")).toBe("300");
+    expect(await response.json()).toMatchObject({
+      code: "SUMMARY_GENERATION_PENDING",
+      retryable: true,
+      retryAfter: 300,
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
+  it("exposes operator recovery for an active/storage-ambiguous claim", async () => {
+    vi.mocked(claimSummaryGeneration).mockResolvedValueOnce(null);
+    vi.mocked(summaryGenerationRetryAfter).mockResolvedValueOnce(null);
+    const response = await execute();
+    expect(await response.json()).toMatchObject({
+      code: "SUMMARY_GENERATION_PENDING",
+      retryable: false,
+      recoveryRequired: true,
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
+  it.each([null, "", "short", "[INST]".repeat(60)])(
+    "rejects missing/short/effectively empty summary body without AI %j",
+    async (content) => {
+      vi.mocked(fetchArticleContent).mockResolvedValueOnce(content);
+      const response = await execute();
+      expect(response.status).toBe(content === null || content === "" ? 502 : 422);
+      expect(run).not.toHaveBeenCalled();
+      expect(setAiSummaryByUrl).not.toHaveBeenCalled();
+    },
+  );
+
   it("uses the default only when model is omitted", async () => {
     const response = await execute();
     expect(await response.json()).toEqual({ result: "legacy result" });
     expect(run).toHaveBeenCalledWith(DEFAULT_AI_MODEL, {
-      messages: [{ role: "user", content: "<article>\narticle body\n</article>" }],
+      messages: [{ role: "user", content: `<article>\n${articleBody}\n</article>` }],
       max_tokens: 2048,
     });
     expect(getAiCacheByUrl).toHaveBeenCalledWith(env.RSS_DATA, url, "summary", DEFAULT_AI_MODEL);
-    expect(setAiCacheByUrl).toHaveBeenCalledWith(
+    expect(setAiSummaryByUrl).toHaveBeenCalledWith(
       env.RSS_DATA,
       url,
       "legacy result",
-      "summary",
-      DEFAULT_AI_MODEL,
+      expect.objectContaining({
+        model: DEFAULT_AI_MODEL,
+        inputTruncated: false,
+        completeness: "unknown",
+      }),
     );
     expect(checkSlidingWindow).toHaveBeenCalledWith(
       env.RATE_LIMIT,
@@ -104,7 +153,7 @@ describe("runAiJob model handling", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ result: "new result" });
     expect(run).toHaveBeenCalledWith(model, {
-      messages: [{ role: "user", content: "<article>\narticle body\n</article>" }],
+      messages: [{ role: "user", content: `<article>\n${articleBody}\n</article>` }],
       max_completion_tokens: 2048,
       ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       ...(model === "@cf/google/gemma-4-26b-a4b-it"
