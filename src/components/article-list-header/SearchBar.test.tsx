@@ -93,4 +93,23 @@ describe("saved search editing", () => {
       expect(saved()).toEqual([]);
     }
   });
+
+  it("preserves the name focus before Safari-style mouse activation without saving on press", () => {
+    render(<Fixture />);
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    const name = screen.getByLabelText("検索を保存するための名前");
+    fireEvent.change(name, { target: { value: "Pointer" } });
+    for (const label of ["保存", "キャンセル"]) {
+      const button = screen.getByRole("button", { name: label });
+      const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+      act(() => button.dispatchEvent(event));
+      expect(event.defaultPrevented).toBe(true);
+      expect(name).toHaveFocus();
+      expect(name).toBeInTheDocument();
+      expect(saved()).toEqual([]);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    expect(saved()).toMatchObject([{ name: "Pointer", query: "title:original" }]);
+    expect(screen.getByRole("combobox")).toHaveFocus();
+  });
 });

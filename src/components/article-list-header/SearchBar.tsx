@@ -36,7 +36,10 @@ export default function SearchBar() {
 
   // Select only on opening, not on each name edit. No delayed focus can outlive dismissal.
   useEffect(() => {
-    if (isSavingSearch) saveNameInputRef.current?.select();
+    if (isSavingSearch) {
+      saveNameInputRef.current?.focus();
+      saveNameInputRef.current?.select();
+    }
   }, [isSavingSearch]);
 
   // A newer filter must never be saved under the abandoned editor's name.
@@ -262,12 +265,16 @@ export default function SearchBar() {
           <button
             type="submit"
             disabled={!savingSearch.name.trim()}
+            // Safari mouse clicks can blur to null before click. Keep the editor mounted;
+            // saving still happens only on submit, never on pointer press.
+            onMouseDown={(e) => e.preventDefault()}
             className="text-[10px] px-2 py-0.5 bg-ink text-ink-text rounded-md hover:bg-ink-hover transition-colors flex-shrink-0 disabled:opacity-50"
           >
             保存
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={closeSaveEditor}
             className="text-[10px] px-2 py-0.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
           >
