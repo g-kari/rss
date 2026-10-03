@@ -171,13 +171,13 @@ test("free-only preflight stays blocked despite the published allowance", () => 
 });
 
 test("CLI defaults to Clef-flash and produces 108 bounded synthetic requests without network", () => {
-  const cli = new URL("./cli.mjs", import.meta.url).href;
   const result = spawnSync(
     process.execPath,
     [
-      "--input-type=module",
-      "-e",
-      `globalThis.fetch = () => { throw new Error('Unexpected network'); }; process.argv = ['node', 'cli', 'prepare']; await import(${JSON.stringify(cli)});`,
+      "--import",
+      new URL("./deny-network.fixture.mjs", import.meta.url).href,
+      new URL("./cli.mjs", import.meta.url).pathname,
+      "prepare",
     ],
     { encoding: "utf8" },
   );
