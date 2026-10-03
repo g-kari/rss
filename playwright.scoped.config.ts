@@ -17,6 +17,7 @@ export default defineConfig({
     "settings-navigation.spec.ts",
     "json-restore.spec.ts",
     "feed-retry-status.spec.ts",
+    "read-state-sync-recovery.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,

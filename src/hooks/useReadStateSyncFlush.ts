@@ -117,14 +117,27 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       return;
     }
     isFlushingRef.current = true;
+    // Every actual flush, including a queued continuation, consumes current work.
+    // Cancel only its existing debounce; edits made during the await below queue anew.
+    if (syncTimerRef.current !== null) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    isDirtyRef.current = false;
     try {
       const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
       const result = await saveReadState(body);
       if (result.ok && result.state) {
-        setHasPendingChanges(false);
+        // This response acknowledges its snapshot, not edits queued while it was in flight.
+        setHasPendingChanges(
+          isDirtyRef.current || syncTimerRef.current !== null || flushAgainRef.current,
+        );
         applyServerState(result.state);
       } else {
         restorePending(pendingRefs, snapshot);
+        // Retain retry eligibility after the debounce timer has already been consumed.
+        // Lifecycle events retry this work; failure alone must not create a polling loop.
+        isDirtyRef.current = true;
         setHasPendingChanges(true);
       }
     } finally {
@@ -188,8 +201,8 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
   }, [userSub, applyServerState]);
 
   function flushIfPending(): boolean {
-    if (syncTimerRef.current === null) return false;
-    clearTimeout(syncTimerRef.current);
+    if (syncTimerRef.current === null && !isDirtyRef.current) return false;
+    if (syncTimerRef.current !== null) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = null;
     isDirtyRef.current = false;
     return true;
@@ -201,6 +214,13 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
     () => {
       if (!userRef.current) return;
       if (document.visibilityState === "visible") {
+        // The POST response merges server state after local deltas are saved. A parallel
+        // GET could return stale values while prepareFlush has extracted those deltas.
+        if (isDirtyRef.current || syncTimerRef.current !== null) {
+          syncImmediately();
+          return;
+        }
+        if (isFlushingRef.current) return;
         if (Date.now() - lastServerSyncRef.current < 15_000) return;
         fetchReadState().then((state) => {
           if (!state) return;
