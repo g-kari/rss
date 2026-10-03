@@ -34,6 +34,18 @@ export default function SearchBar() {
   const { savedSearches, save: saveSearch, removeSaved } = useFullTextSearch();
   const isSavingSearch = savingSearch !== null;
 
+  // Native ancestor isolation also works with Next's document-level React delegation.
+  // The reader's global Space shortcut must not cancel native Save/Cancel activation.
+  useEffect(() => {
+    const container = searchContainerRef.current;
+    if (!container) return;
+    const keepButtonSpace = (event: globalThis.KeyboardEvent) => {
+      if (event.key === " " && event.target instanceof HTMLButtonElement) event.stopPropagation();
+    };
+    container.addEventListener("keydown", keepButtonSpace);
+    return () => container.removeEventListener("keydown", keepButtonSpace);
+  }, []);
+
   // Select only on opening, not on each name edit. No delayed focus can outlive dismissal.
   useEffect(() => {
     if (isSavingSearch) {

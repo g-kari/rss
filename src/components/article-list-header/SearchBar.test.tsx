@@ -1,24 +1,40 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef, useState } from "react";
 import SearchBar from "./SearchBar";
 import { ArticleFilterProvider, type ArticleFilter } from "../../contexts/ArticleFilterContext";
+import { useKeyboardNav } from "../../hooks/useKeyboardNav";
+
+const scrollArticle = vi.fn();
 
 function Fixture() {
   const [rawQuery, updateQuery] = useState("title:original");
   const searchRef = useRef<HTMLInputElement>(null);
+  useKeyboardNav({
+    filteredArticles: [{ id: "current", title: "Current" }],
+    selectedArticle: { id: "current", title: "Current" },
+  } as Parameters<typeof useKeyboardNav>[0]);
   return (
     <ArticleFilterProvider value={{ rawQuery, updateQuery, searchRef } as ArticleFilter}>
       <SearchBar />
       <button onClick={() => updateQuery("title:newer")}>New query</button>
       <button>Outside</button>
+      <main
+        aria-label="記事本文"
+        ref={(element) => {
+          if (element) element.scrollBy = scrollArticle;
+        }}
+      />
     </ArticleFilterProvider>
   );
 }
 function saved() {
   return JSON.parse(localStorage.getItem("rss-saved-searches") ?? "[]");
 }
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  scrollArticle.mockClear();
+});
 afterEach(cleanup);
 
 describe("saved search editing", () => {
@@ -111,5 +127,14 @@ describe("saved search editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     expect(saved()).toMatchObject([{ name: "Pointer", query: "title:original" }]);
     expect(screen.getByRole("combobox")).toHaveFocus();
+  });
+
+  it("keeps native Space activation away from the real reader shortcut", () => {
+    render(<Fixture />);
+    const button = screen.getByRole("button", { name: "保存" });
+    const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    act(() => button.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(false);
+    expect(scrollArticle).not.toHaveBeenCalled();
   });
 });

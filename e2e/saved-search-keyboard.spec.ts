@@ -24,11 +24,40 @@ test.beforeAll(async () => {
           import { createRoot } from "react-dom/client";
           import SearchBar from "./src/components/article-list-header/SearchBar";
           import { ArticleFilterProvider } from "./src/contexts/ArticleFilterContext";
+          import { useKeyboardNav } from "./src/hooks/useKeyboardNav";
+          import { makeArticle } from "./e2e/helpers/article";
           function Fixture() {
             const [rawQuery, updateQuery] = useState("");
             const [mounted, setMounted] = useState(true);
             const searchRef = useRef(null);
-            return <main>
+            const articles = ["current", "next"].map((id) => makeArticle({ id, title: id }));
+            const [selected, setSelected] = useState(articles[0]);
+            const [readIds, setReadIds] = useState(new Set());
+            const [actions, setActions] = useState(0);
+            const action = () => setActions((value) => value + 1);
+            useKeyboardNav({
+              filteredArticles: articles, feeds: [], pinnedFeedIds: new Set(),
+              selectedFeedId: null, selectedArticle: selected, readIds,
+              readBeforeTimestamp: null, readingListIds: new Set(), likeIds: new Set(),
+              setSelectedArticle: setSelected, onSelectFeed: action,
+              markRead: (id) => setReadIds((ids) => new Set([...ids, id])),
+              markBulkRead: action, markAllRead: action, toggleBookmark: action,
+              toggleRead: action, toggleReadingList: action, toggleLike: action,
+              showToast: () => {}, fontSize: "medium", onChangeFontSize: action,
+              fontFamily: "sans", onChangeFontFamily: action, layout: "list",
+              onChangeLayout: action, unreadOnly: false, toggleUnreadOnly: action,
+              bookmarkOnly: false, toggleBookmarkOnly: action, readingListOnly: false,
+              toggleReadingListOnly: action, likeOnly: false, toggleLikeOnly: action,
+              noteOnly: false, toggleNoteOnly: action, resetAllFilters: action,
+              digestMode: false, toggleDigestMode: action, toggleSortOrder: () => "newest",
+              cycleDateRange: () => "all", cycleReadingTimeRange: () => "all",
+              readingTimeRange: "all", searchRef, refreshFeeds: async () => {},
+              retryFeed: async () => {}, snoozeArticle: action, onShowSnoozeMenu: action,
+              onShowFeedSwitcher: action, onShowReadingStats: action,
+              confirm: async () => true, autoMode: false, toggleAutoMode: action,
+              ttsSupported: false, cycleTtsRate: () => 1,
+            });
+            return <section className="fixture-controls">
               {mounted && <ArticleFilterProvider value={{ rawQuery, updateQuery, searchRef }}>
                 <SearchBar />
               </ArticleFilterProvider>}
@@ -36,9 +65,19 @@ test.beforeAll(async () => {
               <button onClick={() => setMounted((value) => !value)}>検索を表示・非表示</button>
               <button>次の操作</button>
               <output aria-label="現在の検索">{rawQuery}</output>
-            </main>;
+              <output aria-label="選択中の記事">{selected.id}</output>
+              <output aria-label="既読の記事">{[...readIds].join(",")}</output>
+              <output aria-label="背景の操作回数">{actions}</output>
+              <main aria-label="記事本文" tabIndex={0} style={{ height: 120, overflow: "auto" }}>
+                <div style={{ height: 2000 }}>Synthetic article content</div>
+              </main>
+            </section>;
           }
-          createRoot(document.getElementById("root")).render(<Fixture />);
+          // Match Next App Router's document-level React event delegation.
+          createRoot(document).render(<html lang="ja"><head>
+            <meta charSet="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+            <link rel="icon" href="data:," /><style>{globalThis.fixtureCSS}</style>
+          </head><body><Fixture /></body></html>);
         `,
       },
       bundle: true,
@@ -52,7 +91,8 @@ test.beforeAll(async () => {
       { from: resolve(root, "app/globals.css") },
     ),
   ]);
-  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>main{max-width:380px;margin:32px auto}main>button{display:block;margin-top:80px}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  const styles = `${css.css}.fixture-controls{max-width:380px;margin:32px auto}.fixture-controls>button{display:block;margin-top:80px}`;
+  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><script>globalThis.fixtureCSS=${JSON.stringify(styles).replaceAll("</script", "<\\/script")};${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 
 test.beforeEach(async ({ page }) => {
@@ -75,9 +115,13 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto(fixtureUrl);
 });
-test.afterEach(({ page }) => {
+test.afterEach(async ({ page }) => {
   expect(errors.get(page)).toEqual([]);
   expect(page.url()).toBe(fixtureUrl);
+  await expect(page.getByLabel("選択中の記事")).toHaveText("current");
+  await expect(page.getByLabel("既読の記事")).toBeEmpty();
+  await expect(page.getByLabel("背景の操作回数")).toHaveText("0");
+  expect(await page.getByRole("main", { name: "記事本文" }).evaluate((el) => el.scrollTop)).toBe(0);
 });
 
 async function saved(page: Page) {
@@ -279,4 +323,30 @@ test("IME confirmation leaves the form open without saving", async ({ page }) =>
   }
   await name.press("Enter");
   expect(await saved(page)).toMatchObject([{ name: "日本語" }]);
+});
+
+for (const key of ["Enter", "Space"]) {
+  test(`keyboard ${key} activates Cancel without the reader Space shortcut`, async ({ page }) => {
+    await openWithPointer(page);
+    await page.getByLabel("検索を保存するための名前").press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "キャンセル", exact: true })).toBeFocused();
+    await page.keyboard.press(key);
+    await expect(page.getByLabel("検索を保存するための名前")).toHaveCount(0);
+    await expect(page.getByRole("combobox")).toBeFocused();
+    expect(await saved(page)).toEqual([]);
+  });
+}
+
+test("reader Space shortcut remains available after the save editor is closed", async ({
+  page,
+}) => {
+  await openWithPointer(page);
+  await page.getByLabel("検索を保存するための名前").press("Escape");
+  const reader = page.getByRole("main", { name: "記事本文" });
+  await reader.focus();
+  await reader.press("Space");
+  await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await reader.evaluate((el) => el.scrollTo({ top: 0, behavior: "instant" }));
+  await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBe(0);
 });
