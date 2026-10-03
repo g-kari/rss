@@ -117,6 +117,13 @@ export function useReadStateSyncFlush(deps: FlushDeps): FlushResult {
       return;
     }
     isFlushingRef.current = true;
+    // Every actual flush, including a queued continuation, consumes current work.
+    // Cancel only its existing debounce; edits made during the await below queue anew.
+    if (syncTimerRef.current !== null) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    isDirtyRef.current = false;
     try {
       const { snapshot, body } = prepareFlush(pendingRefs, globalFilterRef, stateRef);
       const result = await saveReadState(body);

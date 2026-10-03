@@ -188,6 +188,64 @@ describe("failed read-state sync recovery", () => {
     expect(result.current.sync.hasPendingChanges).toBe(false);
   });
 
+  it("consumes recovery eligibility when a queued continuation saves all restored work", async () => {
+    const { result } = setup();
+    startFlush(result);
+    act(() => {
+      result.current.deps.stateRef.current.bookmarks.add("bookmark-2");
+      result.current.deps.pendingAddedRef.current.bookmarks.add("bookmark-2");
+      result.current.sync.scheduleSyncToServer();
+      result.current.sync.syncImmediately();
+      vi.advanceTimersByTime(1);
+    });
+    expect(saveReadState).toHaveBeenCalledTimes(1);
+    await resolveSave(0, { ok: false });
+    expect(saveReadState).toHaveBeenCalledTimes(2);
+    expect(result.current.sync.hasPendingChanges).toBe(true);
+    expect(JSON.parse(vi.mocked(saveReadState).mock.calls[1]?.[0] ?? "{}").bookmarkIds).toEqual([
+      "bookmark-2",
+      "bookmark-1",
+    ]);
+    await resolveSave(1, { ok: true, state: serverState });
+    expect(result.current.sync.hasPendingChanges).toBe(false);
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(saveReadState).toHaveBeenCalledTimes(2);
+  });
+
+  it("consumes an older debounce but preserves edits made during the recovery continuation", async () => {
+    const { result } = setup();
+    startFlush(result);
+    act(() => {
+      result.current.sync.scheduleSyncToServer();
+      result.current.sync.syncImmediately();
+      vi.advanceTimersByTime(1);
+      result.current.deps.stateRef.current.bookmarks.add("bookmark-2");
+      result.current.deps.pendingAddedRef.current.bookmarks.add("bookmark-2");
+      result.current.sync.scheduleSyncToServer();
+    });
+    await resolveSave(0, { ok: false });
+    expect(saveReadState).toHaveBeenCalledTimes(2);
+    act(() => {
+      result.current.deps.stateRef.current.bookmarks.add("bookmark-3");
+      result.current.deps.pendingAddedRef.current.bookmarks.add("bookmark-3");
+      result.current.sync.scheduleSyncToServer();
+    });
+    await resolveSave(1, { ok: true, state: serverState });
+    expect(result.current.sync.hasPendingChanges).toBe(true);
+    act(() => vi.advanceTimersByTime(5000));
+    expect(saveReadState).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(vi.mocked(saveReadState).mock.calls[2]?.[0] ?? "{}").bookmarkIds).toEqual([
+      "bookmark-3",
+    ]);
+    await resolveSave(2, { ok: true, state: serverState });
+    expect(result.current.sync.hasPendingChanges).toBe(false);
+    act(() => window.dispatchEvent(new Event("online")));
+    expect(saveReadState).toHaveBeenCalledTimes(3);
+  });
+
   it("uses an accepted beacon without retaining an overflow backup", async () => {
     const { result } = setup();
     const beacon = vi.spyOn(navigator, "sendBeacon").mockReturnValue(true);
