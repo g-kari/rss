@@ -27,11 +27,43 @@ export default function SearchBar() {
   const [showHistory, setShowHistory] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
-  const [savingName, setSavingName] = useState<string | null>(null);
+  const [savingSearch, setSavingSearch] = useState<{ name: string; query: string } | null>(null);
   const saveNameInputRef = useRef<HTMLInputElement>(null);
   const [cursor, setCursor] = useState(0);
 
   const { savedSearches, save: saveSearch, removeSaved } = useFullTextSearch();
+  const isSavingSearch = savingSearch !== null;
+
+  // Native ancestor isolation also works with Next's document-level React delegation.
+  // The reader's global Space shortcut must not cancel native Save/Cancel activation.
+  useEffect(() => {
+    const container = searchContainerRef.current;
+    if (!container) return;
+    const keepButtonSpace = (event: globalThis.KeyboardEvent) => {
+      if (event.key === " " && event.target instanceof HTMLButtonElement) event.stopPropagation();
+    };
+    container.addEventListener("keydown", keepButtonSpace);
+    return () => container.removeEventListener("keydown", keepButtonSpace);
+  }, []);
+
+  // Select only on opening, not on each name edit. No delayed focus can outlive dismissal.
+  useEffect(() => {
+    if (isSavingSearch) {
+      saveNameInputRef.current?.focus();
+      saveNameInputRef.current?.select();
+    }
+  }, [isSavingSearch]);
+
+  // A newer filter must never be saved under the abandoned editor's name.
+  useEffect(() => {
+    if (savingSearch && savingSearch.query !== rawQuery.trim()) setSavingSearch(null);
+  }, [rawQuery, savingSearch]);
+
+  const closeSaveEditor = useCallback(() => {
+    setSavingSearch(null);
+    searchRef.current?.focus();
+    setShowHistory(false);
+  }, [searchRef]);
 
   // saved → history の順で flatten。Arrow キーは uniform な index で管理する。
   const items = useMemo<SuggestionItem[]>(
@@ -193,13 +225,13 @@ export default function SearchBar() {
         aria-activedescendant={activeDescendantId}
         className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg pl-2.5 pr-9 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
       />
-      {rawQuery.trim().length >= 2 && savingName === null && (
+      {rawQuery.trim().length >= 2 && savingSearch === null && (
         <button
           type="button"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            setSavingName(rawQuery.trim());
-            setTimeout(() => saveNameInputRef.current?.select(), 0);
+          onClick={() => {
+            const query = rawQuery.trim();
+            setShowHistory(false);
+            setSavingSearch({ name: query, query });
           }}
           className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] text-text-muted hover:text-text-strong transition-colors px-1.5 py-0.5"
           title="この検索条件を保存"
@@ -207,37 +239,60 @@ export default function SearchBar() {
           保存
         </button>
       )}
-      {savingName !== null && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-30 flex items-center gap-1 bg-surface-elevated border border-border-default rounded-lg px-2 py-1.5 shadow-lg">
+      {savingSearch !== null && (
+        <form
+          aria-label="検索条件を保存"
+          className="absolute left-0 right-0 top-full mt-1 z-30 flex items-center gap-1 bg-surface-elevated border border-border-default rounded-lg px-2 py-1.5 shadow-lg"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!savingSearch.name.trim() || savingSearch.query !== rawQuery.trim()) return;
+            saveSearch(savingSearch.name.trim(), savingSearch.query);
+            closeSaveEditor();
+          }}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setSavingSearch(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.stopPropagation();
+              closeSaveEditor();
+            }
+          }}
+        >
           <input
             ref={saveNameInputRef}
             type="text"
-            value={savingName}
-            onChange={(e) => setSavingName(e.target.value)}
+            value={savingSearch.name}
+            onChange={(e) => setSavingSearch({ ...savingSearch, name: e.target.value })}
             placeholder="保存名を入力"
             aria-label="検索を保存するための名前"
-            className="flex-1 text-[11px] bg-transparent outline-none text-text-strong placeholder-text-faint"
+            className="min-w-0 flex-1 text-[11px] bg-transparent outline-none text-text-strong placeholder-text-faint"
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (savingName.trim()) saveSearch(savingName.trim(), rawQuery.trim());
-                setSavingName(null);
-              } else if (e.key === "Escape") {
-                setSavingName(null);
-              }
+              // Confirming IME composition is not a request to save the search.
+              if (e.key === "Enter" && (e.nativeEvent.isComposing || e.keyCode === 229))
+                e.preventDefault();
             }}
-            onBlur={() => setSavingName(null)}
           />
           <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              if (savingName.trim()) saveSearch(savingName.trim(), rawQuery.trim());
-              setSavingName(null);
-            }}
-            className="text-[10px] px-2 py-0.5 bg-ink text-ink-text rounded-md hover:bg-ink-hover transition-colors flex-shrink-0"
+            type="submit"
+            disabled={!savingSearch.name.trim()}
+            // Safari mouse clicks can blur to null before click. Keep the editor mounted;
+            // saving still happens only on submit, never on pointer press.
+            onMouseDown={(e) => e.preventDefault()}
+            className="text-[10px] px-2 py-0.5 bg-ink text-ink-text rounded-md hover:bg-ink-hover transition-colors flex-shrink-0 disabled:opacity-50"
           >
             保存
           </button>
-        </div>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={closeSaveEditor}
+            className="text-[10px] px-2 py-0.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
+          >
+            キャンセル
+          </button>
+        </form>
       )}
       {listboxOpen && (
         // WAI-ARIA listbox: option は listbox の直接子である必要がある (ui-rendering.md 規範)。
