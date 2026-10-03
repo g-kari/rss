@@ -1,5 +1,7 @@
 # Jev による「同じニュース」判定の日本語評価準備
 
+**2026-10-03 更新:** 実験対象を Cloudflare 製・Cloudflare-hosted の Clef-flash に変更した。Jev の有料試験は取り消し。現在の CLI の既定モデル、無料枠の停止条件、モデル別 capture は [Clef 評価手順](cloudflare-news-grouping-evaluation.md) を参照する。以下の Jev 仕様・費用提案は 2026-10-02 時点の履歴であり、現行の実行許可ではない。
+
 確認日: 2026-10-02。基準コード: `d3c81e826013cf0eec0112b10907edaa580c63f9`。
 
 **現在はオフライン準備のみ。Jev を一度も呼んでおらず、日本語の精度・速度・実料金は未測定。本番採用判定は HOLD。**
@@ -31,10 +33,10 @@ Node 22 以上を使用する。新しいパッケージ、認証、環境変数
 
 ```sh
 node --test scripts/evaluations/jev-news-grouping/policy.test.mjs
-node scripts/evaluations/jev-news-grouping/cli.mjs prepare > /tmp/jev-requests.json
-node scripts/evaluations/jev-news-grouping/cli.mjs prepare --split development > /tmp/jev-development.json
-node scripts/evaluations/jev-news-grouping/cli.mjs prepare --split holdout > /tmp/jev-holdout.json
-node scripts/evaluations/jev-news-grouping/cli.mjs prepare --split safety > /tmp/jev-safety.json
+node scripts/evaluations/jev-news-grouping/cli.mjs prepare --model typesafe/jev > /tmp/jev-requests.json
+node scripts/evaluations/jev-news-grouping/cli.mjs prepare --model typesafe/jev --split development > /tmp/jev-development.json
+node scripts/evaluations/jev-news-grouping/cli.mjs prepare --model typesafe/jev --split holdout > /tmp/jev-holdout.json
+node scripts/evaluations/jev-news-grouping/cli.mjs prepare --model typesafe/jev --split safety > /tmp/jev-safety.json
 ```
 
 `prepare` はデータを stdout に出すだけで通信しない。デフォルトは分類 100 + safety 8 = 108 リクエスト。実行用 API アダプター、秘密情報、デプロイ設定、`live` コマンドは存在しない。
@@ -49,8 +51,8 @@ node scripts/evaluations/jev-news-grouping/cli.mjs prepare --split safety > /tmp
 ```
 
 ```sh
-node scripts/evaluations/jev-news-grouping/cli.mjs score --responses /tmp/jev-captures.json --split holdout
-node scripts/evaluations/jev-news-grouping/cli.mjs score --responses /tmp/jev-captures.json --split safety
+node scripts/evaluations/jev-news-grouping/cli.mjs score --model typesafe/jev --responses /tmp/jev-captures.json --split holdout
+node scripts/evaluations/jev-news-grouping/cli.mjs score --model typesafe/jev --responses /tmp/jev-captures.json --split safety
 ```
 
 `HOLD` は終了コード 2。欠測・重複・ハッシュ不一致・未知のケース・不正な出力も HOLD になる。記録の provenance は呼出者の申告であり、このツールがサービス実行を認証するものではない。`mock` と明示した記録は accuracy / macro-F1 / Brier を `null` とし、採用判定を通さない。テスト内の手作りレスポンスはモデルの性能証拠ではない。
