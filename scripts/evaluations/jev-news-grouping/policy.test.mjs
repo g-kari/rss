@@ -318,6 +318,8 @@ test("safety-only CLI rejects unknown captures and ignores known classification 
           path,
           "--split",
           "safety",
+          "--model",
+          "typesafe/jev",
         ],
         { encoding: "utf8" },
       );

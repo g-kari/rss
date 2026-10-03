@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { capturedModelEvidence, matchesResponseModel, modelProfile } from "./models.mjs";
 
 export const MODEL = "typesafe/jev";
 export const LABELS = ["same_event", "follow_up", "different"];
@@ -26,8 +27,10 @@ function articleEvidence(article) {
 }
 
 /** No label, family, user identifier, preferences, URL, read state or full article. */
-export function buildRequest(pair) {
+export function buildRequest(pair, { model = MODEL } = {}) {
+  const profile = modelProfile(model);
   return {
+    ...(profile.hosted ? { model: profile.selector } : {}),
     state: { article_a: articleEvidence(pair.a), article_b: articleEvidence(pair.b) },
     questions: {
       relationship: {
@@ -56,9 +59,12 @@ export function buildRequest(pair) {
   };
 }
 
-export function requestHash(pair) {
+export function requestHash(pair, { model = MODEL } = {}) {
+  const input = buildRequest(pair, { model });
   return createHash("sha256")
-    .update(JSON.stringify({ version: POLICY_VERSION, input: buildRequest(pair) }))
+    .update(
+      JSON.stringify({ version: POLICY_VERSION, ...(model === MODEL ? {} : { model }), input }),
+    )
     .digest("hex");
 }
 
@@ -71,9 +77,10 @@ function probability(value) {
 }
 
 /** Confidence and probabilities are provider signals, not validated Japanese accuracy. */
-export function classifyResponse(response) {
+export function classifyResponse(response, { model = MODEL } = {}) {
+  const profile = modelProfile(model);
   const abstain = (reason, valid = false) => ({ action: "abstain", label: null, valid, reason });
-  if (!object(response) || typeof response.model !== "string" || !response.model.startsWith("jev-"))
+  if (!object(response) || !matchesResponseModel(response.model, profile))
     return abstain("invalid-model");
   const usage = response.usage;
   if (
@@ -138,7 +145,7 @@ function pairKey(aId, bId) {
  * Complete-link checks prevent A~B~C from hiding an untested/conflicting A-C pair.
  * Default disabled. A group holds every original article, not a destructive dedup.
  */
-export function projectGroups(visibleArticles, scores, { enabled = false } = {}) {
+export function projectGroups(visibleArticles, scores, { enabled = false, model = MODEL } = {}) {
   const ids = visibleArticles.map((article) => article.id);
   if (ids.some((id) => typeof id !== "string" || !id) || new Set(ids).size !== ids.length)
     throw new Error("Visible article IDs must be unique nonempty strings");
@@ -149,7 +156,7 @@ export function projectGroups(visibleArticles, scores, { enabled = false } = {})
       if (!allowed.has(score.aId) || !allowed.has(score.bId) || score.aId === score.bId) continue;
       const key = pairKey(score.aId, score.bId);
       // Duplicate or opposing responses are ambiguous, even if the last is confident.
-      edges.set(key, edges.has(key) ? null : classifyResponse(score.response));
+      edges.set(key, edges.has(key) ? null : classifyResponse(score.response, { model }));
     }
   }
   const groups = [];
@@ -175,7 +182,8 @@ export function unrollGroups(projection) {
 }
 
 /** Separate safety contract: unknown evidence must abstain, never invent a class. */
-export function evaluateSafety(pairs, capture) {
+export function evaluateSafety(pairs, capture, { model = MODEL } = {}) {
+  const profile = modelProfile(model);
   if (!Array.isArray(capture?.results)) throw new Error("Capture requires results array");
   const selectedIds = new Set(pairs.map((pair) => pair.id));
   const extraRecords = capture.results.filter((record) => !selectedIds.has(record?.pairId)).length;
@@ -188,11 +196,11 @@ export function evaluateSafety(pairs, capture) {
       missing++;
       return { pairId: pair.id, passed: false, reason: "missing" };
     }
-    if (entries.length !== 1 || entries[0].requestHash !== requestHash(pair)) {
+    if (entries.length !== 1 || entries[0].requestHash !== requestHash(pair, { model })) {
       invalid++;
       return { pairId: pair.id, passed: false, reason: "capture-mismatch-or-duplicate" };
     }
-    const decision = classifyResponse(entries[0].response);
+    const decision = classifyResponse(entries[0].response, { model });
     if (!decision.valid) invalid++;
     if (decision.action !== "abstain") unsafeDecisions++;
     return {
@@ -201,26 +209,22 @@ export function evaluateSafety(pairs, capture) {
       reason: decision.reason,
     };
   });
-  const allCapturedJev =
-    capture.provenance === "captured-jev" &&
-    cases.length > 0 &&
-    pairs.every((pair) => {
-      const model = capture.results.find((record) => record?.pairId === pair.id)?.response?.model;
-      return (
-        typeof model === "string" &&
-        model.startsWith("jev-") &&
-        !/mock|test|fixture|synthetic/i.test(model)
-      );
-    });
+  const allCapturedModel = capturedModelEvidence(
+    capture,
+    profile,
+    pairs.map(
+      (pair) => capture.results.find((record) => record?.pairId === pair.id)?.response?.model,
+    ),
+  );
   return {
     cases,
     missing,
     invalid,
     unsafeDecisions,
     extraRecords,
-    liveEvaluated: allCapturedJev,
+    liveEvaluated: allCapturedModel,
     passed:
-      allCapturedJev &&
+      allCapturedModel &&
       !extraRecords &&
       pairs.length === 8 &&
       cases.every((result) => result.passed),
@@ -238,7 +242,8 @@ function wilsonUpper(successes, total) {
 }
 
 /** Reads captured files only. Caller-supplied provenance is not service-authenticated. */
-export function evaluate(pairs, capture) {
+export function evaluate(pairs, capture, { model = MODEL } = {}) {
+  const profile = modelProfile(model);
   if (!Array.isArray(capture?.results)) throw new Error("Capture requires results array");
   const selectedIds = new Set(pairs.map((pair) => pair.id));
   const records = new Map();
@@ -281,12 +286,12 @@ export function evaluate(pairs, capture) {
     if (!entries.length) {
       missing++;
       decision = { action: "abstain", label: null, reason: "missing-capture" };
-    } else if (entries.length !== 1 || entries[0].requestHash !== requestHash(pair)) {
+    } else if (entries.length !== 1 || entries[0].requestHash !== requestHash(pair, { model })) {
       invalid++;
       decision = { action: "abstain", label: null, reason: "capture-mismatch-or-duplicate" };
     } else {
       const result = entries[0].response;
-      decision = classifyResponse(result);
+      decision = classifyResponse(result, { model });
       if (!decision.valid) invalid++;
       else {
         models.add(result.model);
@@ -349,17 +354,14 @@ export function evaluate(pairs, capture) {
         orientationDisagreements++;
     }
   }
-  const liveEvaluated =
-    capture.provenance === "captured-jev" &&
-    validCount > 0 &&
-    [...models].every(
-      (model) => model.startsWith("jev-") && !/mock|test|fixture|synthetic/i.test(model),
-    );
+  const liveEvaluated = capturedModelEvidence(capture, profile, [...models]);
   const macroF1 = LABELS.reduce((sum, label) => sum + metrics[label].f1, 0) / LABELS.length;
   const holdoutOnly = pairs.length >= 80 && pairs.every((pair) => pair.split === "holdout");
   const blockers = [];
   if (!liveEvaluated)
-    blockers.push("No captured Jev inference evidence; mock results are policy tests only");
+    blockers.push(
+      `No captured ${profile.name} inference evidence; mock results are policy tests only`,
+    );
   if (!holdoutOnly) blockers.push("Evaluate the full family-disjoint 80-pair holdout separately");
   if (missing || invalid || extraRecords)
     blockers.push("Missing, invalid, duplicate, mismatched or extra captures");
@@ -370,6 +372,7 @@ export function evaluate(pairs, capture) {
   if (orientationDisagreements) blockers.push("Order sensitivity on reversed comparisons");
   return {
     policyVersion: POLICY_VERSION,
+    requestedModel: model,
     thresholds: THRESHOLDS,
     provenance: capture.provenance ?? "unknown",
     evidenceWarning:
@@ -403,7 +406,12 @@ export function evaluate(pairs, capture) {
     recordedUsage: {
       inputTokens,
       outputTokens,
-      modelInferenceUsd: (inputTokens * 0.042) / 1_000_000,
+      modelInferenceUsd: (inputTokens * profile.inputUsdPerMillion) / 1_000_000,
+      equivalentNeurons: profile.hosted
+        ? (inputTokens * profile.inputNeuronsPerMillion) / 1_000_000
+        : null,
+      billingWarning:
+        "Unit-price equivalent only; not proof of actual charge or remaining free quota",
     },
     models: [...models],
     acceptance: {
