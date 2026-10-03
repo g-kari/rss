@@ -481,6 +481,67 @@ for (const viewport of [
   for (const theme of ["light", "dark"]) {
     test.describe(`${viewport.width}px ${theme} saved summaries`, () => {
       test.use({ viewport });
+      test("cache explanation separates model policy, unknown runtime and billing without requests", async ({
+        page,
+      }, info) => {
+        const state = diagnostics.get(page)!;
+        state.behavior = "mixed";
+        await open(page, undefined, theme);
+        await next(page).click();
+        await committedArticle(page, 1, 10);
+        await inspect(page);
+        const dialog = summaryDialog(page);
+        await expect(dialog.getByTestId("summary-availability")).toContainText("ありません");
+        const help = dialog.getByRole("button", { name: "保存済み要約と自動事前要約について" });
+        await expect(help).toHaveAttribute("aria-expanded", "false");
+        const requestCount = state.requests.length;
+        await help.click();
+        await expect(help).toHaveAttribute("aria-expanded", "true");
+        const explanation = dialog.getByTestId("summary-cache-explanation");
+        await expect(explanation).toContainText(
+          "選択中モデルは自動事前要約の対象モデルと異なります",
+        );
+        await expect(explanation).toContainText("別モデルの保存状態は調べていません");
+        await expect(explanation).toContainText(
+          "稼働状態・停止理由・残り予約枠・実際の請求額は、この画面では確認できません",
+        );
+        await expect(explanation).toContainText("生成成功件数やCloudflareの請求額とは異なります");
+        await expect(dialog).not.toContainText(
+          /稼働中|予算に到達しました|38件|0\.996170|ai-cache\//,
+        );
+        await explanation.locator("p").last().scrollIntoViewIfNeeded();
+        expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+          true,
+        );
+        await page.screenshot({
+          path: info.outputPath(`summary-cache-explanation-${viewport.width}-${theme}.png`),
+        });
+        await help.click();
+        await expect(help).toBeFocused();
+        await expect(help).toHaveAttribute("aria-expanded", "false");
+        await expect(explanation).toHaveCount(0);
+        expect(state.requests).toHaveLength(requestCount);
+        await page.keyboard.press("Tab");
+        await expect(
+          dialog.getByRole("button", { name: "ショート表示に戻る", exact: true }),
+        ).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        await expect(help).toBeFocused();
+        await closeSummary(page);
+        await inspect(page);
+        await expect(help).toHaveAttribute("aria-expanded", "false");
+        await closeSummary(page);
+        await control(page, "setModel", modelB);
+        await inspect(page);
+        await help.click();
+        await expect(explanation).toContainText("選択中モデルは自動事前要約の対象モデルです");
+        await expect(explanation).not.toContainText("対象モデルと異なります");
+        await expect(dialog.getByTestId("summary-source")).toContainText("Gemma 4");
+        await closeSummary(page);
+        expect(state.content).toEqual([]);
+        expect(state.ogp).toEqual([]);
+      });
+
       test("prefetched hit becomes a labeled short only on activation; dialog controls and focus remain usable", async ({
         page,
       }, info) => {

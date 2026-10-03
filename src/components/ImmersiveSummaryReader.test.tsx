@@ -306,6 +306,51 @@ const unavailableCases: { entry: CacheEntry; availability: string; canRetry: boo
 ];
 
 describe("availability and cache-only controls", () => {
+  it.each([model, "@cf/google/gemma-4-26b-a4b-it"] as const)(
+    "separates selected-model cache availability from scheduled policy for %s",
+    (selectedModel) => {
+      const props = makeProps({ model: selectedModel, entry: { kind: "miss" } });
+      const { container, rerender } = render(<ImmersiveSummaryReader {...props} />);
+      const help = screen.getByRole("button", { name: "保存済み要約と自動事前要約について" });
+      expect(help).toHaveAttribute("aria-expanded", "false");
+      help.focus();
+      fireEvent.click(help);
+      expect(help).toHaveAttribute("aria-expanded", "true");
+      const explanation = screen.getByTestId("summary-cache-explanation");
+      expect(explanation).toHaveTextContent("この記事・選択中モデルの保存済み要約だけを確認");
+      expect(explanation).toHaveTextContent("別モデルの保存状態は調べていません");
+      expect(explanation).toHaveTextContent("再確認してもAI生成や全文取得は行いません");
+      expect(explanation).toHaveTextContent(
+        "自動事前要約の稼働状態・停止理由・残り予約枠・実際の請求額は、この画面では確認できません",
+      );
+      expect(explanation).toHaveTextContent(
+        "予約枠は保守的な見積りで、生成成功件数やCloudflareの請求額とは異なります",
+      );
+      expect(explanation).toHaveTextContent(
+        selectedModel === model
+          ? "選択中モデルは自動事前要約の対象モデルと異なります"
+          : "選択中モデルは自動事前要約の対象モデルです",
+      );
+      for (const callback of [
+        props.onRetry,
+        props.onReadBody,
+        props.onUseSummary,
+        props.onUseExcerpt,
+      ])
+        expect(callback).not.toHaveBeenCalled();
+      expect(container).not.toHaveTextContent(
+        /稼働中|予算に到達しました|38件|0\.996170|ai-cache\//,
+      );
+      rerender(<ImmersiveSummaryReader {...props} model={undefined} />);
+      expect(explanation).not.toHaveTextContent("選択中モデルは自動事前要約の対象モデル");
+      fireEvent.click(help);
+      expect(help).toHaveFocus();
+      expect(screen.queryByTestId("summary-cache-explanation")).toBeNull();
+      fireEvent.keyDown(help, { key: "Escape" });
+      expect(props.onClose).toHaveBeenCalledOnce();
+    },
+  );
+
   it.each(unavailableCases)(
     "shows truthful $entry.kind availability and only valid controls",
     ({ entry, availability, canRetry }) => {
@@ -444,7 +489,9 @@ describe("dialog focus and shared reading settings", () => {
       const dialog = screen.getByRole("dialog");
       expect(within(dialog).getByRole("heading", { name: article.title })).toHaveFocus();
       const first = within(dialog).getByRole("button", { name: "ショート表示に戻る" });
-      const last = within(dialog).getByRole("button", { name: "本文を読む" });
+      const last = within(dialog).getByRole("button", {
+        name: "保存済み要約と自動事前要約について",
+      });
       last.focus();
       fireEvent.keyDown(last, { key: "Tab" });
       expect(first).toHaveFocus();

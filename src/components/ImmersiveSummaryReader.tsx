@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import type { Article } from "../types";
 import type { WorkersAiModelId } from "../lib/ai-models";
 import { AI_MODELS } from "../lib/ai-models";
+import { APPROVED_SCHEDULED_SUMMARY_MODEL } from "../lib/ai-summary-contract";
 import type { CacheEntry } from "../hooks/useImmersiveSummaryCache";
 import { renderSummaryHtml } from "../lib/ai-summary-markdown";
 import { stripAiThinking } from "../lib/ai-output";
@@ -39,6 +40,8 @@ export default function ImmersiveSummaryReader({
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const explanationId = useId();
+  const [showExplanation, setShowExplanation] = useState(false);
   const settings = useOptionalReaderSettings();
   const { handleKeyDown } = useModalFocusTrap(dialogRef, { onClose, initialFocusRef: titleRef });
   const summary = entry.kind === "hit" ? entry.summary : null;
@@ -47,6 +50,9 @@ export default function ImmersiveSummaryReader({
     [summary],
   );
   const modelLabel = AI_MODELS.find((item) => item.id === model)?.label ?? "モデル設定なし";
+  const scheduledModelLabel = AI_MODELS.find(
+    (item) => item.id === APPROVED_SCHEDULED_SUMMARY_MODEL,
+  )!.label;
   const availability = summary
     ? "保存済みのAI要約"
     : entry.kind === "loading" || entry.kind === "idle"
@@ -147,6 +153,45 @@ export default function ImmersiveSummaryReader({
               </button>
             )}
           </div>
+          <button
+            type="button"
+            aria-expanded={showExplanation}
+            aria-controls={explanationId}
+            className="mt-4 min-h-11 rounded border border-border-default px-3 text-left text-[13px]"
+            onClick={() => setShowExplanation((shown) => !shown)}
+          >
+            保存済み要約と自動事前要約について
+          </button>
+          {showExplanation && (
+            <div
+              id={explanationId}
+              data-testid="summary-cache-explanation"
+              className="mt-3 space-y-3 rounded border border-border-default p-3 text-[13px] leading-relaxed text-text-muted"
+            >
+              <p>
+                この記事・選択中モデルの保存済み要約だけを確認しています。別モデルの保存状態は調べていません。
+                再確認してもAI生成や全文取得は行いません。
+              </p>
+              <p>
+                このリリースで自動事前要約の対象にしているモデル: {scheduledModelLabel}
+                {model && (
+                  <span className="mt-1 block">
+                    {model === APPROVED_SCHEDULED_SUMMARY_MODEL
+                      ? "選択中モデルは自動事前要約の対象モデルです。対象でも、すべての記事に要約が用意されるわけではありません。"
+                      : "選択中モデルは自動事前要約の対象モデルと異なります。モデルごとに保存済み要約は別々です。"}
+                  </span>
+                )}
+              </p>
+              <p>
+                要約がない理由は、未生成・対象外・本文未取得・生成失敗などの場合があります。
+                自動事前要約の稼働状態・停止理由・残り予約枠・実際の請求額は、この画面では確認できません。
+              </p>
+              <p>
+                予約枠は保守的な見積りで、生成成功件数やCloudflareの請求額とは異なります。
+                手動AIなどの利用は、自動事前要約の予約枠とは別扱いです。
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
