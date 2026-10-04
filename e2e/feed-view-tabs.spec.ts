@@ -218,8 +218,10 @@ for (const theme of ["light", "dark"] as const) {
       // Existing transition-all animates the ring from transparent0px over200ms.
       // Wait for the actual CSS target instead of snapshotting the first transition frame.
       await expect(tabs.nth(0)).toHaveCSS("box-shadow", /\b2px\b/);
-      const focusRing = await tabs.nth(0).evaluate((tab) => getComputedStyle(tab).boxShadow);
-      expect(focusRing).toContain(theme === "light" ? "rgb(41, 37, 36)" : "rgb(228, 228, 231)");
+      await expect(tabs.nth(0)).toHaveCSS(
+        "box-shadow",
+        theme === "light" ? /rgb\(41, 37, 36\)/ : /rgb\(228, 228, 231\)/,
+      );
       await testInfo.attach("keyboard-focus-ring", {
         body: await list.screenshot(),
         contentType: "image/png",
