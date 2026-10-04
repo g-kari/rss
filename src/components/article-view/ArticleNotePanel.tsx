@@ -40,7 +40,7 @@ export default function ArticleNotePanel({
         onChange={(e) => setNoteText(e.target.value)}
         onBlur={handleNoteBlur}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
+          if (e.key === "Escape" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
             setNoteText(note ?? "");
             if (!note) setNoteExpanded(false);
             e.currentTarget.blur();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Article } from "../types";
 
 interface UseArticleNoteParams {
@@ -29,8 +29,16 @@ export function useArticleNote({
   onSetNote,
   onDeleteNote,
 }: UseArticleNoteParams): UseArticleNoteResult {
-  const [noteText, setNoteText] = useState(note ?? "");
+  const [noteText, setNoteTextState] = useState(note ?? "");
+  const noteTextRef = useRef(note ?? "");
   const [noteExpanded, setNoteExpanded] = useState(!!note);
+
+  const setNoteText = useCallback((text: string) => {
+    // Escape restores the draft and blurs in the same event, before React renders.
+    // Keep the latest draft visible to that blur instead of saving its old closure.
+    noteTextRef.current = text;
+    setNoteTextState(text);
+  }, []);
 
   useEffect(() => {
     setNoteText(note ?? "");
@@ -40,7 +48,7 @@ export function useArticleNote({
 
   const handleNoteBlur = useCallback(() => {
     if (!article || !onSetNote) return;
-    const trimmed = noteText.trim();
+    const trimmed = noteTextRef.current.trim();
     const current = note ?? "";
     if (trimmed === current) return;
     if (trimmed === "") {
@@ -48,7 +56,7 @@ export function useArticleNote({
     } else {
       onSetNote(article.id, trimmed);
     }
-  }, [article, note, noteText, onDeleteNote, onSetNote]);
+  }, [article, note, onDeleteNote, onSetNote]);
 
   return { noteText, setNoteText, noteExpanded, setNoteExpanded, handleNoteBlur };
 }
