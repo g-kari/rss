@@ -4,6 +4,7 @@ import { corpus, safetyCorpus } from "./corpus.mjs";
 import { POLICY_VERSION, buildRequest, evaluate, evaluateSafety, requestHash } from "./policy.mjs";
 import { DEFAULT_HOSTED_MODEL, freeOnlyPreflight, modelProfile } from "./models.mjs";
 import { prepareHostedRequest } from "./hosted-adapter.mjs";
+import { renderReview } from "./review.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 const value = (name) => {
@@ -81,7 +82,9 @@ if (command === "prepare") {
       2,
     )}\n`,
   );
-} else if (command === "score" && args.includes("--responses")) {
+} else if (command === "review" && !args.includes("--responses")) {
+  process.stdout.write(renderReview(pairs, null, { model }));
+} else if (["score", "review"].includes(command) && args.includes("--responses")) {
   const capture = JSON.parse(await readFile(value("--responses"), "utf8"));
   // A capture may contain all splits; select matching IDs deliberately. Unknown IDs
   // remain in the scorer as errors instead of silently hiding bad bookkeeping.
@@ -124,11 +127,15 @@ if (command === "prepare") {
       );
     }
   }
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  process.stdout.write(
+    command === "review"
+      ? renderReview(pairs, capture, { model, report })
+      : `${JSON.stringify(report, null, 2)}\n`,
+  );
   if (report.acceptance.status === "HOLD") process.exitCode = 2;
 } else {
   process.stderr.write(
-    "Offline only. Commands: prepare [--model @cf/cloudflare/clef-flash|@cf/cloudflare/clef|typesafe/jev] [--split development|holdout|safety|all]; score --responses FILE [--model MODEL] [--split holdout|safety]. Free quota is unverified; no live runner or credentials are included.\n",
+    "Offline only. Commands: prepare [--model @cf/cloudflare/clef-flash|@cf/cloudflare/clef|typesafe/jev] [--split development|holdout|safety|all]; score --responses FILE [--model MODEL] [--split holdout|safety]; review [--responses FILE] [--model MODEL] [--split development|holdout|safety|all] > review.html. Free quota is unverified; no live runner or credentials are included.\n",
   );
   process.exitCode = 1;
 }
