@@ -13,6 +13,7 @@ interface ArticleViewShortcutsDeps {
   article: Article | null;
   storedContent: string | null;
   fetching: boolean;
+  canFetchManually: boolean;
   fetchFullContent: (cb?: (content: string) => void) => Promise<void> | void;
   aiResult: string | null;
   aiLoading: boolean;
@@ -48,6 +49,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     article,
     storedContent,
     fetching,
+    canFetchManually,
     fetchFullContent,
     aiResult,
     aiLoading,
@@ -71,6 +73,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     articleId: article?.id,
     storedContent,
     fetching,
+    canFetchManually,
     fetchFullContent,
     aiResult,
     aiLoading,
@@ -84,7 +87,7 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     (e) => {
       if (isEditableShortcutTarget(e.target)) return;
       const s = shortcutRef.current;
-      if (e.key === "v" && s.articleLink && !s.storedContent && !s.fetching) {
+      if (e.key === "v" && s.canFetchManually && !s.fetching) {
         void s.fetchFullContent();
       }
       if (e.key === "a" && s.articleLink) {

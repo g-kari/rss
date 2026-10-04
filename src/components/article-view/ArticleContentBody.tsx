@@ -61,7 +61,8 @@ interface ArticleContentBodyProps {
     action: EngagementAction,
     value?: string,
   ) => void;
-  canFetch: boolean;
+  canFetchManually: boolean;
+  autoRetryFetch: boolean;
   fetching: boolean;
   fetchError: string;
   fetchRetryable: boolean;
@@ -86,7 +87,8 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
       translateRating,
       setTranslateRating,
       onEngagement,
-      canFetch,
+      canFetchManually,
+      autoRetryFetch,
       fetching,
       fetchError,
       fetchRetryable,
@@ -491,12 +493,13 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
         {galleryImages.length >= 2 && <ImageGallery images={galleryImages} />}
 
         {/* 全文取得ボタン */}
-        {canFetch && (
+        {canFetchManually && (
           <FetchFullContentArea
             articleId={article.id}
             articleLink={article.link!}
             feedHash={article.feedHash}
             fetching={fetching}
+            autoRetryEnabled={autoRetryFetch}
             fetchError={fetchError}
             fetchRetryable={fetchRetryable}
             onFetch={fetchFullContent}

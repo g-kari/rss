@@ -23,6 +23,7 @@ export default function FocusModeOverlay({ focusMode, exitFocusMode, articleView
   const { handleKeyDown } = useModalFocusTrap(dialogRef, {
     onClose: exitFocusMode,
     isOpen: focusMode,
+    preventScrollOnReturn: true,
   });
 
   if (!focusMode) return null;

@@ -185,6 +185,7 @@ function ArticleView({
     activeSentenceIndex,
     galleryImages,
     canFetch,
+    canFetchManually,
     hasContent,
     hasFullContent,
     hasImages,
@@ -366,7 +367,8 @@ function ArticleView({
             translateRating={translateRating}
             setTranslateRating={setTranslateRating}
             onEngagement={onEngagement}
-            canFetch={canFetch}
+            canFetchManually={canFetchManually}
+            autoRetryFetch={canFetch}
             fetching={fetching}
             fetchError={fetchError}
             fetchRetryable={fetchRetryable}

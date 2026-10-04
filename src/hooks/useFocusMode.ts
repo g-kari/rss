@@ -1,9 +1,39 @@
 "use client";
 
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import { useEventListener } from "./useEventListener";
 import { isEditableShortcutTarget } from "../lib/keyboard-target";
+import { getPopupOpenCount } from "../lib/popup-lock";
 import { useSyncedRef } from "./useSyncedRef";
+
+const focusHistoryExits = new WeakMap<PopStateEvent, "open" | "closing">();
+const focusHistoryOwners = new Set<RefObject<"idle" | "open" | "closing">>();
+
+/** Pane changes stay within the single entry owned by a live focus hook. */
+export function hasFocusHistoryOwner(): boolean {
+  return focusHistoryOwners.size > 0;
+}
+
+/** Session metadata may be replaced by Next; live focus ownership still identifies its exit. */
+export function getFocusHistoryExit(event: PopStateEvent): "open" | "closing" | undefined {
+  const recorded = focusHistoryExits.get(event);
+  if (recorded) return recorded;
+  // Native window-target events can run listeners in registration order, even
+  // with capture enabled. The pane listener must also recognize a live owner.
+  for (const owner of focusHistoryOwners) {
+    const phase = owner.current;
+    if (phase === "closing" || (phase === "open" && !event.state?.focus)) return phase;
+  }
+  return undefined;
+}
 
 /**
  * 記事ビュー / 記事一覧 のフォーカスモード制御。
@@ -26,32 +56,71 @@ export function useFocusMode(): {
   const [listFocusMode, setListFocusMode] = useState(false);
   const focusModeRef = useSyncedRef(focusMode);
   const listFocusModeRef = useSyncedRef(listFocusMode);
-  const focusHistoryRef = useRef(false);
+  const focusHistoryRef = useRef<"idle" | "open" | "closing">("idle");
+
+  useEffect(
+    () => () => {
+      focusHistoryOwners.delete(focusHistoryRef);
+    },
+    [],
+  );
 
   const pushFocusHistory = useCallback(() => {
-    if (!focusHistoryRef.current) {
-      focusHistoryRef.current = true;
-      window.history.pushState({ focus: true }, "");
+    // A previous Back is asynchronous. Do not push a new mode in front of it.
+    if (focusHistoryRef.current === "closing") return false;
+    if (focusHistoryRef.current === "idle") {
+      // Forward/reload may land on a departed focus entry with no live owner.
+      // Make that base non-focus before adding the new entry we actually own.
+      if (window.history.state?.focus)
+        window.history.replaceState({ ...window.history.state, focus: false }, "");
+      window.history.pushState({ ...window.history.state, focus: true }, "");
+      focusHistoryRef.current = "open";
+      focusHistoryOwners.add(focusHistoryRef);
     }
+    return true;
   }, []);
 
   const exitFocusViaHistory = useCallback(() => {
-    if (focusHistoryRef.current) {
-      focusHistoryRef.current = false;
+    // Keep the mode and its focus trap until asynchronous Back completes.
+    // Revealing the underlying panes sooner would let a new click push history
+    // in front of the pending traversal. Repeated close requests own one Back.
+    if (focusHistoryRef.current === "open") {
+      focusHistoryRef.current = "closing";
       window.history.back();
-    } else {
+    } else if (focusHistoryRef.current === "idle") {
       setFocusMode(false);
       setListFocusMode(false);
     }
   }, []);
 
-  useEventListener("popstate", () => {
-    if (!focusHistoryRef.current) return;
-    if (window.history.state?.focus) return;
-    focusHistoryRef.current = false;
-    setFocusMode(false);
-    setListFocusMode(false);
-  });
+  useEventListener(
+    "popstate",
+    (event) => {
+      if (focusHistoryRef.current === "idle") return;
+      // A requested exit is complete on traversal even if a later history write
+      // races it. An old focus marker must not strand the closing guard.
+      if (focusHistoryRef.current === "open" && window.history.state?.focus) return;
+      focusHistoryExits.set(event, focusHistoryRef.current);
+      focusHistoryRef.current = "idle";
+      focusHistoryOwners.delete(focusHistoryRef);
+      setFocusMode(false);
+      setListFocusMode(false);
+    },
+    window,
+    true,
+  );
+
+  useEventListener(
+    "keydown",
+    (e) => {
+      // Sample trusted popup ownership before an inner dialog's close removes
+      // its lock. Real traps own Escape, including createRoot(document) events.
+      if (e.key === "Escape" && !isEditableShortcutTarget(e.target) && getPopupOpenCount() === 0)
+        exitFocusViaHistory();
+    },
+    document,
+    true,
+  );
 
   useEventListener(
     "keydown",
@@ -61,23 +130,18 @@ export function useFocusMode(): {
         if (e.shiftKey) {
           if (listFocusModeRef.current) {
             exitFocusViaHistory();
-          } else {
-            pushFocusHistory();
+          } else if (pushFocusHistory()) {
             setListFocusMode(true);
             setFocusMode(false);
           }
         } else {
           if (focusModeRef.current) {
             exitFocusViaHistory();
-          } else {
-            pushFocusHistory();
+          } else if (pushFocusHistory()) {
             setFocusMode(true);
             setListFocusMode(false);
           }
         }
-      }
-      if (e.key === "Escape") {
-        exitFocusViaHistory();
       }
     },
     document,
@@ -88,8 +152,7 @@ export function useFocusMode(): {
   const toggleFocusMode = useCallback(() => {
     if (focusModeRef.current) {
       exitFocusViaHistory();
-    } else {
-      pushFocusHistory();
+    } else if (pushFocusHistory()) {
       setFocusMode(true);
       setListFocusMode(false);
     }
@@ -100,8 +163,7 @@ export function useFocusMode(): {
   const toggleListFocusMode = useCallback(() => {
     if (listFocusModeRef.current) {
       exitFocusViaHistory();
-    } else {
-      pushFocusHistory();
+    } else if (pushFocusHistory()) {
       setListFocusMode(true);
       setFocusMode(false);
     }
