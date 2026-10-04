@@ -23,6 +23,7 @@ export default defineConfig({
     "nsfw-mode-exit.spec.ts",
     "save-url.spec.ts",
     "article-note.spec.ts",
+    "feed-add-paste.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
