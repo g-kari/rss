@@ -63,6 +63,151 @@ describe("D1 search exact substring semantics", () => {
     db.sqlite.close();
   });
 
+  it("looks up duplicate subscriptions without scanning their entire materialized context", () => {
+    const db = database();
+    const sources = Array.from({ length: 1000 }, (_, index) => ({
+      feedHash: index.toString(16).padStart(16, "0"),
+      title: `Feed ${index} ${"長".repeat(200)}`,
+      revision: "r1",
+    }));
+    const compiled = buildIndexedSearchQuery("title:ma", sources, {}, [], 20)!;
+    const plan = db.sqlite.prepare(`EXPLAIN QUERY PLAN ${compiled.sql}`).all(...compiled.params);
+    expect(plan.some((row) => row.detail === "SCAN ds")).toBe(false);
+    expect(
+      plan.some((row) => String(row.detail).includes("SEARCH ds USING AUTOMATIC COVERING INDEX")),
+    ).toBe(true);
+    expect(compiled.params).toHaveLength(5);
+    db.sqlite.close();
+  });
+
+  it("chooses the first physical copy before matching even for equal priorities", () => {
+    const db = database();
+    db.sqlite
+      .prepare(
+        "INSERT INTO article_search_feeds (feed_hash,source_revision,status,token,title) VALUES ('feed','r1','ready','test','')",
+      )
+      .run();
+    // Insertion/date/ordinal order must not override the lexical object-key tie-break.
+    for (const [objectKey, title, ordinal, createdAt] of [
+      ["z.json", "match", 0, "2026-10-03"],
+      ["a.json", "excluded", 9, "2026-09-01"],
+    ] as const) {
+      const item = article("duplicate", { title, publishedAt: null, createdAt });
+      const normalized = normalizeSearchArticle(item);
+      db.sqlite
+        .prepare(
+          "INSERT INTO article_search_articles (feed_hash,object_key,priority,article_id,ordinal,sort_key,fields,search_text) VALUES (?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          "feed",
+          objectKey,
+          2,
+          item.id,
+          ordinal,
+          normalized.sortKey,
+          normalized.fields,
+          normalized.searchText,
+        );
+    }
+    const sources = [{ feedHash: "feed", title: "Feed", revision: "r1" }];
+    for (const query of ["title:ma", "-title:excluded", "-title:absent"]) {
+      const compiled = buildIndexedSearchQuery(query, sources, {}, [], 20)!;
+      const before = compiled.sql.replace(
+        "CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash",
+        "json_extract(value, '$.feedHash') AS feed_hash",
+      );
+      const actual = db.sqlite.prepare(compiled.sql).all(...compiled.params);
+      expect(actual).toEqual(db.sqlite.prepare(before).all(...compiled.params));
+      expect(actual.map((row) => row.object_key)).toEqual(
+        query === "-title:absent" ? ["a.json"] : [],
+      );
+    }
+    db.sqlite.close();
+  });
+
+  it("preserves feed-hash text, comparison affinity and malformed JSON boundaries", () => {
+    const db = database();
+    const hashes = [
+      "",
+      "01",
+      "1",
+      "1.0",
+      "1.5",
+      "1e+30",
+      "0",
+      "-1",
+      "null",
+      "true",
+      "{}",
+      "[]",
+      '{"x":1}',
+      '["01"]',
+      "0\u0000tail",
+      "東京",
+      "CASE",
+      "case",
+      "é",
+      "e\u0301",
+    ];
+    for (const [ordinal, feedHash] of hashes.entries()) {
+      db.sqlite
+        .prepare(
+          "INSERT INTO article_search_feeds (feed_hash,source_revision,status,token,title) VALUES (?,'r1','ready','test','')",
+        )
+        .run(feedHash);
+      const item = article(`hash-${ordinal}`, { feedHash, title: "match" });
+      const normalized = normalizeSearchArticle(item);
+      db.sqlite
+        .prepare(
+          "INSERT INTO article_search_articles (feed_hash,object_key,priority,article_id,ordinal,sort_key,fields,search_text) VALUES (?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          feedHash,
+          `object-${ordinal}`,
+          0,
+          item.id,
+          ordinal,
+          normalized.sortKey,
+          normalized.fields,
+          normalized.searchText,
+        );
+    }
+    // JSON edge types are deliberately outside SearchFeedSource's string contract.
+    // Bind them directly to verify SQLite affinity/NULL compatibility too.
+    const values = [
+      ...hashes,
+      null,
+      0,
+      1,
+      -1,
+      1.5,
+      1e30,
+      true,
+      false,
+      {},
+      [],
+      { x: 1 },
+      ["01"],
+      undefined,
+    ];
+    for (const feedHash of values) {
+      for (const query of ["title:ma", "-title:absent", "feed:fixture"]) {
+        for (const limit of [0, 1, 20]) {
+          const compiled = buildIndexedSearchQuery(query, [], {}, [], limit)!;
+          compiled.params[1] = JSON.stringify([{ feedHash, title: "fixture", revision: "r1" }]);
+          const before = compiled.sql.replace(
+            "CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash",
+            "json_extract(value, '$.feedHash') AS feed_hash",
+          );
+          expect(db.sqlite.prepare(compiled.sql).all(...compiled.params)).toEqual(
+            db.sqlite.prepare(before).all(...compiled.params),
+          );
+        }
+      }
+    }
+    db.sqlite.close();
+  });
+
   it("keeps inline-query parity for contexts, duplicate winners, exclusions, limits and readiness", () => {
     const db = database();
     const sources = [
@@ -141,9 +286,13 @@ describe("D1 search exact substring semantics", () => {
               "WITH requested AS MATERIALIZED (",
               "WITH requested AS (",
             );
-            expect(db.sqlite.prepare(compiled.sql).all(...compiled.params)).toEqual(
-              db.sqlite.prepare(inline).all(...compiled.params),
+            const previous = compiled.sql.replace(
+              "CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash",
+              "json_extract(value, '$.feedHash') AS feed_hash",
             );
+            const actual = db.sqlite.prepare(compiled.sql).all(...compiled.params);
+            expect(actual).toEqual(db.sqlite.prepare(inline).all(...compiled.params));
+            expect(actual).toEqual(db.sqlite.prepare(previous).all(...compiled.params));
           }
         }
       }

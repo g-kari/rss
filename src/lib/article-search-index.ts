@@ -231,8 +231,10 @@ export function buildIndexedSearchQuery(
     // Reuse the small subscription context in the readiness and duplicate subqueries.
     // Flattening it repeatedly parses/scans the bound JSON for matching article rows.
     // Only requested feeds are materialized, never the article corpus or matching hits.
+    // Feed hashes are text. Explicit affinity lets SQLite index the duplicate-source
+    // lookup instead of scanning every subscription for each matching article copy.
     sql: `WITH requested AS MATERIALIZED (
-      SELECT CAST(key AS INTEGER) AS position, json_extract(value, '$.feedHash') AS feed_hash,
+      SELECT CAST(key AS INTEGER) AS position, CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash,
         json_extract(value, '$.title') AS title, json_extract(value, '$.revision') AS revision
       FROM json_each(?2)
     ), invalid AS (
