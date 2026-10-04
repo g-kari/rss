@@ -15,7 +15,12 @@ const initial: ReadState = {
   notes: { "synthetic-note": "Original note", unrelated: "Keep me" },
 };
 let html = "";
-const diagnostics = new WeakMap<Page, { errors: string[]; syncs: Record<string, unknown>[] }>();
+interface Diagnostics {
+  errors: string[];
+  syncs: Record<string, unknown>[];
+  beforeRecordSync?: () => Promise<void>;
+}
+const diagnostics = new WeakMap<Page, Diagnostics>();
 test.beforeAll(async () => {
   const root = resolve(import.meta.dirname, "..");
   const [{ outputFiles }, css] = await Promise.all([
@@ -51,7 +56,7 @@ test.beforeAll(async () => {
   html = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 test.beforeEach(async ({ page }) => {
-  const state = { errors: [] as string[], syncs: [] as Record<string, unknown>[] };
+  const state: Diagnostics = { errors: [], syncs: [] };
   diagnostics.set(page, state);
   page.on("pageerror", (error) => state.errors.push(error.message));
   let persisted = structuredClone(initial);
@@ -69,6 +74,7 @@ test.beforeEach(async ({ page }) => {
     if (request.url() === `${origin}api/read-state`) {
       if (request.method() === "GET") return route.fulfill({ json: persisted });
       if (request.method() === "POST") {
+        await state.beforeRecordSync?.();
         const data = request.postDataJSON();
         state.syncs.push(data);
         persisted = mergeReadStateUpdate(persisted, data);
@@ -87,6 +93,30 @@ const textarea = (page: Page) => page.getByRole("textbox", { name: "この記事
 async function stored(page: Page) {
   await page.clock.runFor(100);
   return page.evaluate(() => localStorage.getItem("rss-notes"));
+}
+async function noteSync(page: Page, count: number, notes: Record<string, string>) {
+  const state = diagnostics.get(page)!;
+  // Deliberately start with the old synchronous observation for the regression's Red run.
+  expect(state.syncs).toHaveLength(count);
+  const payload = state.syncs[count - 1];
+  expect(payload.notes).toEqual(notes);
+  await expect(page.getByLabel("保存済みメモ")).toHaveText(JSON.stringify(notes));
+  await expect(page.getByLabel("同期状態")).toHaveText("同期済み");
+  return payload;
+}
+function holdNextSync(page: Page) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let entered = false;
+  const state = diagnostics.get(page)!;
+  state.beforeRecordSync = async () => {
+    state.beforeRecordSync = undefined;
+    entered = true;
+    await gate;
+  };
+  return { release, entered: () => entered };
 }
 async function noCancelWrites(page: Page, before: string | null) {
   await page.clock.runFor(6000);
@@ -145,18 +175,47 @@ for (const width of [390, 1280]) {
       expect(diagnostics.get(page)!.syncs).toEqual([]);
       await page.getByRole("button", { name: "外へ移動" }).click();
       await page.clock.runFor(6000);
-      expect(diagnostics.get(page)!.syncs[0].notes).toEqual({
+      await noteSync(page, 1, {
         unrelated: "Keep me",
         "synthetic-note": "First\nSecond",
       });
       await textarea(page).fill("   ");
       await page.getByRole("button", { name: "外へ移動" }).click();
       await page.clock.runFor(6000);
-      expect(diagnostics.get(page)!.syncs).toHaveLength(2);
-      const deletion = diagnostics.get(page)!.syncs[1];
-      expect(deletion.notes).toEqual({ unrelated: "Keep me" });
+      const deletion = await noteSync(page, 2, { unrelated: "Keep me" });
       expect((deletion.removedIds as { notes: string[] }).notes).toContain("synthetic-note");
       await expect(textarea(page)).toHaveValue("   ");
+    });
+    test("clock completion does not acknowledge a delayed note request observation", async ({
+      page,
+    }) => {
+      await textarea(page).fill("Discard edit");
+      await textarea(page).press("Escape");
+      await textarea(page).fill("First\nSecond");
+      const gate = holdNextSync(page);
+      try {
+        await page.getByRole("button", { name: "外へ移動" }).click();
+        await page.clock.runFor(6000);
+        await expect.poll(gate.entered).toBe(true);
+        // The production debounce has fired, but the Node route ledger is still empty.
+        expect(diagnostics.get(page)!.syncs[0]).toBeUndefined();
+        await expect(page.getByLabel("同期状態")).toHaveText("同期待ち");
+        const sync = noteSync(page, 1, {
+          unrelated: "Keep me",
+          "synthetic-note": "First\nSecond",
+        });
+        gate.release();
+        await sync;
+      } finally {
+        gate.release();
+      }
+      await textarea(page).fill("   ");
+      await page.getByRole("button", { name: "外へ移動" }).click();
+      await page.clock.runFor(6000);
+      const deletion = await noteSync(page, 2, { unrelated: "Keep me" });
+      expect((deletion.removedIds as { notes: string[] }).notes).toEqual(["synthetic-note"]);
+      await page.clock.runFor(6000);
+      expect(diagnostics.get(page)!.syncs).toHaveLength(2);
     });
     for (const mode of ["detail", "focus"] as const) {
       test(`${mode} owner keeps note Escape and IME local, then closes normally`, async ({
