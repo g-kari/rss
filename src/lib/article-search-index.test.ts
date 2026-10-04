@@ -45,6 +45,127 @@ const article = (id: string, values: Partial<Article> = {}): Article => ({
 });
 
 describe("D1 search exact substring semantics", () => {
+  it("materializes subscription context once without changing its five bound values", () => {
+    const db = database();
+    const sources = Array.from({ length: 1000 }, (_, index) => ({
+      feedHash: index.toString(16).padStart(16, "0"),
+      title: `Feed ${index} ${"長".repeat(200)}`,
+      revision: "r1",
+    }));
+    const compiled = buildIndexedSearchQuery("title:ma", sources, {}, [], 20)!;
+    expect(compiled.sql).toContain("WITH requested AS MATERIALIZED (");
+    expect(compiled.params).toHaveLength(5);
+    expect(JSON.parse(compiled.params[1])).toEqual(
+      sources.map((source) => ({ ...source, title: source.title.toLowerCase() })),
+    );
+    const plan = db.sqlite.prepare(`EXPLAIN QUERY PLAN ${compiled.sql}`).all(...compiled.params);
+    expect(plan.some((row) => row.detail === "MATERIALIZE requested")).toBe(true);
+    db.sqlite.close();
+  });
+
+  it("keeps inline-query parity for contexts, duplicate winners, exclusions, limits and readiness", () => {
+    const db = database();
+    const sources = [
+      { feedHash: "first", title: "Custom 東京", revision: "r1" },
+      { feedHash: "second", title: "Other 日本", revision: "r1" },
+    ];
+    for (const source of sources) {
+      db.sqlite
+        .prepare(
+          "INSERT INTO article_search_feeds (feed_hash,source_revision,status,token,title) VALUES (?,?,'ready','test',?)",
+        )
+        .run(source.feedHash, source.revision, source.title);
+      for (let page = 0; page < 2; page++) {
+        for (const [ordinal, item] of [
+          article("duplicate", {
+            feedHash: source.feedHash,
+            title: page ? "match 東京" : "excluded",
+          }),
+          article(`${source.feedHash}-${page}`, {
+            feedHash: source.feedHash,
+            title: "match 東京",
+            publishedAt: null,
+          }),
+        ].entries()) {
+          const normalized = normalizeSearchArticle(item);
+          db.sqlite
+            .prepare(
+              "INSERT INTO article_search_articles (feed_hash,object_key,priority,article_id,ordinal,sort_key,fields,search_text) VALUES (?,?,?,?,?,?,?,?)",
+            )
+            .run(
+              source.feedHash,
+              `feeds/${source.feedHash}/articles/${page ? "p2" : "latest"}.json`,
+              page ? 2 : -Number.MAX_SAFE_INTEGER,
+              item.id,
+              ordinal,
+              normalized.sortKey,
+              normalized.fields,
+              normalized.searchText,
+            );
+        }
+      }
+    }
+    const contexts = [
+      sources,
+      [...sources].reverse(),
+      [sources[0], sources[0], sources[1]],
+      [sources[0], { ...sources[0], title: "Conflicting title" }, sources[1]],
+      [],
+      [...sources, { feedHash: "missing", title: "Missing", revision: "r1" }],
+      [{ ...sources[0], revision: "stale" }, sources[1]],
+    ];
+    const queries = [
+      "京",
+      "東京",
+      "match",
+      "title:ma",
+      "-title:absent",
+      "feed:custom",
+      "tag:favorite",
+      "title:match OR author:ÉLI",
+      'content:"hello world"',
+      "metadata:source",
+    ];
+    for (const context of contexts) {
+      for (const query of queries) {
+        for (const saved of [[], ["duplicate", "first-0"]]) {
+          for (const limit of [0, 1, 3, 10000]) {
+            const compiled = buildIndexedSearchQuery(
+              query,
+              context,
+              { "first-0": ["favorite"] },
+              saved,
+              limit,
+            )!;
+            const inline = compiled.sql.replace(
+              "WITH requested AS MATERIALIZED (",
+              "WITH requested AS (",
+            );
+            expect(db.sqlite.prepare(compiled.sql).all(...compiled.params)).toEqual(
+              db.sqlite.prepare(inline).all(...compiled.params),
+            );
+          }
+        }
+      }
+    }
+    for (const status of ["building", "failed"]) {
+      db.sqlite
+        .prepare("UPDATE article_search_feeds SET status = ? WHERE feed_hash = 'first'")
+        .run(status);
+      const compiled = buildIndexedSearchQuery("no-hit", sources, {}, [], 20)!;
+      const result = db.sqlite.prepare(compiled.sql).all(...compiled.params);
+      expect(result).toEqual(
+        db.sqlite
+          .prepare(compiled.sql.replace("WITH requested AS MATERIALIZED (", "WITH requested AS ("))
+          .all(...compiled.params),
+      );
+      expect(result).toEqual([
+        { article_id: null, feed_hash: null, object_key: null, sort_key: null, ready: 0 },
+      ]);
+    }
+    db.sqlite.close();
+  });
+
   it("matches the existing evaluator for Unicode, phrases, NOT, OR and every field", () => {
     const db = new DatabaseSync(":memory:");
     db.exec(
