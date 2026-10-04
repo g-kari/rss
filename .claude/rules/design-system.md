@@ -81,6 +81,8 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 ## タイポグラフィ
 
+Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）以上を最小値にする。主要な FeedViewTabs の「記事・画像・動画・SNS」はこの組み合わせを使い、`whitespace-nowrap` でラベルを一行に保つ。アイコンはラベルの上に置き、150px のリサイズ最小幅 / 200px の既定幅 / 220px のサイドバー / 320px のモバイルで収める。light / dark、44px の操作高（200px 以上は幅も 44px 以上）を production CSS の native fixture で確認する。150px では従来の 4 列を保ち、操作幅は 24px 以上を確認する。これは #1384 の主要ビュータブだけの段階対応で、他の navigation / control / metadata / Reader title の全体 scale は別途評価する。
+
 | 用途                       | クラス                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------- |
 | UI フォント・記事本文      | `font-sans` (Reddit Sans + IBM Plex Sans JP)                                      |
