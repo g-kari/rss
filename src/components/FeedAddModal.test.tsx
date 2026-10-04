@@ -131,7 +131,7 @@ describe("FeedAddModal paste & go", () => {
       paste();
       if (close === "Escape")
         fireEvent.keyDown(screen.getByLabelText("フィード URL"), { key: "Escape" });
-      else fireEvent.click(screen.getByRole("button", { name: close, exact: true }));
+      else fireEvent.click(screen.getByRole("button", { name: close }));
       const before = changed.mock.calls.length;
       fireEvent.click(screen.getByRole("button", { name: "Open" }));
       await flushPaste();
@@ -139,7 +139,7 @@ describe("FeedAddModal paste & go", () => {
       expect(changed).toHaveBeenCalledTimes(before);
       expect(screen.getByLabelText("フィード URL")).toHaveValue("");
       fireEvent.change(screen.getByLabelText("フィード URL"), { target: { value: nextUrl } });
-      fireEvent.click(screen.getByRole("button", { name: "追加", exact: true }));
+      fireEvent.click(screen.getByRole("button", { name: "追加" }));
       await flushPaste();
       expect(request).toHaveBeenCalledTimes(1);
       expect(body().url).toBe(nextUrl);
@@ -182,7 +182,7 @@ describe("FeedAddModal paste & go", () => {
   it("manual submit consumes queued paste without a duplicate request", async () => {
     render(<Fixture />);
     paste();
-    fireEvent.click(screen.getByRole("button", { name: "追加", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
     await flushPaste();
     expect(request).toHaveBeenCalledTimes(1);
     expect(body().url).toBe(firstUrl);
@@ -223,7 +223,7 @@ describe("FeedAddModal paste & go", () => {
       await vi.advanceTimersByTimeAsync(100);
     });
     expect(request).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "追加", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
     await flushPaste();
     expect(request).toHaveBeenCalledTimes(2);
     expect(JSON.parse(String(request.mock.calls[1][1]?.body))).toEqual({
@@ -236,7 +236,7 @@ describe("FeedAddModal paste & go", () => {
     fireEvent.change(screen.getByLabelText("フィード URL"), { target: { value: firstUrl } });
     await flushPaste();
     expect(request).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "追加", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
     await flushPaste();
     expect(request).toHaveBeenCalledTimes(1);
     expect(body()).toEqual({ url: firstUrl, ...options });
@@ -252,7 +252,7 @@ describe("FeedAddModal paste & go", () => {
     await flushPaste();
     expect(request).not.toHaveBeenCalled();
     fireEvent.compositionEnd(input);
-    fireEvent.click(screen.getByRole("button", { name: "追加", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
     await flushPaste();
     expect(request).toHaveBeenCalledTimes(1);
   });
