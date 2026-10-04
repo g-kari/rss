@@ -35,12 +35,17 @@ export default function ArticleNotePanel({
         <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">メモ</p>
       </div>
       <textarea
+        data-article-note-editor
         aria-label="この記事へのメモ"
         value={noteText}
         onChange={(e) => setNoteText(e.target.value)}
         onBlur={handleNoteBlur}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
+            // The note owns Escape inside reader overlays too. During IME this
+            // only keeps the enclosing dialog from discarding the composition.
+            e.stopPropagation();
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             setNoteText(note ?? "");
             if (!note) setNoteExpanded(false);
             e.currentTarget.blur();
