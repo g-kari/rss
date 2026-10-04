@@ -28,6 +28,7 @@ test.beforeAll(async () => {
             const [changes, setChanges] = useState(0);
             const [drop, setDrop] = useState("");
             const [drops, setDrops] = useState(0);
+            const [dragEffect, setDragEffect] = useState("");
             return <>
               <button>前の操作</button>
               <aside aria-label="サイドバー" className="font-sans bg-surface-elevated border-r border-border-default overflow-hidden" style={{width: "var(--fixture-width)"}}>
@@ -39,6 +40,17 @@ test.beforeAll(async () => {
                 <div id="feed-view-panel" role="tabpanel" aria-labelledby={"feed-view-tab-" + view}>Synthetic feeds</div>
               </aside>
               <button>次の操作</button>
+              <div draggable data-testid="feed-source" style={{width: 140, height: 44}}
+                onDragStart={event => {
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("application/x-rss-feed-id", "feed-1");
+                }} onDragEnd={event => setDragEffect(event.dataTransfer.dropEffect)}>Synthetic feed</div>
+              <div draggable data-testid="irrelevant-source" style={{width: 140, height: 44}}
+                onDragStart={event => {
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", "irrelevant");
+                }} onDragEnd={event => setDragEffect(event.dataTransfer.dropEffect)}>Unrelated data</div>
+              <output aria-label="ドラッグ結果">{dragEffect}</output>
               <output aria-label="ビュー変更回数">{changes}</output>
               <output aria-label="ドロップ回数">{drops}</output>
               <output aria-label="ドロップ先">{drop}</output>
@@ -255,21 +267,10 @@ for (const theme of ["light", "dark"] as const) {
         tab.dispatchEvent(enter);
       });
       await expect(tabs.nth(1)).toHaveClass(/ring-inset/);
-      const drop = await tabs.nth(1).evaluate((tab) => {
-        const data = new DataTransfer();
-        data.setData("application/x-rss-feed-id", "feed-1");
-        const over = new DragEvent("dragover", {
-          bubbles: true,
-          cancelable: true,
-          dataTransfer: data,
-        });
-        tab.dispatchEvent(over);
-        tab.dispatchEvent(
-          new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: data }),
-        );
-        return { prevented: over.defaultPrevented, effect: data.dropEffect };
-      });
-      expect(drop).toEqual({ prevented: true, effect: "move" });
+      // Use a real HTML5 drag session: constructor DataTransfer does not carry
+      // the browser's final drag operation after synthetic drop dispatch.
+      await page.getByTestId("feed-source").dragTo(tabs.nth(1));
+      await expect(page.getByLabel("ドラッグ結果")).toHaveText("move");
       await expect(page.getByLabel("ドロップ回数")).toHaveText("1");
       await expect(page.getByLabel("ドロップ先")).toHaveText("feed-1:pictures");
       await expect(tabs.nth(1)).not.toHaveClass(/ring-inset/);
@@ -288,6 +289,9 @@ for (const theme of ["light", "dark"] as const) {
         return over.defaultPrevented;
       });
       expect(refused).toBe(false);
+      await page.getByTestId("irrelevant-source").dragTo(tabs.nth(3));
+      await expect(page.getByLabel("ドラッグ結果")).toHaveText("none");
+      await expect(tabs.nth(3)).not.toHaveClass(/ring-inset/);
       await expect(page.getByLabel("ドロップ回数")).toHaveText("1");
       await expect(page.getByLabel("ビュー変更回数")).toHaveText("6");
       await testInfo.attach("sidebar-tabs", {
