@@ -228,7 +228,10 @@ export function buildIndexedSearchQuery(
   );
   const requested = sources.map((s) => ({ ...s, title: s.title.toLowerCase() }));
   return {
-    sql: `WITH requested AS (
+    // Reuse the small subscription context in the readiness and duplicate subqueries.
+    // Flattening it repeatedly parses/scans the bound JSON for matching article rows.
+    // Only requested feeds are materialized, never the article corpus or matching hits.
+    sql: `WITH requested AS MATERIALIZED (
       SELECT CAST(key AS INTEGER) AS position, json_extract(value, '$.feedHash') AS feed_hash,
         json_extract(value, '$.title') AS title, json_extract(value, '$.revision') AS revision
       FROM json_each(?2)

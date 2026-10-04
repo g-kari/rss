@@ -101,6 +101,24 @@ All three SQL migrations and the file-based maintenance CLI are also validated u
 
 A reproducible selective-query check is the test “hydrates only selected physical objects, not unmatched objects or every candidate”: 12 indexed archive objects, 11 matching, `limit=7`, exactly seven article-body GETs, zero latest-body GETs, and at most four concurrent R2 operations. The no-hit test performs only metadata GETs/HEADs, with zero article-body GETs. Increase archive count while keeping the selected limit fixed to verify that R2 hydration cost depends on returned physical objects, not corpus size. Short-term/NOT-only SQL latency must be measured separately because their exact D1 predicates can examine many rows.
 
+### Subscription context reuse
+
+The indexed query materializes only its `requested` subscription CTE. Its readiness checks, subscription join and duplicate-winner subquery reuse that context instead of repeatedly extracting the same bound JSON. Matching predicates, first-subscription/object priority, saved-ID exclusions, ordering, limit and the unready sentinel are unchanged. Article rows and matching hits are not materialized by this hint. Exact short/NOT queries and duplicate checks can still scan many rows; this is not a new asymptotic bound or a reduction in R2 operations.
+
+Reproduce the comparison without a Cloudflare account or production data:
+
+```sh
+node scripts/benchmark-article-search.mjs
+```
+
+This uses the installed Wrangler/Miniflare/workerd runtime, a dummy local-only D1 ID, all three real search migrations and synthetic rows. It compares the actual query compiler against the same SQL with the hint removed, alternates execution order, checks full result parity and reports median SQL duration, `rows_read`, `rows_written` and query plans. Temporary D1 state is removed on success or failure. It has no remote mode, R2/AI binding, deployment or resource-provisioning path. Durations are informational, not CI pass/fail thresholds.
+
+Measured on Wrangler 4.107.0 and its bundled local D1, 250 subscriptions/5,000 rows: `title:ma` 460 → 76 ms and `-title:absent` 477 → 77 ms. With 1,000 subscriptions/5,000 rows and a 670,891-byte subscription parameter, those cases measured 3,225 → 256 ms and 3,901 → 306 ms. All 20 scenarios (1/16/250/1,000 subscriptions, five queries) returned identical rows. These are local fixture timings, not production D1 latency.
+
+The trade-off is an ephemeral table proportional to the subscription context, not the article corpus. Normal registration/import caps subscriptions at `MAX_FEEDS_PER_USER = 1000`; existing stored data is not newly capped or truncated here. The large fixture uses 200 Japanese characters per title. Shared feed titles need not have that bound, and runtime memory was not measured. SQLite may hold the table in memory or temporary storage; the [D1 string/row and runtime limits](https://developers.cloudflare.com/d1/platform/limits/) still apply. Local `rows_read` increased by exactly the subscription count (for example 1,213,249 → 1,213,499), while persistent `rows_written` remained zero. Do not describe this as a billing reduction.
+
+This optimization runs only after explicit indexed-search activation. It does not create/bind D1, backfill articles, enable either rollout gate or close the remaining operational portion of #1378. Legacy search still scans every physical article object, with four concurrent reads, a top-K body heap and an exact seen-ID set. D1-only activation can index existing legacy arrays using the separate rebuild runner; changing R2 to v2 is not a requirement of this query improvement. Production preparation, backfill costs, writer pause/drain, readiness verification and activation still require separate operator approval. Removing this hint is a code-only rollback with no schema or persisted-data change.
+
 References:
 
 - [Cloudflare D1 SQLite extensions](https://developers.cloudflare.com/d1/sql-api/sql-statements/)
