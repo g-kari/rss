@@ -20,6 +20,14 @@ export default function KeyboardShortcutsModal({ onClose }: Props) {
           </li>
         ))}
       </ul>
+      <section className="border-t border-border-default px-4 py-3 text-xs leading-5 text-text-soft">
+        <h3 className="font-medium text-text-default">表示モードの解除</h3>
+        <p>
+          NSFWモードが有効なときは、サイドバー上部の「NSFWモード解除」をタップ、または
+          Tabで選んでEnter・Spaceで解除できます。RSSロゴの長押し（600ms）でも解除できます。
+          解除後も、現在開いている記事は閉じません。
+        </p>
+      </section>
     </Modal>
   );
 }
