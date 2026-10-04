@@ -72,6 +72,12 @@ export function renderReview(
   { model = DEFAULT_HOSTED_MODEL, report = null } = {},
 ) {
   const profile = modelProfile(model);
+  const provenance =
+    capture === null
+      ? "captureなし"
+      : typeof capture.provenance === "string"
+        ? capture.provenance
+        : "unknown (invalid provenance)";
   const rows = buildReviewRows(pairs, capture, { model });
   const rowIds = new Map(pairs.map((pair, index) => [pair.id, `case-${index + 1}`]));
   const sections = Object.entries(categories)
@@ -97,10 +103,10 @@ export function renderReview(
     })
     .join("");
   const summary = report
-    ? `<h2>既存採点結果: ${escape(report.acceptance.status)}</h2><p>欠測: ${escape(report.missing ?? 0)} / 不正: ${escape(report.invalid ?? 0)} / 対象外: ${escape(report.extraRecords ?? report.safety.extraRecords)} / 誤統合: ${escape(report.falseMerges ?? 0)}</p><p>Safety欠測: ${escape(report.safety.missing)} / Safety不正: ${escape(report.safety.invalid)} / Safety危険判定: ${escape(report.safety.unsafeDecisions)}</p><ul>${(report.acceptance.blockers ?? []).map((blocker) => `<li>${escape(blocker)}</li>`).join("")}</ul><details><summary>既存JSON採点レポート全文</summary><pre>${escape(JSON.stringify(report, null, 2))}</pre></details>`
+    ? `<h2>既存採点結果: ${escape(report.acceptance.status)}</h2><p>欠測: ${escape(report.missing ?? report.safety.missing)} / 不正: ${escape(report.invalid ?? report.safety.invalid)} / 対象外: ${escape(report.extraRecords ?? report.safety.extraRecords)} / 誤統合: ${escape(report.falseMerges ?? 0)}</p><p>Safety欠測: ${escape(report.safety.missing)} / Safety不正: ${escape(report.safety.invalid)} / Safety危険判定: ${escape(report.safety.unsafeDecisions)}</p><ul>${(report.acceptance.blockers ?? []).map((blocker) => `<li>${escape(blocker)}</li>`).join("")}</ul><details><summary>既存JSON採点レポート全文</summary><pre>${escape(JSON.stringify(report, null, 2))}</pre></details>`
     : "<p>captureなし。実際の推論・日本語精度は未測定。正解だけからモデルの判定や精度を作りません。</p>";
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'"><title>同じニュース判定 · オフライン比較</title><style>
 :root{color-scheme:light dark}body{font-family:system-ui,sans-serif;line-height:1.7;max-width:1100px;margin:auto;padding:24px;background:#fff;color:#202020}a{color:#165bc0}a:focus-visible,summary:focus-visible{outline:3px solid currentColor;outline-offset:4px}.notice,.case{border:1px solid #737373;border-radius:8px;padding:16px;margin:16px 0}.notice{border-width:2px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}.article{min-width:0}.case h3{margin:0 0 8px}.metadata{font-size:.9rem}.decision{font-weight:700}summary{cursor:pointer}pre{white-space:pre-wrap}p,h3,pre,a{overflow-wrap:anywhere}section[id],article[id]{scroll-margin-top:16px}@media(max-width:640px){body{padding:12px}.pair{grid-template-columns:1fr}}@media(prefers-color-scheme:dark){body{background:#171717;color:#ededed}a{color:#94bcff}}
-</style></head><body><header><h1>同じニュース判定を比較する</h1><p>架空の日本語ニュース ${rows.length} 比較 / ${escape(profile.name)} / provenance: ${escape(capture?.provenance ?? "captureなし")}</p></header><aside class="notice" aria-label="評価の制約"><p>オフライン閲覧専用。推論・通信0回。productionActivationAllowed: false</p><p>${profile.hosted ? `${escape(freeOnlyPreflight().status)} / inferenceAllowed: false` : "Jevの有料試験は取り消し済み。過去記録の閲覧だけです。"}</p><p>captured / mock と正解一致は、認証済みの実行や実際のRSS精度の証明になりません。モデル性能の証拠ではありません。confidenceや確率も日本語精度として校正されていません。</p><p>developmentで基準を固定してからholdoutを一度評価してください。holdoutの結果・正解を見て閾値を調整したら、新しい未見データが必要です。続報は別記事として残します。</p></aside><main>${summary}<nav aria-label="判定別の比較"><h2>ケースへ移動</h2><ul>${navigation}</ul></nav>${sections}</main></body></html>\n`;
+</style></head><body><header><h1>同じニュース判定を比較する</h1><p>架空の日本語ニュース ${rows.length} 比較 / ${escape(profile.name)} / provenance: ${escape(provenance)}</p></header><aside class="notice" aria-label="評価の制約"><p>オフライン閲覧専用。推論・通信0回。productionActivationAllowed: false</p><p>${profile.hosted ? `${escape(freeOnlyPreflight().status)} / inferenceAllowed: false` : "Jevの有料試験は取り消し済み。過去記録の閲覧だけです。"}</p><p>captured / mock と正解一致は、認証済みの実行や実際のRSS精度の証明になりません。モデル性能の証拠ではありません。confidenceや確率も日本語精度として校正されていません。</p><p>developmentで基準を固定してからholdoutを一度評価してください。holdoutの結果・正解を見て閾値を調整したら、新しい未見データが必要です。続報は別記事として残します。</p></aside><main>${summary}<nav aria-label="判定別の比較"><h2>ケースへ移動</h2><ul>${navigation}</ul></nav>${sections}</main></body></html>\n`;
 }

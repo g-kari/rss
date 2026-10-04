@@ -191,3 +191,85 @@ test("capture review and existing JSON score share HOLD, errors and safety summa
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("safety-only headline reflects missing and invalid captures instead of zero classification totals", () => {
+  const dir = mkdtempSync(join(tmpdir(), "rss-review-safety-"));
+  try {
+    const path = join(dir, "capture.json");
+    for (const results of [
+      [],
+      safetyCorpus.map((pair) => record(pair, {})),
+      safetyCorpus.map((pair) => record(pair, response("same_event", 0.4))),
+    ]) {
+      writeFileSync(path, JSON.stringify({ provenance: "mock", results }));
+      const score = run("score", "--responses", path, "--split", "safety");
+      const review = run("review", "--responses", path, "--split", "safety");
+      const report = JSON.parse(score.stdout);
+      assert.equal(review.status, score.status);
+      assert.ok(
+        review.stdout.includes(
+          `<p>欠測: ${report.safety.missing} / 不正: ${report.safety.invalid}`,
+        ),
+      );
+      assert.equal((review.stdout.match(/data-case-id=/g) ?? []).length, 8);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("all navigation and reversed-probe links resolve; native disclosure controls start closed", () => {
+  const window = new Window();
+  window.document.write(renderReview([...corpus, ...safetyCorpus]));
+  assert.equal(window.document.documentElement.lang, "ja");
+  assert.equal(window.document.querySelectorAll("article.case").length, 108);
+  assert.equal(window.document.querySelectorAll("article.case .pair .article").length, 216);
+  assert.equal(window.document.querySelectorAll("details").length, 108);
+  assert.equal(window.document.querySelectorAll("details[open]").length, 0);
+  assert.equal(window.document.querySelectorAll("article.case a").length, 25);
+  for (const link of window.document.querySelectorAll("a")) {
+    const href = link.getAttribute("href");
+    assert.ok(href.startsWith("#"));
+    assert.ok(window.document.getElementById(href.slice(1)));
+  }
+  window.close();
+});
+
+test("model selectors remain explicit and historical Jev review cannot restore paid approval", () => {
+  for (const selected of [model, "@cf/cloudflare/clef", "typesafe/jev"]) {
+    const result = run("review", "--model", selected, "--split", "safety");
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("productionActivationAllowed: false"));
+    if (selected === "typesafe/jev")
+      assert.ok(result.stdout.includes("Jevの有料試験は取り消し済み"));
+    else assert.ok(result.stdout.includes("inferenceAllowed: false"));
+  }
+  assert.notEqual(run("review", "--model", "unapproved/model").status, 0);
+});
+
+test("malformed or absent provenance renders safely and preserves the scorer HOLD status", () => {
+  const dir = mkdtempSync(join(tmpdir(), "rss-review-provenance-"));
+  try {
+    const path = join(dir, "capture.json");
+    for (const provenance of [
+      undefined,
+      null,
+      0,
+      [],
+      { toString: null },
+      '<script>alert("capture")</script>',
+    ]) {
+      writeFileSync(path, JSON.stringify({ provenance, results: [] }));
+      const score = run("score", "--responses", path, "--split", "holdout");
+      const review = run("review", "--responses", path, "--split", "holdout");
+      assert.equal(score.status, 2, score.stderr);
+      assert.equal(review.status, score.status, review.stderr);
+      assert.ok(review.stdout.includes("HOLD"));
+      assert.ok(!review.stdout.includes('<script>alert("capture")</script>'));
+      if (typeof provenance !== "string")
+        assert.ok(review.stdout.includes("unknown (invalid provenance)"));
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
