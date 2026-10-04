@@ -12,6 +12,7 @@ import { extractEmbedInfo, processContent, stripIframes } from "../lib/embed-uti
 import { wrapSentencesInHtml } from "../lib/tts-dom";
 import type { Sentence } from "../lib/tts-sentences";
 import { isSpeechSupported } from "../lib/auto-read";
+import { isValidPublicUrl } from "../lib/url";
 
 const SHORT_CONTENT_THRESHOLD = 400;
 // Web Speech API の有無は実行中に変わらないのでモジュール定数化。
@@ -30,7 +31,10 @@ interface ArticleViewContentResult {
   /** wrappedContent 内の data-tts-sentence-idx 順の sentence 配列 */
   ttsSentences: Sentence[];
   galleryImages: string[];
+  /** Automatic reading readiness retains the short-feed-content heuristic. */
   canFetch: boolean;
+  /** Visible button / V eligibility; feed HTML length does not establish source completeness. */
+  canFetchManually: boolean;
   /** サマリ含む「描画可能なコンテンツがあるか」（AI/TTS ボタン表示判定など UI 用） */
   hasContent: boolean;
   /** 全文 (`processedContent`) が存在するか — オートモードの speak gate に使う (#663) */
@@ -107,6 +111,12 @@ export function useArticleViewContent(
     !!article?.link &&
     (isShortContent || isSlidePage) &&
     !storedContent;
+  // Keep the automatic readiness heuristic separate from an explicit source request.
+  // This matches the immersive reader's public-link/cache/media eligibility.
+  const canFetchManually =
+    !storedContent &&
+    isValidPublicUrl(article?.link || "") &&
+    (!embedInfo || embedInfo.type === "slides");
   const hasContent = !!(processedContent || article?.summary);
   // #653: hasFullContent は「fetch 完了済み or fetch 不要」を厳格判定する。
   // 旧実装 `!!processedContent` は article.content (RSS 本文) があれば fetch 前でも
@@ -132,6 +142,7 @@ export function useArticleViewContent(
     ttsSentences,
     galleryImages,
     canFetch,
+    canFetchManually,
     hasContent,
     hasFullContent,
     hasImages,

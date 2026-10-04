@@ -350,3 +350,82 @@ test("reader Space shortcut remains available after the save editor is closed", 
   await reader.evaluate((el) => el.scrollTo({ top: 0, behavior: "instant" }));
   await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBe(0);
 });
+
+for (const marker of [{ isComposing: true }, { keyCode: 229 }]) {
+  test(`search IME owns candidate controls with ${JSON.stringify(marker)}`, async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "rss-saved-searches",
+        JSON.stringify([
+          { id: "saved", name: "Saved", query: "title:saved", createdAt: "2026-10-03T00:00:00Z" },
+        ]),
+      );
+      localStorage.setItem("rss-search-history", JSON.stringify(["title:history"]));
+    });
+    await page.reload();
+    const search = page.getByRole("combobox");
+    await search.fill("日本語の検索");
+    await search.press("End");
+    const before = await page.evaluate(() => ({
+      saved: localStorage.getItem("rss-saved-searches"),
+      history: localStorage.getItem("rss-search-history"),
+    }));
+    await search.dispatchEvent("compositionstart");
+    for (const key of ["Enter", "Escape", "ArrowDown", "ArrowUp", "Home", "End", "Delete"]) {
+      const active = await search.getAttribute("aria-activedescendant");
+      const prevented = await search.evaluate(
+        (element, init) => {
+          const event = new KeyboardEvent("keydown", { ...init, bubbles: true, cancelable: true });
+          element.dispatchEvent(event);
+          return event.defaultPrevented;
+        },
+        { key, shiftKey: key === "Delete", ...marker },
+      );
+      expect(prevented).toBe(false);
+      await expect(search).toHaveValue("日本語の検索");
+      await expect(search).toBeFocused();
+      await expect(search).toHaveAttribute("aria-expanded", "true");
+      await expect(search).toHaveAttribute("aria-activedescendant", active!);
+    }
+    await search.dispatchEvent("compositionend", { data: "日本語の検索" });
+    expect(
+      await page.evaluate(() => ({
+        saved: localStorage.getItem("rss-saved-searches"),
+        history: localStorage.getItem("rss-search-history"),
+      })),
+    ).toEqual(before);
+    await search.press("Home");
+    await search.press("Enter");
+    await expect(search).toHaveValue("title:saved");
+    await expect(search).toHaveAttribute("aria-expanded", "false");
+    await search.blur();
+    await search.focus();
+    const active = await search.getAttribute("aria-activedescendant");
+    await search.dispatchEvent("keydown", { key: "Delete", shiftKey: true, ...marker });
+    await expect(search).toHaveAttribute("aria-activedescendant", active!);
+    expect(await saved(page)).toHaveLength(1);
+    await search.press("Shift+Delete");
+    expect(await saved(page)).toEqual([]);
+    await search.press("Escape");
+    await expect(search).toHaveValue("title:saved");
+    await search.press("Escape");
+    await expect(search).toHaveValue("");
+  });
+
+  test(`search IME does not record incomplete history with ${JSON.stringify(marker)}`, async ({
+    page,
+  }) => {
+    const search = page.getByRole("combobox");
+    await search.fill("日本語の検索");
+    await search.dispatchEvent("compositionstart");
+    await search.dispatchEvent("keydown", { key: "Enter", ...marker });
+    expect(await page.evaluate(() => localStorage.getItem("rss-search-history"))).toBeNull();
+    await expect(search).toHaveValue("日本語の検索");
+    await expect(search).toBeFocused();
+    await search.dispatchEvent("compositionend", { data: "日本語の検索" });
+    await search.press("Enter");
+    expect(
+      await page.evaluate(() => JSON.parse(localStorage.getItem("rss-search-history") ?? "[]")),
+    ).toEqual(["日本語の検索"]);
+  });
+}

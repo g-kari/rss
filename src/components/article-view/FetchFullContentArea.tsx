@@ -10,6 +10,8 @@ interface Props {
   articleLink: string;
   feedHash: string;
   fetching: boolean;
+  /** Retain automatic retry eligibility independently of the visible manual action. */
+  autoRetryEnabled: boolean;
   fetchError: string;
   fetchRetryable: boolean;
   onFetch: (onFetched?: () => void) => Promise<void>;
@@ -30,6 +32,7 @@ export default function FetchFullContentArea({
   articleLink,
   feedHash,
   fetching,
+  autoRetryEnabled,
   fetchError,
   fetchRetryable,
   onFetch,
@@ -99,6 +102,7 @@ export default function FetchFullContentArea({
   useEffect(() => {
     const wasOffline = wasOfflineRef.current;
     wasOfflineRef.current = !isOnline;
+    if (!autoRetryEnabled) return;
     if (!isOnline) return;
     if (!wasOffline) return;
     if (!fetchError) return;
@@ -112,7 +116,7 @@ export default function FetchFullContentArea({
     // handleFetchClick は ref を使わず inline で参照する callback だが,
     // 依存に追加すると毎 render の identity 変化で effect 再発火するため意図的に省略
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, fetchError, fetching, articleId, toast]);
+  }, [isOnline, fetchError, fetching, articleId, toast, autoRetryEnabled]);
 
   return (
     <div className="mt-6 pt-6 border-t border-border-subtle flex flex-col items-center gap-2">

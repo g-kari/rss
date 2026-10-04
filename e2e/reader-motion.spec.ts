@@ -107,6 +107,19 @@ for (const viewport of [
 ]) {
   test.describe(`${viewport.width}px ordinary reader motion`, () => {
     test.use({ viewport });
+    test("long RSS excerpts expose the manual source action in the ordinary reader", async ({
+      page,
+    }) => {
+      await open(page);
+      await page.getByRole("button", { name: "Next article", exact: true }).click();
+      const reader = page.getByRole("article", { name: "記事本文", exact: true });
+      const fetchButton = reader.getByRole("button", { name: "全文を取得", exact: true });
+      await expect(fetchButton).toBeEnabled();
+      await fetchButton.scrollIntoViewIfNeeded();
+      await expect(fetchButton).toBeInViewport();
+      await expect(reader.getByRole("link", { name: "元記事を開く", exact: true })).toBeVisible();
+      expect(await events(page)).toEqual([]);
+    });
     test("simple mode is instant and preserves real article/list state across mode changes", async ({
       page,
     }, testInfo) => {

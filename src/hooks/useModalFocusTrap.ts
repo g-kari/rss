@@ -127,6 +127,9 @@ export function useModalFocusTrap(
       if (!dialog || (e.target instanceof Node && !dialog.contains(e.target))) return;
       // captureEscape: true の場合、Escape は capture phase で処理済みなので bubble phase では無視
       if (e.key === "Escape" && !captureEscape) {
+        // The innermost real trap owns this close, including inline dialogs.
+        // Do not also dismiss an ancestor reader overlay in the same event.
+        e.stopPropagation();
         onClose();
         return;
       }

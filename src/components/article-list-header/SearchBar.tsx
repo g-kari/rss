@@ -13,6 +13,7 @@ import {
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
 import { useSearchHistory } from "../../hooks/useSearchHistory";
 import { useFullTextSearch } from "../../hooks/useFullTextSearch";
+import { usePopupLock } from "../../hooks/usePopupLock";
 
 // listbox に並べる候補項目の型。saved (保存済み検索) と history (履歴)
 // の 2 source を kind で区別して 1 つの index で管理する。
@@ -33,6 +34,8 @@ export default function SearchBar() {
 
   const { savedSearches, save: saveSearch, removeSaved } = useFullTextSearch();
   const isSavingSearch = savingSearch !== null;
+  // The naming editor owns Escape before capture-phase reader focus shortcuts.
+  usePopupLock(isSavingSearch);
 
   // Native ancestor isolation also works with Next's document-level React delegation.
   // The reader's global Space shortcut must not cancel native Save/Cancel activation.
@@ -119,6 +122,9 @@ export default function SearchBar() {
 
   const handleSearchKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      // IME owns candidate navigation/confirmation, including Safari's keyCode 229 fallback.
+      // Leave its native event alone and never apply, dismiss, record or delete our suggestions.
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       if (e.key === "Escape") {
         // dropdown が開いていれば閉じるだけ、閉じていれば query を clear + blur (旧挙動)。
         if (showHistory) {
