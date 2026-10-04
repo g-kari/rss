@@ -3,6 +3,8 @@
 import {
   memo,
   useCallback,
+  useEffect,
+  useRef,
   useMemo,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -137,6 +139,26 @@ export interface ArticleActionsProps {
   onToggleReadingList?: () => void;
 }
 
+/** Keep native button activation before Next's document-level React/reader listeners. */
+function useNativeButtonActivation<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const keepActivation = (event: globalThis.KeyboardEvent) => {
+      if (
+        (event.key === "Enter" || event.key === " ") &&
+        event.target instanceof HTMLButtonElement
+      ) {
+        event.stopPropagation();
+      }
+    };
+    element.addEventListener("keydown", keepActivation);
+    return () => element.removeEventListener("keydown", keepActivation);
+  }, []);
+  return ref;
+}
+
 export const ArticleActions = memo(function ArticleActions({
   isRead,
   isBookmarked,
@@ -147,6 +169,7 @@ export const ArticleActions = memo(function ArticleActions({
   onToggleBookmark,
   onToggleReadingList,
 }: ArticleActionsProps) {
+  const activationRef = useNativeButtonActivation<HTMLDivElement>();
   const btn =
     size === "sm"
       ? "w-5 h-5 md:w-5 md:h-5 max-md:min-w-[44px] max-md:min-h-[44px]"
@@ -154,7 +177,7 @@ export const ArticleActions = memo(function ArticleActions({
   const icon = size === "sm" ? 10 : 12;
   const bicon = size === "sm" ? { w: 9, h: 11 } : { w: 11, h: 13 };
   return (
-    <div className={className} onClick={(e) => e.stopPropagation()}>
+    <div ref={activationRef} className={className} onClick={(e) => e.stopPropagation()}>
       <button
         onClick={onToggleRead}
         title={isRead ? "未読にする" : "既読にする"}
@@ -432,8 +455,10 @@ export const GalleryExpandButton = memo(function GalleryExpandButton({
   onClick: () => void;
   className?: string;
 }) {
+  const activationRef = useNativeButtonActivation<HTMLButtonElement>();
   return (
     <button
+      ref={activationRef}
       type="button"
       onClick={(e) => {
         e.stopPropagation();

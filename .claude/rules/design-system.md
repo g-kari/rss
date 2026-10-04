@@ -205,7 +205,7 @@ className = "bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all d
 </div>
 ```
 
-記事一覧のホバー操作は `[@media(hover:hover)]:group-focus-within:opacity-100` / `group-focus-within:pointer-events-auto` でも表示する。代わりに隠すメタ情報・状態表示も同じ focus-within 条件で揃え、Tab で記事行から子ボタンへ移っても可視性を保つ。記事行の Enter / Space は `event.target === event.currentTarget` の場合だけ処理し、子の既読・保存・画像再試行ボタンの native activation を奪わない。
+記事一覧のホバー操作は `[@media(hover:hover)]:group-focus-within:opacity-100` / `group-focus-within:pointer-events-auto` でも表示する。代わりに隠すメタ情報・状態表示も同じ focus-within 条件で揃え、Tab で記事行から子ボタンへ移っても可視性を保つ。記事行の Enter / Space は `event.target === event.currentTarget` の場合だけ処理し、子の既読・保存・画像再試行ボタンの native activation を奪わない。`ArticleActions` / `GalleryExpandButton` は native DOM で Enter / Space の伝播だけを止め、Next の document-level React delegation と先行する読書ショートカットからボタンの既定動作を守る。Tab・他のショートカットと記事行自体の選択は従来通り。
 
 ## アイコン
 

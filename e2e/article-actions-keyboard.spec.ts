@@ -20,20 +20,34 @@ test.beforeAll(async () => {
         sourcefile: "synthetic-article-actions.tsx",
         loader: "tsx",
         contents: `
-          import { useState } from "react";
+          import { useState, useRef } from "react";
           import { createRoot } from "react-dom/client";
           import { CompactArticleItem, ListArticleItem, CardArticleItem,
             MagazineFeaturedArticleItem, GalleryArticleItem } from "./src/components/article-items";
           import { SelectedArticleCtx } from "./src/contexts/SelectedArticleContext";
           import { makeArticle } from "./e2e/helpers/article";
+          import { useArticleViewShortcuts } from "./src/hooks/useArticleViewShortcuts";
           const params = new URLSearchParams(location.hash.slice(1));
           const Item = {compact: CompactArticleItem, list: ListArticleItem, card: CardArticleItem,
             magazine: MagazineFeaturedArticleItem, gallery: GalleryArticleItem}[params.get("layout")];
           const article = makeArticle({id: "keyboard", title: "Keyboard article"});
-          const image = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="gray"/></svg>');
+          const image = "/api/image-proxy?url=synthetic-keyboard-image";
+          function Reader({onScroll}) {
+            const mainRef = useRef(null);
+            useArticleViewShortcuts({article, storedContent: null, fetching: false,
+              canFetchManually: false, fetchFullContent: () => {}, aiResult: null, aiLoading: false,
+              doRunAi: () => {}, resetAi: () => {}, handleTranslate: () => {}, mainRef,
+              autoTranslate: false, autoSummarize: false, autoAiBrowserOnly: false,
+              aiPreferenceKey: "synthetic", translatorAvailable: null, summarizerAvailable: null,
+              translateResult: null, translateLoading: false});
+            return <div tabIndex={0} data-testid="synthetic-reader" ref={element => {
+              mainRef.current = element;
+              if (element) element.scrollBy = onScroll;
+            }}>Connected synthetic reader</div>;
+          }
           function Fixture() {
             const [state, setState] = useState({read: false, bookmark: false, later: false,
-              reads: 0, bookmarks: 0, laters: 0, selections: 0, images: 0, retries: 0});
+              reads: 0, bookmarks: 0, laters: 0, selections: 0, images: 0, retries: 0, scrolls: 0});
             const toggle = (field, count) => setState(s => ({...s, [field]: !s[field], [count]: s[count] + 1}));
             const count = field => setState(s => ({...s, [field]: s[field] + 1}));
             const gallery = params.get("mode") === "image" ? {
@@ -55,6 +69,7 @@ test.beforeAll(async () => {
               </main>
               <button>次の操作</button>
               <output aria-label="操作結果">{JSON.stringify(state)}</output>
+              <Reader onScroll={() => count("scrolls")} />
             </>;
           }
           createRoot(document.getElementById("root")).render(<Fixture />);
@@ -87,6 +102,14 @@ test.beforeEach(async ({ page }) => {
       request.frame() === page.mainFrame()
     ) {
       await route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+    } else if (
+      request.url() === fixtureUrl + "api/image-proxy?url=synthetic-keyboard-image" &&
+      request.method() === "GET"
+    ) {
+      await route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="gray"/></svg>',
+      });
     } else {
       collected.push(`unexpected ${request.method()} ${request.url()}`);
       await route.abort();
@@ -156,6 +179,7 @@ for (const theme of ["light", "dark"] as const) {
         await page.keyboard.press("Space");
         await count(page, key, 2);
         await count(page, "selections", 1);
+        await count(page, "scrolls", 0);
       }
       await testInfo.attach("focused-article-actions", {
         body: await row.screenshot(),
@@ -175,6 +199,10 @@ for (const theme of ["light", "dark"] as const) {
       await read.click();
       await count(page, "reads", 3);
       await count(page, "selections", 1);
+      await count(page, "scrolls", 0);
+      await page.getByTestId("synthetic-reader").focus();
+      await page.keyboard.press("Space");
+      await count(page, "scrolls", 1);
     });
 
     test(`${layout} ${theme}: touch actions stay visible and tap once`, async ({ browser }) => {
@@ -242,5 +270,6 @@ for (const theme of ["light", "dark"] as const) {
     await count(page, "bookmarks", 1);
     await count(page, "images", 1);
     await count(page, "selections", 0);
+    await count(page, "scrolls", 0);
   });
 }
