@@ -27,6 +27,8 @@ interface UseModalFocusTrapOptions {
    * デフォルト false (既存の bubble-phase 動作、後方互換)。
    */
   captureEscape?: boolean;
+  /** Opt-in: let a matching descendant handle Escape before this capture trap. */
+  targetOwnedEscapeSelector?: string;
   /**
    * close/unmount 時に復元するフォーカス先を上書きする。
    * SnoozeModal のように「モーダル open 後に元要素が DOM から消える」ケースで使用。
@@ -65,6 +67,7 @@ export function useModalFocusTrap(
     isOpen,
     initialFocusRef,
     captureEscape = false,
+    targetOwnedEscapeSelector,
     returnFocusEl,
     preventScrollOnReturn = false,
   } = options;
@@ -111,13 +114,21 @@ export function useModalFocusTrap(
         while (owner && !activeRefs.some((ref) => ref.current === owner))
           owner = owner.parentElement;
         if (owner && owner !== dialogRef.current) return;
+        if (
+          targetOwnedEscapeSelector &&
+          e.target instanceof Element &&
+          e.target === document.activeElement &&
+          dialogRef.current?.contains(e.target) &&
+          e.target.matches(targetOwnedEscapeSelector)
+        )
+          return;
         e.stopPropagation();
         onClose();
       }
     }
     document.addEventListener("keydown", onCaptureKey, true);
     return () => document.removeEventListener("keydown", onCaptureKey, true);
-  }, [captureEscape, openState, onClose]);
+  }, [captureEscape, openState, onClose, targetOwnedEscapeSelector]);
 
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {

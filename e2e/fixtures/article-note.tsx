@@ -1,8 +1,10 @@
 // Actual production note panel, note/read-state/keyboard hooks; intercepted synthetic data only.
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
-import ArticleNotePanel from "../../src/components/article-view/ArticleNotePanel";
-import { useArticleNote } from "../../src/hooks/useArticleNote";
+import ArticleDetailOverlay from "../../src/components/ArticleDetailOverlay";
+import FocusModeOverlay from "../../src/components/FocusModeOverlay";
+import type ArticleView from "../../src/components/ArticleView";
+import NoteReader from "../helpers/article-note-reader";
 import { useReadState } from "../../src/hooks/useReadState";
 import { useKeyboardNav } from "../../src/hooks/useKeyboardNav";
 import { makeKeyboardNavFixture } from "../helpers/keyboard-nav-fixture";
@@ -27,14 +29,15 @@ const article: Article = {
 function Fixture() {
   const [selected, setSelected] = useState(article);
   const [shortcuts, setShortcuts] = useState(0);
+  const [mode, setMode] = useState<"pane" | "detail" | "focus">("pane");
   const state = useReadState(user, []);
   const note = state.notes[selected.id];
-  const edit = useArticleNote({
+  const articleViewProps = {
     article: selected,
     note,
     onSetNote: state.setNote,
     onDeleteNote: state.deleteNote,
-  });
+  } as ComponentProps<typeof ArticleView>;
   useKeyboardNav({
     ...makeKeyboardNavFixture(),
     selectedArticle: selected,
@@ -45,9 +48,19 @@ function Fixture() {
       <h1>記事メモの動作確認</h1>
       <button onClick={() => setSelected(article)}>保存済みメモの記事</button>
       <button onClick={() => setSelected({ ...article, id: "new-note" })}>メモのない記事</button>
-      <button onClick={() => edit.setNoteExpanded(true)}>メモを編集</button>
-      {(edit.noteExpanded || edit.noteText) && <ArticleNotePanel {...edit} note={note} />}
-      <button>外へ移動</button>
+      <button onClick={() => setMode("detail")}>詳細で読む</button>
+      <button onClick={() => setMode("focus")}>フォーカスで読む</button>
+      {mode === "pane" && <NoteReader {...articleViewProps} />}
+      <ArticleDetailOverlay
+        open={mode === "detail"}
+        onClose={() => setMode("pane")}
+        articleViewProps={articleViewProps}
+      />
+      <FocusModeOverlay
+        focusMode={mode === "focus"}
+        exitFocusMode={() => setMode("pane")}
+        articleViewProps={articleViewProps}
+      />
       <output aria-label="保存済みメモ">{JSON.stringify(state.notes)}</output>
       <output aria-label="同期状態">{state.hasPendingChanges ? "同期待ち" : "同期済み"}</output>
       <output aria-label="ショートカット回数">{shortcuts}</output>

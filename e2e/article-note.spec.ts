@@ -27,6 +27,21 @@ test.beforeAll(async () => {
       format: "iife",
       jsx: "automatic",
       define: { "process.env.NODE_ENV": '"test"' },
+      plugins: [
+        {
+          name: "unrelated-reader-work",
+          setup(builder) {
+            builder.onLoad({ filter: /src\/components\/ArticleView\.tsx$/ }, () => ({
+              contents: 'export { default } from "../../e2e/helpers/article-note-reader";',
+              loader: "tsx",
+            }));
+            builder.onLoad({ filter: /src\/components\/VisualModeBar\.tsx$/ }, () => ({
+              contents: "export function VisualModeSwitch() { return null; }",
+              loader: "tsx",
+            }));
+          },
+        },
+      ],
     }),
     postcss([tailwind({ base: root })]).process(
       await readFile(resolve(root, "app/globals.css"), "utf8"),
@@ -137,6 +152,52 @@ for (const width of [390, 1280]) {
       expect((deletion.removedIds as { notes: string[] }).notes).toContain("synthetic-note");
       await expect(textarea(page)).toHaveValue("   ");
     });
+    for (const mode of ["detail", "focus"] as const) {
+      test(`${mode} owner keeps note Escape and IME local, then closes normally`, async ({
+        page,
+      }) => {
+        const before = await stored(page);
+        const launch = page.getByRole("button", {
+          name: mode === "detail" ? "詳細で読む" : "フォーカスで読む",
+        });
+        await launch.click();
+        const owner = page.getByRole("dialog", {
+          name: mode === "detail" ? "記事詳細パネル" : "フォーカスモード",
+        });
+        const input = owner.getByRole("textbox", { name: "この記事へのメモ" });
+        for (const draft of ["Discard in overlay", ""]) {
+          await input.fill(draft);
+          await input.press("Escape");
+          await expect(owner).toBeVisible();
+          await expect(input).toHaveValue("Original note");
+          await noCancelWrites(page, before);
+        }
+        await input.fill("変換中のメモ");
+        for (const ime of [{ isComposing: true }, { keyCode: 229 }]) {
+          await input.evaluate(
+            (element, init) =>
+              element.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "Escape", bubbles: true, ...init }),
+              ),
+            ime,
+          );
+          await expect(owner).toBeVisible();
+          await expect(input).toBeFocused();
+          await expect(input).toHaveValue("変換中のメモ");
+          expect(diagnostics.get(page)!.syncs).toEqual([]);
+        }
+        await input.press("Escape");
+        await noCancelWrites(page, before);
+        const close = owner.getByRole("button", {
+          name: mode === "detail" ? "記事詳細パネルを閉じる" : "フォーカスモード終了",
+        });
+        await close.focus();
+        await close.press("Escape");
+        await expect(owner).toHaveCount(0);
+        await expect(launch).toBeFocused();
+        await noCancelWrites(page, before);
+      });
+    }
     test("IME Escape keeps the draft and focus, ordinary Escape then cancels", async ({ page }) => {
       const before = await stored(page);
       await textarea(page).fill("変換中のメモ");

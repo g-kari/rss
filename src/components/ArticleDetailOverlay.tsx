@@ -55,6 +55,7 @@ export default function ArticleDetailOverlay({ open, onClose, articleViewProps }
     onClose,
     isOpen: open,
     captureEscape: true,
+    targetOwnedEscapeSelector: "textarea[data-article-note-editor]",
   });
 
   function handleResizeKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
