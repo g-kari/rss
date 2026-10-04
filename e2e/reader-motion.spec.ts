@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   READER_MOTION_DOCUMENT_URL,
+  READER_MOTION_IMAGE_URL,
   serveReaderMotionFixture,
 } from "./helpers/reader-motion-request";
 
@@ -502,4 +503,167 @@ test.describe("production focus/history hooks with native browser traversal", ()
     await expect(page.getByLabel("Native traversals")).toHaveText("1");
     await expect(page.getByLabel("Native pane")).toHaveText("view");
   });
+});
+
+test.describe("production readers own focused V requests", () => {
+  let shortcutHtml = "";
+  const requests = new WeakMap<Page, Array<{ release: () => void }>>();
+  test.beforeAll(async () => {
+    const root = resolve(import.meta.dirname, "..");
+    const { outputFiles } = await build({
+      absWorkingDir: root,
+      stdin: {
+        resolveDir: root,
+        sourcefile: "synthetic-reader-shortcuts.tsx",
+        loader: "tsx",
+        contents: `
+          import { createRoot } from "react-dom/client";
+          import ArticleView from "./src/components/ArticleView";
+          import FocusModeOverlay from "./src/components/FocusModeOverlay";
+          import { TestReaderSettings } from "./e2e/helpers/reader-settings";
+          import { ArticleFilterProvider } from "./src/contexts/ArticleFilterContext";
+          import { ToastProvider } from "./src/contexts/ToastContext";
+          import { TtsAdapterProvider } from "./src/contexts/TtsAdapterContext";
+          import { useFilteredArticles } from "./src/hooks/useFilteredArticles";
+          import { useSpeechSynthesis } from "./src/hooks/useSpeechSynthesis";
+          import { useFocusMode } from "./src/hooks/useFocusMode";
+          import { useMobilePane } from "./src/hooks/useMobilePane";
+          import { makeArticle } from "./e2e/helpers/article";
+          const noop = () => {};
+          const empty = new Set();
+          const articles = [makeArticle({ id: "native-shortcut", link: "https://example.com/native-shortcut",
+            content: "<p>" + "Publisher excerpt. ".repeat(40) + "</p>", ogImage: "${READER_MOTION_IMAGE_URL}" })];
+          function Fixture() {
+            const pane = useMobilePane("view");
+            const focus = useFocusMode();
+            const filter = useFilteredArticles({ articles, feedId: null, readIds: empty, bookmarkIds: empty,
+              readingListIds: empty, globalFilter: null, setGlobalFilter: noop });
+            const tts = useSpeechSynthesis();
+            const props = { article: articles[0], isBookmarked: false, onToggleBookmark: noop,
+              isInReadingList: false, onToggleReadingList: noop, isLiked: false, onToggleLike: noop,
+              note: "Draft note", onSetNote: noop };
+            return <TestReaderSettings>
+              <ArticleFilterProvider value={{ ...filter, onSaveFilter: async () => {} }}>
+                <ToastProvider value={{ info: noop, success: noop, error: noop, undo: noop, dismiss: noop, toasts: [] }}>
+                  <TtsAdapterProvider value={tts}>
+                    <button onClick={focus.toggleFocusMode}>Open focused reader</button>
+                    <output aria-label="Shortcut pane">{pane.mobilePane}</output>
+                    <div data-testid="shortcut-pane" style={{ height: 420 }}><ArticleView {...props} /></div>
+                    <FocusModeOverlay focusMode={focus.focusMode} exitFocusMode={focus.exitFocusMode} articleViewProps={props} />
+                  </TtsAdapterProvider>
+                </ToastProvider>
+              </ArticleFilterProvider>
+            </TestReaderSettings>;
+          }
+          createRoot(document).render(<html lang="ja"><head><meta charSet="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" /><link rel="icon" href="data:," />
+            <style>{globalThis.shortcutCss}</style></head><body><Fixture /></body></html>);
+        `,
+      },
+      bundle: true,
+      write: false,
+      format: "iife",
+      jsx: "automatic",
+      loader: { ".css": "empty" },
+      define: { "process.env.NODE_ENV": '"test"' },
+    });
+    const css = html.match(/<style>([\s\S]*?)<\/style>/)![1];
+    shortcutHtml = `<!doctype html><html><script>globalThis.shortcutCss=${JSON.stringify(css).replaceAll("</script", "<\\/script")};${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  });
+  test.beforeEach(async ({ page }) => {
+    const pending: Array<{ release: () => void }> = [];
+    requests.set(page, pending);
+    await page.route("**/*", async (route) => {
+      const request = route.request();
+      if (
+        request.url() === READER_MOTION_DOCUMENT_URL &&
+        request.method() === "GET" &&
+        request.isNavigationRequest() &&
+        request.resourceType() === "document" &&
+        request.frame() === page.mainFrame()
+      ) {
+        await route.fulfill({ contentType: "text/html; charset=utf-8", body: shortcutHtml });
+        return;
+      }
+      const contentUrl = new URL(
+        "/api/content?url=" + encodeURIComponent("https://example.com/native-shortcut"),
+        READER_MOTION_DOCUMENT_URL,
+      ).href;
+      if (
+        request.url() === contentUrl &&
+        request.method() === "GET" &&
+        request.resourceType() === "fetch"
+      ) {
+        await new Promise<void>((release) => pending.push({ release }));
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Synthetic source unavailable" }),
+        });
+        return;
+      }
+      await serveReaderMotionFixture(
+        {
+          url: request.url(),
+          method: request.method(),
+          resourceType: request.resourceType(),
+          isNavigation: request.isNavigationRequest(),
+          isMainFrame: request.frame() === page.mainFrame(),
+        },
+        route,
+        shortcutHtml,
+        errors.get(page)!,
+      );
+    });
+  });
+  test.afterEach(({ page }) => requests.get(page)?.forEach(({ release }) => release()));
+
+  for (const width of [1280, 390]) {
+    test(`native V at ${width}px fetches only the focused reader and resumes after Back`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(READER_MOTION_DOCUMENT_URL);
+      const pane = page.getByTestId("shortcut-pane");
+      await settled(page);
+      await pane.getByRole("article", { name: "記事本文" }).evaluate((element) => {
+        element.scrollTop = 120;
+      });
+      // The first real scroll reveals the 2px progress bar and browser scroll
+      // anchoring adjusts the position. Sample only after that response settles.
+      await expect(pane.locator("article > div").first()).toBeVisible();
+      await settled(page);
+      const before = await pane
+        .getByRole("article", { name: "記事本文" })
+        .evaluate((element) => element.scrollTop);
+      const trigger = page.getByRole("button", { name: "Open focused reader", exact: true });
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: "フォーカスモード", exact: true });
+      await dialog.getByRole("textbox", { name: "この記事へのメモ" }).fill("v");
+      await page.keyboard.press("v");
+      expect(requests.get(page)).toHaveLength(0);
+      await dialog.getByRole("button", { name: "全文を取得", exact: true }).focus();
+      await page.keyboard.press("v");
+      await expect(dialog.getByRole("button", { name: /取得中/ })).toBeDisabled();
+      await expect.poll(() => requests.get(page)?.length).toBe(1);
+      await expect(pane.getByRole("button", { name: "全文を取得", exact: true })).toBeEnabled();
+      await page.keyboard.press("v");
+      expect(requests.get(page)).toHaveLength(1);
+      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+      await expect(page.getByLabel("Shortcut pane")).toHaveText("view");
+      expect(
+        await pane
+          .getByRole("article", { name: "記事本文" })
+          .evaluate((element) => element.scrollTop),
+      ).toBe(before);
+      await page.keyboard.press("v");
+      await expect(pane.getByRole("button", { name: /取得中/ })).toBeDisabled();
+      await expect.poll(() => requests.get(page)?.length).toBe(2);
+      requests.get(page)!.forEach(({ release }) => release());
+      await expect(pane.getByRole("alert")).toHaveText("Synthetic source unavailable");
+    });
+  }
 });
