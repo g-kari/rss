@@ -548,6 +548,69 @@ describe("mixed in-app and browser pane navigation", () => {
     },
   );
 
+  it.each([
+    ["reader", "button"],
+    ["reader", "browser"],
+    ["list", "button"],
+    ["list", "browser"],
+  ] as const)(
+    "keeps %s focus return with window-target registration order (%s close)",
+    (mode, close) => {
+      const eventTarget: globalThis.Window = window;
+      const listeners: EventListenerOrEventListenerObject[] = [];
+      const nativeAdd = eventTarget.addEventListener.bind(eventTarget);
+      const nativeRemove = eventTarget.removeEventListener.bind(eventTarget);
+      vi.spyOn(eventTarget, "addEventListener").mockImplementation((name, listener, options) => {
+        if (name === "popstate" && listener) {
+          listeners.push(listener);
+          return;
+        }
+        nativeAdd(name, listener, options);
+      });
+      vi.spyOn(eventTarget, "removeEventListener").mockImplementation((name, listener, options) => {
+        if (name === "popstate") {
+          const position = listeners.indexOf(listener!);
+          if (position >= 0) listeners.splice(position, 1);
+          return;
+        }
+        nativeRemove(name, listener, options);
+      });
+      const { result } = renderHook(() => ({
+        pane: useMobilePane("sidebar"),
+        focus: useFocusMode(),
+      }));
+      act(() => result.current.pane.setMobilePane("list"));
+      act(() => result.current.pane.setMobilePane("view"));
+      const baseIndex = index;
+      act(() =>
+        mode === "reader"
+          ? result.current.focus.toggleFocusMode()
+          : result.current.focus.toggleListFocusMode(),
+      );
+      entries[baseIndex] = { router: "next-base" };
+      entries[index] = { router: "next-current" };
+      if (close === "button") {
+        act(() => result.current.focus.exitFocusMode());
+        expect(pendingBack).toBe(1);
+        pendingBack = 0;
+      }
+      index -= 1;
+      // Native Chromium window events run at-target listeners in registration
+      // order. happy-dom's capture-first dispatch alone cannot model this case.
+      const event = new PopStateEvent("popstate", { state: entries[index] });
+      act(() => {
+        for (const listener of listeners.slice()) {
+          if (typeof listener === "function") listener.call(window, event);
+          else listener.handleEvent(event);
+        }
+      });
+      expectClosed({ current: result.current.focus });
+      expect(result.current.pane.mobilePane).toBe("view");
+      expect(window.history.state.router).toBe("next-base");
+      expect(window.history.state.mobilePane).toBe("view");
+    },
+  );
+
   it("migrates older entries without indices while retaining the previous-pane Back fallback", () => {
     entries = [{ router: "kept" }, { mobilePane: "list" }, { mobilePane: "view" }];
     index = 2;

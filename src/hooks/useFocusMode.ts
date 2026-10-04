@@ -24,7 +24,15 @@ export function hasFocusHistoryOwner(): boolean {
 
 /** Session metadata may be replaced by Next; live focus ownership still identifies its exit. */
 export function getFocusHistoryExit(event: PopStateEvent): "open" | "closing" | undefined {
-  return focusHistoryExits.get(event);
+  const recorded = focusHistoryExits.get(event);
+  if (recorded) return recorded;
+  // Native window-target events can run listeners in registration order, even
+  // with capture enabled. The pane listener must also recognize a live owner.
+  for (const owner of focusHistoryOwners) {
+    const phase = owner.current;
+    if (phase === "closing" || (phase === "open" && !event.state?.focus)) return phase;
+  }
+  return undefined;
 }
 
 /**
