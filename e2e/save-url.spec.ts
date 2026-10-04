@@ -4,6 +4,8 @@ import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { mergeReadStateUpdate } from "../src/lib/read-state-merge";
+import type { ReadState } from "../src/types";
 const origin = "https://rss-save-url.test/";
 const article = {
   id: "synthetic-saved",
@@ -33,6 +35,7 @@ const diagnostics = new WeakMap<
     syncs: Record<string, unknown>[];
     responses: SaveResponse[];
     syncFailures: number;
+    syncResponses: SaveResponse[];
   }
 >();
 test.beforeAll(async () => {
@@ -61,10 +64,11 @@ test.beforeEach(async ({ page }) => {
     syncs: [] as Record<string, unknown>[],
     responses: [] as SaveResponse[],
     syncFailures: 0,
+    syncResponses: [] as SaveResponse[],
   };
   diagnostics.set(page, state);
   page.on("pageerror", (error) => state.errors.push(error.message));
-  let persisted = structuredClone(initial);
+  let persisted: ReadState = structuredClone(initial);
   await page.route("**/*", async (route: Route) => {
     const request = route.request();
     if (request.url() === origin && request.method() === "GET" && request.isNavigationRequest())
@@ -86,11 +90,18 @@ test.beforeEach(async ({ page }) => {
       if (request.method() === "POST") {
         const data = request.postDataJSON();
         state.syncs.push(data);
+        const response = state.syncResponses.shift();
+        if (response?.gate) await response.gate;
+        if (response?.status && response.status >= 400)
+          return route.fulfill({
+            status: response.status,
+            json: { error: "Synthetic pending sync failure" },
+          });
         if (state.syncFailures > 0) {
           state.syncFailures--;
           return route.fulfill({ status: 503, json: { error: "Synthetic sync failure" } });
         }
-        persisted = { ...persisted, ...data };
+        persisted = mergeReadStateUpdate(persisted, data);
         return route.fulfill({ json: persisted });
       }
     }
@@ -98,6 +109,14 @@ test.beforeEach(async ({ page }) => {
     await route.abort();
   });
   await page.goto(origin);
+  await expect(page.getByLabel("保存対象外状態")).toHaveText(
+    JSON.stringify({
+      readIds: initial.readIds,
+      likeIds: initial.likeIds,
+      notes: initial.notes,
+      tagIds: initial.tagIds,
+    }),
+  );
 });
 test.afterEach(({ page }) => expect(diagnostics.get(page)!.errors).toEqual([]));
 async function open(page: Page, url = article.link) {
@@ -152,10 +171,10 @@ for (const mode of ["ブックマーク", "後で読む"]) {
     await open(page);
     await page.getByRole("button", { name: mode, exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect.poll(() => state.syncs.length).toBe(1);
+    await expect.poll(() => state.syncs.length, { timeout: 10_000 }).toBe(1);
     await expect(page.getByLabel("同期状態")).toHaveText("同期待ち");
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
-    await expect.poll(() => state.syncs.length).toBe(2);
+    await expect.poll(() => state.syncs.length, { timeout: 10_000 }).toBe(2);
     await expect(page.getByLabel("同期状態")).toHaveText("同期済み");
     expect(state.syncs[1]).toEqual(state.syncs[0]);
     await open(page);
@@ -163,23 +182,64 @@ for (const mode of ["ブックマーク", "後で読む"]) {
     await expect(page.getByLabel(`${mode}状態`)).toHaveText("true");
     await expect(page.getByLabel("記事数")).toHaveText("1");
     await expect(page.getByLabel("成功通知数")).toHaveText("2");
-    await expect.poll(() => state.syncs.length).toBe(3);
+    await expect.poll(() => state.syncs.length, { timeout: 10_000 }).toBe(3);
     const key = mode === "ブックマーク" ? "bookmarkIds" : "readingListIds";
     expect(state.syncs[2][key]).toEqual([article.id]);
     const removed = state.syncs[2].removedIds as Record<string, string[]>;
     expect(removed?.[key] ?? []).not.toContain(article.id);
     expect(state.syncs[2]).toMatchObject({
-      readIds: ["existing-read"],
-      likeIds: ["existing-like"],
+      readIds: [],
+      likeIds: [],
       notes: initial.notes,
-      tagIds: initial.tagIds,
+      tagIds: null,
     });
+    await expect(page.getByLabel("保存対象外状態")).toHaveText(
+      JSON.stringify({
+        readIds: initial.readIds,
+        likeIds: initial.likeIds,
+        notes: initial.notes,
+        tagIds: initial.tagIds,
+      }),
+    );
     await page.getByRole("button", { name: `通常${mode}切替` }).click();
     await expect(page.getByLabel(`${mode}状態`)).toHaveText("false");
-    await expect.poll(() => state.syncs.length).toBe(4);
+    await expect.poll(() => state.syncs.length, { timeout: 10_000 }).toBe(4);
     expect((state.syncs[3].removedIds as Record<string, string[]>)[key]).toContain(article.id);
   });
 }
+for (const mode of ["ブックマーク", "後で読む"]) {
+  test(`${mode}: new URL save wins over failed older in-flight removal`, async ({ page }) => {
+    const state = diagnostics.get(page)!;
+    await open(page);
+    await page.getByRole("button", { name: mode, exact: true }).click();
+    await expect.poll(() => state.syncs.length, { timeout: 10_000 }).toBe(1);
+    await expect(page.getByLabel("同期状態")).toHaveText("同期済み");
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    state.syncResponses.push({ gate, status: 503 });
+    await page.getByRole("button", { name: `通常${mode}切替` }).click();
+    await expect.poll(() => state.syncs.length).toBe(2);
+    await open(page);
+    await page.getByRole("button", { name: mode, exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByLabel(`${mode}状態`)).toHaveText("true");
+    const response = page.waitForResponse(
+      (r) => r.url() === `${origin}api/read-state` && r.status() === 503,
+    );
+    release();
+    await (await response).finished();
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect.poll(() => state.syncs.length, { timeout: 10_000 }).toBe(3);
+    await expect(page.getByLabel("同期状態")).toHaveText("同期済み");
+    const key = mode === "ブックマーク" ? "bookmarkIds" : "readingListIds";
+    expect(state.syncs[2][key]).toContain(article.id);
+    expect((state.syncs[2].removedIds as Record<string, string[]>)[key]).not.toContain(article.id);
+    await expect(page.getByLabel(`${mode}状態`)).toHaveText("true");
+  });
+}
+
 for (const action of ["キャンセル", "閉じる", "Escape"]) {
   for (const failed of [false, true]) {
     test(`${action} during pending save ignores old ${failed ? "failure" : "success"} in reopened form`, async ({

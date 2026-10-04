@@ -29,7 +29,7 @@ export function snapshotPendingSets(pending: PendingSets): PendingSets {
 }
 
 /**
-@internal production caller 0。同 file の `restorePending` が internal caller。
+@internal production caller 0。e2e spec が直接検証するため export は維持。
  * `e2e/read-state-storage.spec.ts` が直接 import して単体検証しているため export は維持する
  * (dead export ではない)。cross-file の production caller が増えない限り、
  * 監査 sweep で dead export として再検出しないこと。
@@ -82,8 +82,15 @@ export function extractAndResetPending(refs: PendingRefs): PendingSnapshot {
 }
 
 export function restorePending(refs: PendingRefs, snapshot: PendingSnapshot): void {
-  mergePendingSets(refs.pendingAddedRef.current, snapshot.added);
-  mergePendingSets(refs.pendingRemovedRef.current, snapshot.removed);
+  // Current pending entries were made after this in-flight snapshot. Restoring
+  // an older failure must never reintroduce the opposite intent for the same ID.
+  for (const kind of Object.keys(snapshot.added) as SetKind[]) {
+    const added = refs.pendingAddedRef.current[kind];
+    const removed = refs.pendingRemovedRef.current[kind];
+    const newerIds = new Set([...added, ...removed]);
+    for (const id of snapshot.added[kind]) if (!newerIds.has(id)) added.add(id);
+    for (const id of snapshot.removed[kind]) if (!newerIds.has(id)) removed.add(id);
+  }
   for (const k of snapshot.tagChanged) refs.pendingTagChangedRef.current.add(k);
   for (const k of snapshot.tagRemoved) refs.pendingTagRemovedRef.current.add(k);
   for (const k of snapshot.notesChanged) refs.pendingNotesChangedRef.current.add(k);

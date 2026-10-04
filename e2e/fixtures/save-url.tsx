@@ -46,6 +46,14 @@ function Fixture() {
       <output aria-label="グローバルエラー通知数">{errorMessages.length}</output>
       <output aria-label="成功通知数">{messages.length}</output>
       <output aria-label="成功通知">{messages.join(" / ")}</output>
+      <output aria-label="保存対象外状態">
+        {JSON.stringify({
+          readIds: [...state.readIds],
+          likeIds: [...state.likeIds],
+          notes: state.notes,
+          tagIds: state.tagIds,
+        })}
+      </output>
       <output aria-label="記事数">{articles.length}</output>
       <main aria-label="記事本文" style={{ height: 200, overflow: "auto" }}>
         <div style={{ height: 1500 }}>Synthetic reader</div>
