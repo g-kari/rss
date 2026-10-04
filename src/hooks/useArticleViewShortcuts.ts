@@ -9,6 +9,16 @@ import { isEditableShortcutTarget } from "../lib/keyboard-target";
 import { isStoredContentJapanese } from "../lib/article-utils";
 import { shouldSkipAutoAi } from "../lib/auto-ai-fallback";
 
+// Register only trusted overlay refs; publisher HTML may retain data attributes.
+const readerFocusOverlays = new Set<HTMLElement>();
+
+export function registerReaderFocusOverlay(element: HTMLElement): () => void {
+  readerFocusOverlays.add(element);
+  return () => {
+    readerFocusOverlays.delete(element);
+  };
+}
+
 interface ArticleViewShortcutsDeps {
   article: Article | null;
   storedContent: string | null;
@@ -86,6 +96,16 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
     "keydown",
     (e) => {
       if (isEditableShortcutTarget(e.target)) return;
+      const reader = mainRef.current;
+      if (!reader?.isConnected) return;
+      // The pane reader stays mounted behind focus mode. The latest connected
+      // trusted overlay owns these shortcuts, independent of event target and
+      // listener order. Never use publisher-controlled attributes as authority.
+      let focusOverlay: HTMLElement | undefined;
+      for (const overlay of readerFocusOverlays) {
+        if (overlay.isConnected) focusOverlay = overlay;
+      }
+      if (focusOverlay && !focusOverlay.contains(reader)) return;
       const s = shortcutRef.current;
       if (e.key === "v" && s.canFetchManually && !s.fetching) {
         void s.fetchFullContent();

@@ -1,10 +1,11 @@
 "use client";
-import { useId, useRef, type ComponentProps } from "react";
+import { useId, useLayoutEffect, useRef, type ComponentProps } from "react";
 import { VisualModeSwitch } from "./VisualModeBar";
 import ArticleView from "./ArticleView";
 import ErrorBoundary from "./ErrorBoundary";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
+import { registerReaderFocusOverlay } from "@/hooks/useArticleViewShortcuts";
 
 type ArticleViewProps = ComponentProps<typeof ArticleView>;
 
@@ -18,6 +19,9 @@ export default function FocusModeOverlay({ focusMode, exitFocusMode, articleView
   usePopupLock(focusMode);
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (focusMode && dialogRef.current) return registerReaderFocusOverlay(dialogRef.current);
+  }, [focusMode]);
   // Modal.tsx / ConfirmModal.tsx と同 canonical pattern: returnFocusRef + Tab cycle + Escape +
   // 初期 focus + `typeof ret.focus === "function"` safety guard を 1 hook に集約 (#790)。
   const { handleKeyDown } = useModalFocusTrap(dialogRef, {
