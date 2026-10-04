@@ -43,6 +43,7 @@ function Fixture() {
       <button onClick={() => setOpen(true)}>フィードを追加する</button>
       <button onClick={close}>外部から破棄</button>
       <button onClick={() => setUrl("https://replacement.test/feed.xml")}>外部から入力変更</button>
+      <button onClick={() => setUrl("https://example.test/feed.xml")}>外部から元入力に戻す</button>
       <output aria-label="追加数">{added}</output>
       {open && (
         <FeedAddModal

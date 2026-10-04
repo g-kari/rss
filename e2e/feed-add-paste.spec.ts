@@ -181,6 +181,22 @@ for (const width of [390, 1280]) {
         .evaluate((button: HTMLButtonElement) => button.click());
       await noPost(page);
       await expect(input(page)).toHaveValue("https://replacement.test/feed.xml");
+      await page
+        .getByRole("button", { name: "外部から元入力に戻す" })
+        .evaluate((button: HTMLButtonElement) => button.click());
+      await noPost(page);
+      await expect(input(page)).toHaveValue(firstUrl);
+    });
+    test("native validation rejection consumes paste and manual retry works", async ({ page }) => {
+      await input(page).evaluate((element: HTMLInputElement) =>
+        element.setCustomValidity("Synthetic validation rejection"),
+      );
+      await paste(page);
+      await noPost(page);
+      await expect(dialog(page)).toBeVisible();
+      await input(page).evaluate((element: HTMLInputElement) => element.setCustomValidity(""));
+      await input(page).press("Enter");
+      await onePost(page, { url: firstUrl });
     });
     test("repeated native paste sends only the newest URL", async ({ page }) => {
       await paste(page);

@@ -30,6 +30,7 @@ function Fixture({ initialUrl = "" }: { initialUrl?: string }) {
     <>
       <button onClick={() => setOpen(true)}>Open</button>
       <button onClick={() => setUrl(nextUrl)}>Replace externally</button>
+      <button onClick={() => setUrl(firstUrl)}>Restore externally</button>
       {open && (
         <FeedAddModal
           url={url}
@@ -161,6 +162,22 @@ describe("FeedAddModal paste & go", () => {
     await flushPaste();
     expect(request).not.toHaveBeenCalled();
     expect(screen.getByLabelText("フィード URL")).toHaveValue(nextUrl);
+    fireEvent.click(screen.getByRole("button", { name: "Restore externally" }));
+    await flushPaste();
+    expect(request).not.toHaveBeenCalled();
+  });
+  it("a rejected native form validation does not block a later manual retry", async () => {
+    render(<Fixture />);
+    const input = screen.getByLabelText("フィード URL") as HTMLInputElement;
+    input.setCustomValidity("Synthetic validation rejection");
+    paste();
+    await flushPaste();
+    expect(request).not.toHaveBeenCalled();
+    input.setCustomValidity("");
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
+    await flushPaste();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(body().url).toBe(firstUrl);
   });
   it("does not replay a pending paste after an external draft replacement", async () => {
     render(<Fixture />);
@@ -169,6 +186,9 @@ describe("FeedAddModal paste & go", () => {
     await flushPaste();
     expect(request).not.toHaveBeenCalled();
     expect(screen.getByLabelText("フィード URL")).toHaveValue(nextUrl);
+    fireEvent.click(screen.getByRole("button", { name: "Restore externally" }));
+    await flushPaste();
+    expect(request).not.toHaveBeenCalled();
   });
   it("repeated paste before submission keeps only the latest URL", async () => {
     render(<Fixture />);
