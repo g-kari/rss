@@ -198,31 +198,36 @@ for (const theme of ["light", "dark"] as const) {
       await expect(tabs.nth(0)).toHaveAttribute("tabindex", "0");
       for (let index = 1; index < 4; index++)
         await expect(tabs.nth(index)).toHaveAttribute("tabindex", "-1");
-      const currentStyle = await tabs.nth(0).evaluate((tab) => {
-        const style = getComputedStyle(tab);
-        const line = getComputedStyle(tab, "::before");
-        return {
-          color: style.color,
-          background: style.backgroundColor,
-          lineWidth: line.borderBottomWidth,
-          lineColor: line.borderBottomColor,
-        };
-      });
-      expect(currentStyle).toEqual(
-        theme === "light"
-          ? {
-              color: "rgb(15, 118, 110)",
-              background: "rgb(240, 253, 250)",
-              lineWidth: "3px",
-              lineColor: "rgb(15, 118, 110)",
-            }
-          : {
-              color: "rgb(94, 234, 212)",
-              background: "rgb(16, 44, 43)",
-              lineWidth: "3px",
-              lineColor: "rgb(94, 234, 212)",
-            },
-      );
+      // Theme changes use the same existing200ms transition as selection.
+      // Observe all exact settled colors and the underline together.
+      await expect
+        .poll(() =>
+          tabs.nth(0).evaluate((tab) => {
+            const style = getComputedStyle(tab);
+            const line = getComputedStyle(tab, "::before");
+            return {
+              color: style.color,
+              background: style.backgroundColor,
+              lineWidth: line.borderBottomWidth,
+              lineColor: line.borderBottomColor,
+            };
+          }),
+        )
+        .toEqual(
+          theme === "light"
+            ? {
+                color: "rgb(15, 118, 110)",
+                background: "rgb(240, 253, 250)",
+                lineWidth: "3px",
+                lineColor: "rgb(15, 118, 110)",
+              }
+            : {
+                color: "rgb(94, 234, 212)",
+                background: "rgb(16, 44, 43)",
+                lineWidth: "3px",
+                lineColor: "rgb(94, 234, 212)",
+              },
+        );
       await page.getByRole("button", { name: "前の操作" }).focus();
       await page.keyboard.press("Tab");
       await expect(tabs.nth(0)).toBeFocused();
