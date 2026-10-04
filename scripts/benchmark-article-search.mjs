@@ -1,5 +1,5 @@
 /**
- * Offline D1 query-plan/performance comparison. No account, credentials or remote bindings.
+ * Offline D1 materialization/affinity query-plan/performance comparison. No account, credentials or remote bindings.
  * Run from the repository root: node scripts/benchmark-article-search.mjs
  * Only disposable local D1 receives synthetic rows; all state is removed in finally.
  * Timings are informational, never a CI threshold or a claim of production latency.
@@ -130,6 +130,10 @@ try {
     }
     for (const query of [
       "rare-needle",
+      "title:rare-needle",
+      "title:nonexistent",
+      "title:a",
+      "title:ma OR -tag:absent",
       "京",
       "title:ma",
       "-title:absent",
@@ -143,21 +147,24 @@ try {
         20,
       );
       assert.ok(compiled.sql.includes("WITH requested AS MATERIALIZED ("));
-      const q2 = compiled.sql;
-      const inline = compiled.sql.replace(
-        "WITH requested AS MATERIALIZED (",
-        "WITH requested AS (",
+      const affinity = compiled.sql;
+      const q2 = compiled.sql.replace(
+        "CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash",
+        "json_extract(value, '$.feedHash') AS feed_hash",
       );
+      const inline = q2.replace("WITH requested AS MATERIALIZED (", "WITH requested AS (");
       const records = [];
       for (let repeat = 0; repeat < 4; repeat++) {
         for (const [kind, sql] of repeat % 2
           ? [
+              ["affinity", affinity],
               ["materialized", q2],
               ["inline", inline],
             ]
           : [
               ["inline", inline],
               ["materialized", q2],
+              ["affinity", affinity],
             ]) {
           const result = await db
             .prepare(sql)
@@ -187,6 +194,7 @@ try {
         parity: true,
         inline: summarize("inline"),
         materialized: summarize("materialized"),
+        affinity: summarize("affinity"),
       };
       console.log(JSON.stringify(report));
       reports.push(report);
@@ -196,12 +204,27 @@ try {
       plans = {
         inline: await db
           .prepare(
-            `EXPLAIN QUERY PLAN ${c.sql.replace("WITH requested AS MATERIALIZED (", "WITH requested AS (")}`,
+            `EXPLAIN QUERY PLAN ${c.sql
+              .replace(
+                "CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash",
+                "json_extract(value, '$.feedHash') AS feed_hash",
+              )
+              .replace("WITH requested AS MATERIALIZED (", "WITH requested AS (")}`,
           )
           .bind(...c.params)
           .all(),
         materialized: await db
+          .prepare(
+            `EXPLAIN QUERY PLAN ${c.sql.replace("CAST(json_extract(value, '$.feedHash') AS TEXT) AS feed_hash", "json_extract(value, '$.feedHash') AS feed_hash")}`,
+          )
+          .bind(...c.params)
+          .all(),
+        affinity: await db
           .prepare(`EXPLAIN QUERY PLAN ${c.sql}`)
+          .bind(...c.params)
+          .all(),
+        affinityBytecode: await db
+          .prepare(`EXPLAIN ${c.sql}`)
           .bind(...c.params)
           .all(),
       };
