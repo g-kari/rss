@@ -221,10 +221,20 @@ describe("search input IME composition", () => {
     act(() => search.focus());
     fireEvent.keyDown(search, { key: "Delete", shiftKey: true });
     expect(saved()).toEqual([]);
-    fireEvent.keyDown(search, { key: "Escape" });
+    const dismiss = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => search.dispatchEvent(dismiss));
+    // A type=search input otherwise clears itself on a native browser Escape.
+    expect(dismiss.defaultPrevented).toBe(true);
     expect(search).toHaveValue("title:saved");
+    expect(search).toHaveAttribute("aria-expanded", "false");
+    expect(search).toHaveFocus();
     fireEvent.keyDown(search, { key: "Escape" });
     expect(search).toHaveValue("");
+    expect(search).not.toHaveFocus();
   });
 });
 

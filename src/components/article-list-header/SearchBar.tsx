@@ -128,6 +128,7 @@ export default function SearchBar() {
       if (e.key === "Escape") {
         // dropdown が開いていれば閉じるだけ、閉じていれば query を clear + blur (旧挙動)。
         if (showHistory) {
+          e.preventDefault(); // type=search の native Escape clear より候補の終了を優先。
           setShowHistory(false);
         } else {
           updateQuery("");

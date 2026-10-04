@@ -411,7 +411,7 @@ test.describe("production focus/history hooks with native browser traversal", ()
     await expect(page.getByLabel("Native traversals")).toHaveText("2");
     await expect(page.getByLabel("Native pane")).toHaveText("list");
   });
-  test("legacy mobile-pane entries keep one-step Back after remount", async ({ page }) => {
+  test("legacy mobile-pane entries keep one-step Back after mount", async ({ page }) => {
     await nativeOpen(page, true);
     await page.getByRole("button", { name: "Pane app Back", exact: true }).click();
     await expect(page.getByLabel("Native pane")).toHaveText("list");
