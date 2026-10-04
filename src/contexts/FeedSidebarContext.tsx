@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import type { SaveArticleUrlHandler } from "../hooks/useSaveArticleUrl";
 import type { Feed, FeedGroup, FeedView, Collection } from "../types";
 
 export interface FeedSidebarActions {
@@ -15,7 +16,7 @@ export interface FeedSidebarActions {
   onToggleTheme: () => void;
   onOpenSettings: () => void;
   onOpenHelp: () => void;
-  onSaveArticleUrl: (url: string, mode: "bookmark" | "reading_list") => Promise<void>;
+  onSaveArticleUrl: SaveArticleUrlHandler;
   onRefresh: () => void;
   onRetryFeed: (id: string) => Promise<void>;
   onReinferFeed?: (id: string) => Promise<void>;

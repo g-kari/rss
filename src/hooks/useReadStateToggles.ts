@@ -7,7 +7,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
-import { STORAGE_KEYS, toggleSetItem } from "../lib/storage";
+import { STORAGE_KEYS, toggleSetItem, deferSaveSet } from "../lib/storage";
 import type { SetKind, PendingSets } from "../lib/read-state-storage";
 import type { ReadStateSets } from "./useReadStatePersistence";
 
@@ -44,6 +44,8 @@ export interface ToggleDeps {
 }
 
 interface ToggleResult {
+  addBookmark: (id: string) => void;
+  addReadingList: (id: string) => void;
   toggleRead: (id: string) => void;
   toggleBookmark: (id: string) => void;
   toggleReadingList: (id: string) => void;
@@ -83,7 +85,24 @@ export function useReadStateToggles(deps: ToggleDeps): ToggleResult {
         scheduleSyncRef.current();
         syncImmediatelyRef.current();
       };
+    // Canonical markRead semantics: additive functional update, pending add replaces
+    // a queued removal, and the existing deferred sync/recovery channel owns delivery.
+    const makeAdd =
+      (kind: SetKind, setter: Dispatch<SetStateAction<Set<string>>>, key: string) =>
+      (id: string): void => {
+        setter((prev) => {
+          if (prev.has(id)) return prev;
+          const next = new Set(prev);
+          next.add(id);
+          deferSaveSet(key, next);
+          return next;
+        });
+        recordAdd(kind)(id);
+        scheduleSyncRef.current();
+      };
     return {
+      addBookmark: makeAdd("bookmarks", setBookmarkIds, STORAGE_KEYS.BOOKMARK_IDS),
+      addReadingList: makeAdd("readingList", setReadingListIds, STORAGE_KEYS.READING_LIST_IDS),
       toggleRead: makeToggle(
         setReadIds,
         STORAGE_KEYS.READ_IDS,

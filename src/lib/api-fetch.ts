@@ -87,7 +87,15 @@ function isTokenExpired(): boolean {
  * @param init - fetch オプション（method, body, headers 等）
  * @returns fetch の Response オブジェクト
  */
-export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(
+  input: string,
+  init?: RequestInit,
+  options?: { errorNotification?: "global" | "caller" },
+): Promise<Response> {
+  // Inline forms own actionable feedback. Defaults preserve all existing callers.
+  const notify = (status?: number) => {
+    if (options?.errorNotification !== "caller") notifyError(input, status);
+  };
   await getAuthReady();
   // トークンが期限切れなら先にリフレッシュする（401 を避けてサーバー側の race を減らす）
   let didProactiveRefresh = false;
@@ -101,7 +109,7 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   } catch (err) {
     // Article navigation/unmount cancels obsolete requests normally. Keep genuine
     // network failures and TimeoutError signals visible, and rethrow either way.
-    if (!init?.signal?.aborted || !isAbortError(err)) notifyError(input, undefined);
+    if (!init?.signal?.aborted || !isAbortError(err)) notify();
     throw err;
   }
   // プロアクティブリフレッシュ済みの場合は 401 フォールバックをスキップ
@@ -118,7 +126,7 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       try {
         return await fetch(input, init);
       } catch (err) {
-        if (!init?.signal?.aborted || !isAbortError(err)) notifyError(input, undefined);
+        if (!init?.signal?.aborted || !isAbortError(err)) notify();
         throw err;
       }
     }
@@ -126,7 +134,7 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   // 4xx/5xx はグローバルリスナーに通知してトースト等で表示する。
   // 認証関連（401）と通常フロー 404 は通知対象外（読み込みリトライで大量通知になるのを防ぐ）。
   if (!res.ok && res.status !== 401 && res.status !== 404) {
-    notifyError(input, res.status);
+    notify(res.status);
   }
   return res;
 }

@@ -18,6 +18,7 @@ import { useToast } from "../../contexts/ToastContext";
 import FeedItem from "../feed-item";
 import { formatCount } from "../../lib/article-utils";
 import RecommendationSection from "../RecommendationSection";
+import { useSaveUrlDialog } from "../../hooks/useSaveUrlDialog";
 import { useFeedOperations } from "../../hooks/useFeedOperations";
 import { useSidebarFeeds } from "../../hooks/useSidebarFeeds";
 import { useFeedDragDrop } from "../../hooks/useFeedDragDrop";
@@ -218,10 +219,7 @@ function FeedSidebar({
     }
   }, [openReadingStatsTrigger]);
   const [showFeedHealth, setShowFeedHealth] = useState(false);
-  const [saveUrl, setSaveUrl] = useState("");
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveDialog = useSaveUrlDialog(onSaveArticleUrl);
   const {
     draggedFeedId,
     setDraggedFeedId,
@@ -285,21 +283,6 @@ function FeedSidebar({
     );
     if (result?.canRetryWithSelector) {
       setCssSelectorOpen(true);
-    }
-  }
-
-  async function handleSaveArticle(mode: "bookmark" | "reading_list") {
-    if (!saveUrl.trim()) return;
-    setSaveError(null);
-    setSaving(true);
-    try {
-      await onSaveArticleUrl(saveUrl.trim(), mode);
-      setSaveUrl("");
-      setSaveOpen(false);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "保存に失敗しました");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -575,7 +558,7 @@ function FeedSidebar({
         {/* URL から記事を保存 (Issue #115: モーダル化) */}
         <div className="px-4 py-1">
           <button
-            onClick={() => setSaveOpen(true)}
+            onClick={saveDialog.open}
             className="flex items-center gap-1.5 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
             title="URL から記事を保存"
           >
@@ -594,18 +577,14 @@ function FeedSidebar({
           </button>
         </div>
 
-        {saveOpen && (
+        {saveDialog.isOpen && (
           <SaveUrlModal
-            url={saveUrl}
-            onUrlChange={setSaveUrl}
-            saving={saving}
-            error={saveError}
-            onSave={(mode) => void handleSaveArticle(mode)}
-            onClose={() => {
-              setSaveOpen(false);
-              setSaveUrl("");
-              setSaveError(null);
-            }}
+            url={saveDialog.url}
+            onUrlChange={saveDialog.onUrlChange}
+            saving={saveDialog.saving}
+            error={saveDialog.error}
+            onSave={(mode) => void saveDialog.onSave(mode)}
+            onClose={saveDialog.close}
           />
         )}
 

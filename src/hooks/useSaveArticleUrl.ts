@@ -5,72 +5,79 @@ import type { Article } from "../types";
 import { apiFetch } from "../lib/api-fetch";
 import { classifyHttpError, formatHttpErrorMessage } from "../lib/classify-http-error";
 import { devError } from "../lib/dev-log";
-import { isArticle } from "../lib/type-guards";
+import { isArticle, isPlainObject } from "../lib/type-guards";
 
-interface ToastApi {
-  success: (msg: string) => void;
-  error: (msg: string) => void;
-}
+export type SaveArticleUrlMode = "bookmark" | "reading_list";
+export type SaveArticleUrlResult = { ok: true } | { ok: false; error: string };
+export type SaveArticleUrlHandler = (
+  url: string,
+  mode: SaveArticleUrlMode,
+) => Promise<SaveArticleUrlResult>;
 
 interface UseSaveArticleUrlOptions {
   prependArticle: (article: Article) => void;
-  toggleBookmark: (id: string) => void;
-  toggleReadingList: (id: string) => void;
-  toast: ToastApi;
+  addBookmark: (id: string) => void;
+  addReadingList: (id: string) => void;
+  toast: { success: (msg: string) => void };
 }
 
-/**
- * 任意 URL を `/api/articles/save` で保存して、ブックマークまたは後で読むに登録する
- * ハンドラを返す hook (#650 Step 1b)。
- *
- * 元 `App.tsx` の `onSaveArticleUrl` を切り出し、依存を明示化して
- * App.tsx を薄いオーケストレーターに近づける。
- */
+/** 保存結果をcallerへ返す。失敗はモーダル内で表示し、成功だけtoastで通知する。 */
 export function useSaveArticleUrl({
   prependArticle,
-  toggleBookmark,
-  toggleReadingList,
+  addBookmark,
+  addReadingList,
   toast,
-}: UseSaveArticleUrlOptions): (url: string, mode: "bookmark" | "reading_list") => Promise<void> {
+}: UseSaveArticleUrlOptions): SaveArticleUrlHandler {
   return useCallback(
-    async (url: string, mode: "bookmark" | "reading_list") => {
+    async (url: string, mode: SaveArticleUrlMode): Promise<SaveArticleUrlResult> => {
       try {
-        const res = await apiFetch("/api/articles/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        });
-        const raw = (await res.json()) as { error?: string };
+        const res = await apiFetch(
+          "/api/articles/save",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          },
+          { errorNotification: "caller" },
+        );
+        // Non-JSON error pages still use their HTTP status. Invalid successful payloads
+        // must not clear the form or change article/read state.
+        let raw: unknown;
+        try {
+          raw = await res.json();
+        } catch (err) {
+          devError("[useSaveArticleUrl] invalid JSON response", err);
+        }
         if (!res.ok) {
-          // 429 / 5xx / 4xx を classify-http-error で分類して specific message に。
-          // server の `error` body があれば優先、なければ HTTP 種別ベースのメッセージ。
-          // `useArticleAi.ts` 同 canonical pattern (helper-drift.md 規範)。
           const errorType = classifyHttpError(res.status);
-          const message = formatHttpErrorMessage(errorType, {
-            retryAfterHeader: res.headers.get("Retry-After"),
-            fallback: raw.error ?? "保存に失敗しました",
-          });
-          toast.error(message);
-          return;
+          return {
+            ok: false,
+            error: formatHttpErrorMessage(errorType, {
+              retryAfterHeader: res.headers.get("Retry-After"),
+              fallback:
+                isPlainObject(raw) && typeof raw.error === "string"
+                  ? raw.error
+                  : "保存に失敗しました",
+            }),
+          };
         }
         if (!isArticle(raw)) {
-          toast.error("保存に失敗しました (サーバー応答形式不正)");
-          return;
+          return { ok: false, error: "保存に失敗しました (サーバー応答形式不正)" };
         }
         prependArticle(raw);
         if (mode === "bookmark") {
-          toggleBookmark(raw.id);
+          addBookmark(raw.id);
           toast.success("ブックマークに追加しました");
         } else {
-          toggleReadingList(raw.id);
+          addReadingList(raw.id);
           toast.success("後で読むに追加しました");
         }
+        return { ok: true };
       } catch (err) {
-        // network error / abort / DNS 等の fetch 失敗
         devError("[useSaveArticleUrl] apiFetch failed", err);
-        toast.error(formatHttpErrorMessage("network"));
+        return { ok: false, error: formatHttpErrorMessage("network") };
       }
     },
-    [prependArticle, toggleBookmark, toggleReadingList, toast],
+    [prependArticle, addBookmark, addReadingList, toast],
   );
 }

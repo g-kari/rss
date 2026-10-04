@@ -73,6 +73,8 @@ export interface ReadStatePersistenceResult {
   markAllRead: (feedId: string | null) => void;
   markAllReadWithUndo: (feedId: string | null, toast: import("./useToast").ToastApi) => void;
   toggleRead: (articleId: string) => void;
+  addBookmark: (articleId: string) => void;
+  addReadingList: (articleId: string) => void;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
   toggleLike: (articleId: string) => void;
@@ -187,17 +189,18 @@ export function useReadStatePersistence(
   }, [readBeforeTimestamp, articles, ttlDays]);
 
   // --- Toggles ---
-  const { toggleRead, toggleBookmark, toggleReadingList, toggleLike } = useReadStateToggles({
-    setReadIds,
-    setBookmarkIds,
-    setReadingListIds,
-    setLikeIds,
-    stateRef,
-    pendingAddedRef,
-    pendingRemovedRef,
-    scheduleSyncRef,
-    syncImmediatelyRef,
-  });
+  const { addBookmark, addReadingList, toggleRead, toggleBookmark, toggleReadingList, toggleLike } =
+    useReadStateToggles({
+      setReadIds,
+      setBookmarkIds,
+      setReadingListIds,
+      setLikeIds,
+      stateRef,
+      pendingAddedRef,
+      pendingRemovedRef,
+      scheduleSyncRef,
+      syncImmediatelyRef,
+    });
 
   // --- Actions ---
   const {
@@ -246,6 +249,8 @@ export function useReadStatePersistence(
     markBulkRead,
     markAllRead,
     markAllReadWithUndo,
+    addBookmark,
+    addReadingList,
     toggleRead,
     toggleBookmark,
     toggleReadingList,
