@@ -43,6 +43,20 @@ node scripts/evaluations/jev-news-grouping/cli.mjs score --responses /tmp/clef-f
 
 Clef は `--model @cf/cloudflare/clef` と `provenance: "captured-clef"` を使う。過去の Jev 形式は `--model typesafe/jev` でオフライン読み取りできるが、有料試験の許可は引き継がない。caller が申告する provenance はサービス実行の認証ではない。mock / 不正 / 欠測 / 混在は採用を通さない。
 
+## 二記事を並べて確認する
+
+`review` は、合成記事の見出し・短文・媒体・掲載日時を並べた、単独で開ける HTML を stdout に出す。JavaScript、外部画像・フォント、通信、認証は使わない。
+
+```sh
+node scripts/evaluations/jev-news-grouping/cli.mjs review > /tmp/news-review.html
+node scripts/evaluations/jev-news-grouping/cli.mjs review --split development > /tmp/news-development.html
+node scripts/evaluations/jev-news-grouping/cli.mjs review --responses /tmp/clef-flash-captures.json --split holdout > /tmp/news-holdout.html
+```
+
+capture がなければ全 108 件を「未評価」とし、モデル判定・確率・精度は作らない。正解・理由は各比較の折りたたみから確認できる。capture がある場合は既存 `score` と同じ採点結果・終了コード（HOLD は 2）を保ち、誤統合、情報不足の危険判定、欠測・不正、正常な保留などの見出しへ移動できる。左右反転は元比較へのリンクで確認し、独立標本に数えない。続報は「関連づけのみ・別記事を維持」と表示する。
+
+「正解一致」は mock でも表示されるが、モデル性能を実証しない。capture の provenance も自己申告であり、レポート生成によってライブ実行の証明や無料残量の保証を得ることはない。閾値は development で固定し、holdout の正解・結果を見て調整したら新しい未見データを用意する。通常の RSS 表示や本番グループ化には接続せず、全 HTML で本番有効化は false。Jev の有料試験は取り消したままとする。
+
 ## 現行仕様と無料のみの条件
 
 [Cloudflare の発表](https://developers.cloudflare.com/changelog/post/2026-10-01-clef-workers-ai/) と [Clef-flash](https://developers.cloudflare.com/workers-ai/models/clef-flash/) は Cloudflare 製・Cloudflare-hosted の decision model と明記する。Flash は 9B、Clef は 27B。typed `noul` / `choice` / `score`、1–64 質問、65,536 token の context。choice は選択と各候補の確率、confidence を返す。画像にも対応するが、この RSS adapter は text-only である。
