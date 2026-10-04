@@ -22,6 +22,7 @@ export default defineConfig({
     "feed-view-tabs.spec.ts",
     "nsfw-mode-exit.spec.ts",
     "save-url.spec.ts",
+    "article-note.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,

@@ -48,8 +48,11 @@ export function useArticleNote({
 
   const handleNoteBlur = useCallback(() => {
     if (!article || !onSetNote) return;
-    const trimmed = noteTextRef.current.trim();
     const current = note ?? "";
+    // Existing imported/synced notes may contain whitespace. Restoring that exact
+    // saved value is cancellation, not a request to normalize or delete it.
+    if (noteTextRef.current === current) return;
+    const trimmed = noteTextRef.current.trim();
     if (trimmed === current) return;
     if (trimmed === "") {
       onDeleteNote?.(article.id);

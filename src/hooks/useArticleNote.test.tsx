@@ -77,6 +77,9 @@ describe("article note cancel through the actual panel and persistence", () => {
     ["new draft", undefined, "Discarded new note"],
     ["new whitespace", undefined, "   "],
     ["unchanged", "Original note", "Original note"],
+    ["saved surrounding whitespace", "  Original note  ", "Discard me"],
+    ["saved multiline whitespace", "\nOriginal note\n", ""],
+    ["saved only whitespace", "   ", "Replacement"],
   ])(
     "%s Escape leaves notes, storage, pending intent and sync untouched",
     (_label, original, draft) => {
