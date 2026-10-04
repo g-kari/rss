@@ -258,3 +258,248 @@ for (const policy of ["reduced", "weak", "save-data"]) {
     expect(await previewAnimation(page)).toEqual(["none", "none"]);
   });
 }
+
+test.describe("production focus/history hooks with native browser traversal", () => {
+  let historyHtml = "";
+  test.use({ viewport: { width: 390, height: 844 } });
+  test.beforeAll(async () => {
+    const root = resolve(import.meta.dirname, "..");
+    const { outputFiles } = await build({
+      absWorkingDir: root,
+      stdin: {
+        resolveDir: root,
+        sourcefile: "synthetic-reader-history.tsx",
+        loader: "tsx",
+        contents: `
+          import { useEffect, useState } from "react";
+          import { createRoot } from "react-dom/client";
+          import FocusModeOverlay from "./src/components/FocusModeOverlay";
+          import { useFocusMode } from "./src/hooks/useFocusMode";
+          import { useMobilePane } from "./src/hooks/useMobilePane";
+          const legacy = location.search === "?legacy=1";
+          if (legacy) {
+            history.replaceState({ mobilePane: "sidebar" }, "");
+            history.pushState({ mobilePane: "list" }, "");
+            history.pushState({ mobilePane: "view" }, "");
+          }
+          function Fixture() {
+            const initial = legacy ? "view" : history.state?.mobilePane || "sidebar";
+            // Match AppShell's hook order. History itself is never mocked.
+            const pane = useMobilePane(initial);
+            const focus = useFocusMode();
+            const [pops, setPops] = useState(0);
+            useEffect(() => {
+              const onPop = () => setPops(value => value + 1);
+              addEventListener("popstate", onPop);
+              return () => removeEventListener("popstate", onPop);
+            }, []);
+            return <>
+              <output aria-label="Native pane">{pane.mobilePane}</output>
+              <output aria-label="Native focus">{String(focus.focusMode)}</output>
+              <output aria-label="Native list focus">{String(focus.listFocusMode)}</output>
+              <output aria-label="Native traversals">{pops}</output>
+              <button onClick={() => pane.setMobilePane("list")}>Select feed</button>
+              <button onClick={() => pane.setMobilePane("view")}>Select article</button>
+              <button onClick={() => pane.setMobilePane("list")}>Pane app Back</button>
+              <button onClick={focus.toggleListFocusMode}>Open list focus</button>
+              <main aria-label="Underlying scroll" style={{ height: 300, overflow: "auto" }}>
+                <div style={{ height: 700 }} />
+                <button onClick={focus.toggleFocusMode}>Open reader focus</button>
+                <div style={{ height: 1000 }} />
+              </main>
+              <FocusModeOverlay focusMode={focus.focusMode} exitFocusMode={focus.exitFocusMode}
+                articleViewProps={{ article: null, onBack: () => pane.setMobilePane("list"),
+                  onReentry: () => pane.setMobilePane("view"), onDoubleClose: () => {
+                    focus.exitFocusMode(); focus.exitFocusMode();
+                  } }} />
+            </>;
+          }
+          // Match Next's document-level React delegation, including nested portals.
+          createRoot(document).render(<html lang="ja"><head>
+            <meta charSet="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+            <link rel="icon" href="data:," /><style>{globalThis.nativeHistoryCss}</style>
+          </head><body><Fixture /></body></html>);
+        `,
+      },
+      bundle: true,
+      write: false,
+      format: "iife",
+      jsx: "automatic",
+      define: { "process.env.NODE_ENV": '"test"' },
+      plugins: [
+        {
+          name: "synthetic-reader-body",
+          setup(builder) {
+            // Keep the actual overlay/history/traps. Source/AI-backed article contents
+            // are a fixture boundary; this does not certify their network behavior.
+            builder.onResolve({ filter: /^\.\/ArticleView$/ }, (args) =>
+              args.importer.endsWith("/FocusModeOverlay.tsx")
+                ? { path: "reader-body", namespace: "synthetic-reader-body" }
+                : undefined,
+            );
+            builder.onLoad({ filter: /.*/, namespace: "synthetic-reader-body" }, () => ({
+              resolveDir: root,
+              loader: "tsx",
+              contents: `
+                import { useState } from "react";
+                import Modal from "./src/components/Modal";
+                export default function ReaderBody(props) {
+                  const [nested, setNested] = useState(false);
+                  return <section style={{ padding: 80 }}>
+                    <button onClick={props.onBack}>Overlay app Back</button>
+                    <button onClick={props.onReentry}>Re-enter article</button>
+                    <button onClick={props.onDoubleClose}>Close twice</button>
+                    <button onClick={() => setNested(true)}>Open nested dialog</button>
+                    {nested && <Modal title="Nested reader action" onClose={() => setNested(false)}>
+                      <button>Nested action</button>
+                    </Modal>}
+                  </section>;
+                }
+              `,
+            }));
+          },
+        },
+      ],
+    });
+    const css = html.match(/<style>([\s\S]*?)<\/style>/)![1];
+    historyHtml = `<!doctype html><html><script>globalThis.nativeHistoryCss=${JSON.stringify(css).replaceAll("</script", "<\\/script")};${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  });
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/*", async (route) => {
+      const request = route.request();
+      if (
+        [READER_MOTION_DOCUMENT_URL, `${READER_MOTION_DOCUMENT_URL}?legacy=1`].includes(
+          request.url(),
+        ) &&
+        request.method() === "GET" &&
+        request.isNavigationRequest() &&
+        request.resourceType() === "document" &&
+        request.frame() === page.mainFrame()
+      ) {
+        await route.fulfill({ contentType: "text/html; charset=utf-8", body: historyHtml });
+        return;
+      }
+      errors.get(page)!.push(`unexpected native-history fixture request ${request.url()}`);
+      await route.abort();
+    });
+  });
+  async function nativeOpen(page: Page, legacy = false) {
+    await page.goto(`${READER_MOTION_DOCUMENT_URL}${legacy ? "?legacy=1" : ""}`);
+    await expect(page.getByLabel("Native pane")).toHaveText(legacy ? "view" : "sidebar");
+  }
+  async function selectArticle(page: Page) {
+    await page.getByRole("button", { name: "Select feed", exact: true }).click();
+    await expect(page.getByLabel("Native pane")).toHaveText("list");
+    await page.getByRole("button", { name: "Select article", exact: true }).click();
+    await expect(page.getByLabel("Native pane")).toHaveText("view");
+  }
+  async function back(page: Page) {
+    const before = Number(await page.getByLabel("Native traversals").textContent());
+    await page.evaluate(() => history.back());
+    await expect(page.getByLabel("Native traversals")).toHaveText(String(before + 1));
+  }
+  test("mixed app Back/browser Back advances once and Forward repairs the destination", async ({
+    page,
+  }) => {
+    await nativeOpen(page);
+    await selectArticle(page);
+    await page.getByRole("button", { name: "Pane app Back", exact: true }).click();
+    await expect(page.getByLabel("Native pane")).toHaveText("list");
+    await back(page);
+    await expect(page.getByLabel("Native pane")).toHaveText("sidebar");
+    await page.evaluate(() => history.forward());
+    await expect(page.getByLabel("Native traversals")).toHaveText("2");
+    await expect(page.getByLabel("Native pane")).toHaveText("list");
+  });
+  test("legacy mobile-pane entries keep one-step Back after remount", async ({ page }) => {
+    await nativeOpen(page, true);
+    await page.getByRole("button", { name: "Pane app Back", exact: true }).click();
+    await expect(page.getByLabel("Native pane")).toHaveText("list");
+    await back(page);
+    await expect(page.getByLabel("Native pane")).toHaveText("sidebar");
+  });
+  test("in-focus Back and article re-entry retain one owned native entry", async ({ page }) => {
+    await nativeOpen(page);
+    await selectArticle(page);
+    await page.getByRole("button", { name: "Open reader focus", exact: true }).click();
+    await page.getByRole("button", { name: "Overlay app Back", exact: true }).click();
+    await expect(page.getByLabel("Native pane")).toHaveText("list");
+    await page.getByRole("button", { name: "Re-enter article", exact: true }).click();
+    await expect(page.getByLabel("Native pane")).toHaveText("view");
+    await back(page);
+    await expect(page.getByLabel("Native focus")).toHaveText("false");
+    await expect(page.getByLabel("Native pane")).toHaveText("view");
+    await back(page);
+    await expect(page.getByLabel("Native pane")).toHaveText("list");
+  });
+  for (const kind of ["reader", "list"] as const) {
+    for (const close of ["browser", "button"] as const) {
+      test(`${kind} focus survives erased base/current metadata until ${close} close`, async ({
+        page,
+      }) => {
+        await nativeOpen(page);
+        await selectArticle(page);
+        // Model Next HistoryUpdater's custom-state replacement; no router or URL bypass.
+        await page.evaluate(() => history.replaceState({ __NA: true }, ""));
+        await page.getByRole("button", { name: `Open ${kind} focus`, exact: true }).click();
+        await expect(
+          page.getByLabel(kind === "reader" ? "Native focus" : "Native list focus"),
+        ).toHaveText("true");
+        await page.evaluate(() => history.replaceState({ __NA: true }, ""));
+        if (close === "browser") await back(page);
+        else if (kind === "reader")
+          await page.getByRole("button", { name: "フォーカスモード終了", exact: true }).click();
+        else await page.getByRole("button", { name: "Open list focus", exact: true }).click();
+        await expect(page.getByLabel("Native focus")).toHaveText("false");
+        await expect(page.getByLabel("Native list focus")).toHaveText("false");
+        await expect(page.getByLabel("Native pane")).toHaveText("view");
+        await expect(page.getByLabel("Native traversals")).toHaveText("1");
+      });
+    }
+  }
+  test("repeated close, nested Escape and focus return preserve the reader's scroll", async ({
+    page,
+  }) => {
+    await nativeOpen(page);
+    await selectArticle(page);
+    const trigger = page.getByRole("button", { name: "Open reader focus", exact: true });
+    await trigger.click();
+    const scroll = page.getByRole("main", { name: "Underlying scroll", exact: true });
+    await scroll.evaluate((element) => {
+      element.scrollTop = 120;
+    });
+    await page.getByRole("button", { name: "Open nested dialog", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("dialog", { name: "Nested reader action", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel("Native focus")).toHaveText("true");
+    await expect(page.getByLabel("Native traversals")).toHaveText("0");
+    await page.getByRole("button", { name: "Close twice", exact: true }).click();
+    await expect(page.getByLabel("Native focus")).toHaveText("false");
+    await expect(page.getByLabel("Native traversals")).toHaveText("1");
+    await expect(trigger).toBeFocused();
+    expect(await scroll.evaluate((element) => element.scrollTop)).toBe(120);
+    await expect(page.getByLabel("Native pane")).toHaveText("view");
+  });
+  test("Forward/reload onto departed focus can reopen and close without losing the pane", async ({
+    page,
+  }) => {
+    await nativeOpen(page);
+    await selectArticle(page);
+    const trigger = page.getByRole("button", { name: "Open reader focus", exact: true });
+    await trigger.click();
+    await back(page);
+    await expect(page.getByLabel("Native focus")).toHaveText("false");
+    await page.evaluate(() => history.forward());
+    await expect(page.getByLabel("Native traversals")).toHaveText("2");
+    await expect(page.getByLabel("Native focus")).toHaveText("false");
+    await page.reload();
+    await expect(page.getByLabel("Native pane")).toHaveText("view");
+    await trigger.click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByLabel("Native focus")).toHaveText("false");
+    await expect(page.getByLabel("Native traversals")).toHaveText("1");
+    await expect(page.getByLabel("Native pane")).toHaveText("view");
+  });
+});
