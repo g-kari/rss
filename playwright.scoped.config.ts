@@ -19,6 +19,7 @@ export default defineConfig({
     "feed-retry-status.spec.ts",
     "read-state-sync-recovery.spec.ts",
     "saved-search-keyboard.spec.ts",
+    "feed-view-tabs.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
