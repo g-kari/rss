@@ -117,15 +117,15 @@ export const CardArticleItem = memo(function CardArticleItem({
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {hasNote && (
-              <NoteIcon className="text-amber-400 [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
+              <NoteIcon className="text-amber-400 [@media(hover:hover)]:group-hover:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-0 transition-opacity duration-150" />
             )}
             {!isRead && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot [@media(hover:hover)]:group-hover:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-0 transition-opacity duration-150" />
             )}
           </div>
           <ArticleActions
             size="sm"
-            className="absolute flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto right-2.5 bottom-2.5"
+            className="absolute flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-focus-within:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto right-2.5 bottom-2.5"
             isRead={isRead}
             isBookmarked={isBookmarked}
             isInReadingList={isInReadingList}

@@ -33,6 +33,8 @@ export function handleArticleKeyDown<T = Element>(
   onSelectArticle: (a: Article, event?: ReactMouseEvent) => void,
 ): (e: ReactKeyboardEvent<T>) => void {
   return (e: ReactKeyboardEvent<T>) => {
+    // Nested native controls own their activation; only the article itself selects.
+    if (e.target !== e.currentTarget) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onSelectArticle(article);
