@@ -257,6 +257,7 @@ for (const action of ["キャンセル", "閉じる", "Escape"]) {
       await open(page);
       await page.getByRole("button", { name: "ブックマーク", exact: true }).click();
       await expect.poll(() => state.saves.length).toBe(1);
+      await expect(page.getByRole("group", { name: "URL保存フォーム" })).toBeFocused();
       if (action === "Escape") await page.keyboard.press("Escape");
       else await page.getByRole("button", { name: action, exact: true }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
