@@ -112,6 +112,8 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
   );
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // Retry/save buttons retain native activation instead of opening the article/image.
+      if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         handleClick();
@@ -235,7 +237,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
                   />
                 ))}
             {showRetryOverlay && (
-              <div className="absolute bottom-1.5 right-1.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150">
+              <div className="absolute bottom-1.5 right-1.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 transition-opacity duration-150">
                 <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />
               </div>
             )}
@@ -316,14 +318,14 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {hasNote && (
-              <NoteIcon className="text-amber-400 [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
+              <NoteIcon className="text-amber-400 [@media(hover:hover)]:group-hover:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-0 transition-opacity duration-150" />
             )}
             {!isRead && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot [@media(hover:hover)]:group-hover:opacity-0 transition-opacity duration-150" />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-dot [@media(hover:hover)]:group-hover:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-0 transition-opacity duration-150" />
             )}
             <ArticleActions
               size="sm"
-              className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto"
+              className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-focus-within:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto"
               isRead={isRead}
               isBookmarked={isBookmarked}
               onToggleRead={() => onToggleRead(article.id)}
