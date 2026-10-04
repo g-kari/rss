@@ -185,6 +185,22 @@ describe("focused reader shortcut ownership", () => {
     expect(screen.getByRole("button", { name: /取得中/ })).toBeDisabled();
   });
 
+  it("closes focus from body Escape after a source button becomes disabled", async () => {
+    render(<Readers />);
+    fireEvent.click(screen.getByRole("button", { name: "Open reader focus" }));
+    const dialog = screen.getByRole("dialog", { name: "フォーカスモード" });
+    const action = within(dialog).getByRole("button", { name: "全文を取得" });
+    act(() => action.focus());
+    fireEvent.keyDown(action, { key: "v" });
+    await drain();
+    expect(within(dialog).getByRole("button", { name: /取得中/ })).toBeDisabled();
+    // Emulate the body-target key delivered after native Chromium disables the
+    // focused source button; happy-dom does not reliably model that blur.
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "フォーカスモード" })).toBeNull();
+    expect(requests).toHaveLength(1);
+  });
+
   it("does not send V from an editable note and keeps ordinary V working", async () => {
     render(<Readers />);
     fireEvent.click(screen.getByRole("button", { name: "Open reader focus" }));

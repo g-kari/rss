@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   READER_MOTION_DOCUMENT_URL,
+  READER_MOTION_IMAGE_URL,
   serveReaderMotionFixture,
 } from "./helpers/reader-motion-request";
 
@@ -531,7 +532,7 @@ test.describe("production readers own focused V requests", () => {
           const noop = () => {};
           const empty = new Set();
           const articles = [makeArticle({ id: "native-shortcut", link: "https://example.com/native-shortcut",
-            content: "<p>" + "Publisher excerpt. ".repeat(40) + "</p>", ogImage: "data:image/svg+xml,<svg/>" })];
+            content: "<p>" + "Publisher excerpt. ".repeat(40) + "</p>", ogImage: "${READER_MOTION_IMAGE_URL}" })];
           function Fixture() {
             const pane = useMobilePane("view");
             const focus = useFocusMode();
@@ -601,8 +602,18 @@ test.describe("production readers own focused V requests", () => {
         });
         return;
       }
-      errors.get(page)!.push(`unexpected shortcut fixture request ${request.url()}`);
-      await route.abort();
+      await serveReaderMotionFixture(
+        {
+          url: request.url(),
+          method: request.method(),
+          resourceType: request.resourceType(),
+          isNavigation: request.isNavigationRequest(),
+          isMainFrame: request.frame() === page.mainFrame(),
+        },
+        route,
+        shortcutHtml,
+        errors.get(page)!,
+      );
     });
   });
   test.afterEach(({ page }) => requests.get(page)?.forEach(({ release }) => release()));
@@ -633,6 +644,7 @@ test.describe("production readers own focused V requests", () => {
       await expect(pane.getByRole("button", { name: "全文を取得", exact: true })).toBeEnabled();
       await page.keyboard.press("v");
       expect(requests.get(page)).toHaveLength(1);
+      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(trigger).toBeFocused();
