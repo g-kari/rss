@@ -625,9 +625,14 @@ test.describe("production readers own focused V requests", () => {
       await page.setViewportSize({ width, height: 844 });
       await page.goto(READER_MOTION_DOCUMENT_URL);
       const pane = page.getByTestId("shortcut-pane");
+      await settled(page);
       await pane.getByRole("article", { name: "記事本文" }).evaluate((element) => {
         element.scrollTop = 120;
       });
+      // The first real scroll reveals the 2px progress bar and browser scroll
+      // anchoring adjusts the position. Sample only after that response settles.
+      await expect(pane.locator("article > div").first()).toBeVisible();
+      await settled(page);
       const before = await pane
         .getByRole("article", { name: "記事本文" })
         .evaluate((element) => element.scrollTop);
