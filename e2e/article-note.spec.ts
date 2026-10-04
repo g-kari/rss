@@ -56,6 +56,12 @@ test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => state.errors.push(error.message));
   let persisted = structuredClone(initial);
   await page.clock.install();
+  // The reader starts with loaded notes. Later prop updates intentionally do
+  // not overwrite the draft, so seed the synthetic persisted state before mount.
+  await page.addInitScript(
+    (notes) => localStorage.setItem("rss-notes", JSON.stringify(notes)),
+    initial.notes,
+  );
   await page.route("**/*", async (route: Route) => {
     const request = route.request();
     if (request.url() === origin && request.method() === "GET" && request.isNavigationRequest())
