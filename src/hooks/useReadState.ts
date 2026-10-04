@@ -25,6 +25,8 @@ interface ReadStateResult {
   markAllRead: (feedId: string | null) => void;
   markAllReadWithUndo: (feedId: string | null, toast: ToastApi) => void;
   toggleRead: (articleId: string) => void;
+  addBookmark: (articleId: string) => void;
+  addReadingList: (articleId: string) => void;
   toggleBookmark: (articleId: string) => void;
   toggleReadingList: (articleId: string) => void;
   toggleLike: (articleId: string) => void;
@@ -111,6 +113,8 @@ export function useReadState(
     markBulkRead: persistence.markBulkRead,
     markAllRead: persistence.markAllRead,
     markAllReadWithUndo: persistence.markAllReadWithUndo,
+    addBookmark: persistence.addBookmark,
+    addReadingList: persistence.addReadingList,
     toggleRead: persistence.toggleRead,
     toggleBookmark: persistence.toggleBookmark,
     toggleReadingList: persistence.toggleReadingList,

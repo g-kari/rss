@@ -126,3 +126,34 @@ describe("apiFetch error notifications", () => {
     });
   });
 });
+
+describe("caller-owned inline failure feedback", () => {
+  it("keeps the response available without a duplicate global HTTP notification", async () => {
+    const response = new Response("failure", { status: 422 });
+    fetchMock.mockResolvedValue(response);
+    expect(await apiFetch("/api/articles/save", {}, { errorNotification: "caller" })).toBe(
+      response,
+    );
+    expect(notify).not.toHaveBeenCalled();
+  });
+  it("still throws network failures but leaves their feedback to the caller", async () => {
+    const error = new TypeError("Synthetic offline");
+    fetchMock.mockRejectedValue(error);
+    await expect(apiFetch("/api/articles/save", {}, { errorNotification: "caller" })).rejects.toBe(
+      error,
+    );
+    expect(notify).not.toHaveBeenCalled();
+  });
+  it("keeps auth recovery and its failed retry quiet for an inline caller", async () => {
+    const error = new TypeError("Synthetic offline");
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ user: { id: "synthetic" } }))
+      .mockRejectedValueOnce(error);
+    await expect(apiFetch("/api/articles/save", {}, { errorNotification: "caller" })).rejects.toBe(
+      error,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(notify).not.toHaveBeenCalled();
+  });
+});

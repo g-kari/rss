@@ -308,6 +308,8 @@ export default function AppShell({
     markRead,
     markBulkRead,
     markAllReadWithUndo,
+    addBookmark,
+    addReadingList,
     toggleRead,
     toggleBookmark,
     toggleReadingList,
@@ -471,8 +473,8 @@ export default function AppShell({
 
   const onSaveArticleUrl = useSaveArticleUrl({
     prependArticle,
-    toggleBookmark,
-    toggleReadingList,
+    addBookmark,
+    addReadingList,
     toast,
   });
 

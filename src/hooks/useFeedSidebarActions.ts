@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import type { SaveArticleUrlHandler } from "./useSaveArticleUrl";
 import type { Feed, FeedGroup, FeedView, Article, Collection, Layout } from "../types";
 import type { FeedSidebarActions } from "../contexts/FeedSidebarContext";
 import type { ToastApi } from "./useToast";
@@ -42,7 +43,7 @@ interface Options {
   toggleTheme: () => void;
   setShowSettings: (show: boolean) => void;
   setShowHelp: (show: boolean) => void;
-  onSaveArticleUrl: (url: string, mode: "bookmark" | "reading_list") => Promise<void>;
+  onSaveArticleUrl: SaveArticleUrlHandler;
   // Feed operations
   refreshFeeds: () => Promise<void>;
   retryFeed: (feedId: string) => Promise<void>;

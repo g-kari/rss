@@ -365,7 +365,8 @@ src/
     useHeaderShareTargets.ts # ArticleHeader / UserSettingsModal で使用するシェアターゲット設定フック
     useDigestFeedOrder.ts    # エンゲージメントスコアに基づくフィード表示順リスト（高スコア順 feedHash[]）を返す hook（ダイジェストビュー用）
     useArticleSelection.ts   # 記事選択ハンドラ + listFocusMode 時の overlay 開閉管理 hook（App.tsx から分割）
-    useSaveArticleUrl.ts     # 任意 URL を /api/articles/save で保存して bookmark / readingList に登録するハンドラ hook（App.tsx から分割）
+    useSaveArticleUrl.ts     # 任意 URL 保存の明示結果を返し、bookmark / readingList へ冪等な追加を行う
+    useSaveUrlDialog.ts      # URL保存の失敗入力保持・再試行・閉じて再開したフォームの古い応答ガード
     useSnoozeHandler.ts      # スヌーズ実行ハンドラ + 表示用記事タイトル + 次記事自動遷移 hook（App.tsx から分割）
     useAppModalState.ts      # showHelp / showFeedSwitcher / showSettings の集約 + ?/Escape キーボードショートカット hook（App.tsx から分割）
     useDocumentTitleBadge.ts # 未読総数 → document.title + favicon バッジ更新の useEffect を切り出した hook（App.tsx から分割）
