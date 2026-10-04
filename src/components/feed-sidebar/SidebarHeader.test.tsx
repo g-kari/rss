@@ -3,7 +3,9 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ComponentProps } from "react";
 import SidebarHeader from "./SidebarHeader";
 import { useNSFWMode } from "../../hooks/useNSFWMode";
+import { useKeyboardNav } from "../../hooks/useKeyboardNav";
 import { STORAGE_KEYS } from "../../lib/storage";
+import { makeKeyboardNavFixture } from "../../../e2e/helpers/keyboard-nav-fixture";
 
 function makeProps(): ComponentProps<typeof SidebarHeader> {
   return {
@@ -34,6 +36,16 @@ function ModeFixture() {
   );
 }
 
+function KeyboardFixture() {
+  useKeyboardNav(makeKeyboardNavFixture());
+  return (
+    <>
+      <ModeFixture />
+      <main aria-label="記事本文">Synthetic article</main>
+    </>
+  );
+}
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -41,6 +53,32 @@ afterEach(() => {
 });
 
 describe("SidebarHeader の通常モード解除", () => {
+  it("選択記事のグローバルSpaceショートカットから解除ボタンのnative activationを守る", () => {
+    localStorage.setItem(STORAGE_KEYS.NSFW_MODE, "1");
+    render(<KeyboardFixture />);
+    const main = screen.getByRole("main", { name: "記事本文" });
+    const scroll = vi.fn();
+    main.scrollBy = scroll;
+    const exit = screen.getByRole("button", { name: "NSFWモード解除" });
+    exit.focus();
+    const space = new KeyboardEvent("keydown", {
+      key: " ",
+      code: "Space",
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(exit, space);
+    expect(space.defaultPrevented).toBe(false);
+    expect(scroll).not.toHaveBeenCalled();
+    // happy-dom does not synthesize the browser's native keyup click.
+    fireEvent.click(exit);
+    const group = screen.getByRole("group", { name: "サイドバー操作" });
+    fireEvent.keyDown(group, { key: " ", code: "Space" });
+    expect(scroll).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("モード")).toHaveTextContent("false");
+    fireEvent.keyDown(document.body, { key: " ", code: "Space" });
+    expect(scroll).toHaveBeenCalledOnce();
+  });
   it("有効なときだけ名前付き解除ボタンを表示し、一度のクリックで既存 callback を呼ぶ", () => {
     const props = makeProps();
     const { rerender } = render(<SidebarHeader {...props} />);
@@ -104,7 +142,7 @@ describe("SidebarHeader の通常モード解除", () => {
     act(() => vi.advanceTimersByTime(600));
     expect(props.onDeactivateNsfw).toHaveBeenCalledOnce();
     fireEvent.pointerUp(logo);
-    fireEvent.click(logo);
+    fireEvent.click(logo, { detail: 1 });
     expect(props.onActivateNsfw).not.toHaveBeenCalled();
     fireEvent.click(logo);
     expect(props.onActivateNsfw).toHaveBeenCalledOnce();
@@ -118,6 +156,18 @@ describe("SidebarHeader の通常モード解除", () => {
     unmount();
     act(() => vi.advanceTimersByTime(600));
     expect(props.onDeactivateNsfw).not.toHaveBeenCalled();
+  });
+
+  it("長押し後にpointer cancelされた場合も次のkeyboard activationは妨げない", () => {
+    vi.useFakeTimers();
+    const props = makeProps();
+    render(<SidebarHeader {...props} />);
+    const logo = screen.getByRole("button", { name: /^RSS$/ });
+    fireEvent.pointerDown(logo, { button: 0 });
+    act(() => vi.advanceTimersByTime(600));
+    fireEvent.pointerCancel(logo);
+    fireEvent.click(logo, { detail: 0 });
+    expect(props.onActivateNsfw).toHaveBeenCalledOnce();
   });
 
   it("無効時の通常ロゴ操作と既存の5回連打による有効化条件を維持する", () => {

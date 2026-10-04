@@ -25,12 +25,15 @@ test.beforeAll(async () => {
           import SidebarHeader from "./src/components/feed-sidebar/SidebarHeader";
           import FeedViewTabs from "./src/components/feed-sidebar/FeedViewTabs";
           import { useNSFWMode } from "./src/hooks/useNSFWMode";
+          import { useKeyboardNav } from "./src/hooks/useKeyboardNav";
+          import { makeKeyboardNavFixture } from "./e2e/helpers/keyboard-nav-fixture";
           import { STORAGE_KEYS } from "./src/lib/storage";
           if (localStorage.getItem(STORAGE_KEYS.NSFW_MODE) === null) {
             localStorage.setItem(STORAGE_KEYS.NSFW_MODE, "1");
           }
           function Fixture() {
             const mode = useNSFWMode();
+            useKeyboardNav(makeKeyboardNavFixture());
             const [exits, setExits] = useState(0);
             const [activations, setActivations] = useState(0);
             const [inputOpen, setInputOpen] = useState(false);
@@ -59,7 +62,9 @@ test.beforeAll(async () => {
               <output aria-label="有効化操作回数">{activations}</output>
               <output aria-label="更新回数">{refreshes}</output>
               <output aria-label="ビュー">{view}</output>
-              <div style={{height: 1500}}>Synthetic selected article remains open</div>
+              <main aria-label="記事本文" style={{height: 200, overflow: "auto"}}>
+                <div style={{height: 1500}}>Synthetic selected article remains open</div>
+              </main>
             </>;
           }
           createRoot(document.getElementById("root")).render(<Fixture />);
@@ -194,7 +199,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.keyboard.press("Enter");
       await expect(page.getByRole("textbox", { name: "合成フィードURL" })).toBeVisible();
       await page.keyboard.press("Tab");
-      await page.keyboard.press("Space");
+      await page.keyboard.press("Enter");
       await expect(page.getByLabel("更新回数")).toHaveText("1");
       const pictures = page.getByRole("tab", { name: "画像", exact: true });
       await pictures.click();
@@ -204,6 +209,12 @@ for (const theme of ["light", "dark"] as const) {
       await page.keyboard.press("Space");
       await checkExit(page, 2);
       await expect(page.getByRole("group", { name: "サイドバー操作" })).toBeFocused();
+      for (let i = 0; i < 6; i++) await page.keyboard.press("Space");
+      const reader = page.getByRole("main", { name: "記事本文" });
+      expect(await reader.evaluate((main) => main.scrollTop)).toBe(0);
+      await page.getByRole("button", { name: "次の操作" }).focus();
+      await page.keyboard.press("Space");
+      await expect.poll(() => reader.evaluate((main) => main.scrollTop)).toBeGreaterThan(0);
       await page.screenshot({ path: testInfo.outputPath("mode-off.png") });
       await page.reload();
       await checkExit(page, 0);

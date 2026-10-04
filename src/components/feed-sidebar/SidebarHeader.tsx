@@ -57,15 +57,20 @@ export default function SidebarHeader({
       role="group"
       aria-label="サイドバー操作"
       tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === " " && event.target === event.currentTarget) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
       className="border-b border-border-default"
     >
       <div className="px-4 py-3.5 flex items-center justify-between gap-2 overflow-x-auto [&>*]:shrink-0">
         <button
-          onClick={() => {
-            if (suppressLogoClickRef.current) {
-              suppressLogoClickRef.current = false;
-              return;
-            }
+          onClick={(event) => {
+            const suppressPointerClick = suppressLogoClickRef.current && event.detail > 0;
+            suppressLogoClickRef.current = false;
+            if (suppressPointerClick) return;
             onActivateNsfw();
           }}
           onPointerDown={(event) => {
@@ -140,6 +145,11 @@ export default function SidebarHeader({
           <button
             type="button"
             onClick={exitNsfw}
+            onKeyDown={(event) => {
+              // Keep native Space activation; the document-level article shortcut
+              // must not prevent this button's default click or scroll its reader.
+              if (event.key === " ") event.stopPropagation();
+            }}
             className="w-full min-h-[44px] px-2 py-2 text-xs leading-4 font-medium rounded border border-border-default text-text-default hover:bg-surface-subtle transition-colors duration-200"
             title="NSFWモード解除（開いている記事は閉じません）"
           >
