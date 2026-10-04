@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import Modal from "./Modal";
-import { isAbsoluteHttpUrl } from "../lib/url";
+import { isAbsoluteHttpUrl, tryParseBase } from "../lib/url";
+
+function isCompleteHttpUrl(value: string): boolean {
+  return isAbsoluteHttpUrl(value) && !/\s/.test(value) && tryParseBase(value) !== null;
+}
 
 const PROGRESS_STEPS = [
   { at: 0, label: "フィードを確認中..." },
@@ -53,14 +57,66 @@ export default function FeedAddModal({
   onSubmit,
   onClose,
 }: Props) {
-  // Issue #396: 追加処理中はモーダルを閉じられないようにする
-  const handleClose = adding ? () => {} : onClose;
-
   const [progressLabel, setProgressLabel] = useState<string>(PROGRESS_STEPS[0].label);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const composingRef = useRef(false);
+  const pasteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pendingPaste, setPendingPaste] = useState<{ url: string } | null>(null);
+  const pendingPasteRef = useRef(pendingPaste);
 
   // Issue #459: リアルタイム URL バリデーション状態
   const [urlValid, setUrlValid] = useState<boolean | null>(null);
+
+  function cancelQueuedPaste() {
+    if (pasteTimerRef.current !== null) clearTimeout(pasteTimerRef.current);
+    pasteTimerRef.current = null;
+    pendingPasteRef.current = null;
+    setPendingPaste(null);
+  }
+
+  // Wait for the controlled parent URL to commit. Never retain a SyntheticEvent
+  // or apply a URL in a timer: closing/replacing this draft must cancel the work.
+  useEffect(() => {
+    if (!pendingPaste) return;
+    if (adding || url !== pendingPaste.url) {
+      pendingPasteRef.current = null;
+      setPendingPaste(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      pasteTimerRef.current = null;
+      if (
+        pendingPasteRef.current !== pendingPaste ||
+        composingRef.current ||
+        !formRef.current?.isConnected ||
+        inputRef.current?.value !== pendingPaste.url
+      )
+        return;
+      pendingPasteRef.current = null;
+      setPendingPaste(null);
+      formRef.current.requestSubmit();
+    }, 0);
+    pasteTimerRef.current = timer;
+    return () => clearTimeout(timer);
+  }, [pendingPaste, url, adding]);
+
+  function handleClose() {
+    // Issue #396: preserve the existing in-flight add close lock.
+    if (adding) return;
+    cancelQueuedPaste();
+    onClose();
+  }
+
+  function handleSubmit(event: FormEvent) {
+    if (adding || composingRef.current) {
+      event.preventDefault();
+      return;
+    }
+    cancelQueuedPaste();
+    onSubmit(event);
+  }
 
   useEffect(() => {
     if (!adding) {
@@ -79,27 +135,27 @@ export default function FeedAddModal({
   }, [adding]);
 
   function handleUrlChange(value: string) {
+    cancelQueuedPaste();
     onUrlChange(value);
     if (value === "") {
       setUrlValid(null);
     } else {
-      setUrlValid(isAbsoluteHttpUrl(value));
+      setUrlValid(isCompleteHttpUrl(value));
     }
   }
 
-  // Issue #459: paste & go — ペースト直後に値を取得して有効な URL なら自動送信
+  // Issue #459: a complete URL paste replaces the draft and queues one submit.
   function handlePaste(e: ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData("text");
-    setTimeout(() => {
-      if (isAbsoluteHttpUrl(pasted)) {
-        onUrlChange(pasted);
-        setUrlValid(true);
-        const form = e.currentTarget.closest("form");
-        if (form) {
-          form.requestSubmit();
-        }
-      }
-    }, 0);
+    cancelQueuedPaste();
+    if (adding || composingRef.current) return;
+    const pasted = e.clipboardData.getData("text").trim();
+    if (!isCompleteHttpUrl(pasted)) return;
+    e.preventDefault();
+    onUrlChange(pasted);
+    setUrlValid(true);
+    const pending = { url: pasted };
+    pendingPasteRef.current = pending;
+    setPendingPaste(pending);
   }
 
   // 追加ボタンのスタイル: URL が有効なら ring でハイライト
@@ -113,12 +169,13 @@ export default function FeedAddModal({
   return (
     <Modal title="フィードを追加" onClose={handleClose} width="sm:w-[440px]">
       <div className="p-4">
-        <form onSubmit={onSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <div className="relative">
             <label htmlFor="feed-add-url" className="sr-only">
               フィード URL
             </label>
             <input
+              ref={inputRef}
               id="feed-add-url"
               type="url"
               inputMode="url"
@@ -126,6 +183,22 @@ export default function FeedAddModal({
               value={url}
               onChange={(e) => handleUrlChange(e.target.value)}
               onPaste={handlePaste}
+              onCompositionStart={() => {
+                composingRef.current = true;
+                cancelQueuedPaste();
+              }}
+              onCompositionEnd={() => {
+                composingRef.current = false;
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  (composingRef.current ||
+                    event.nativeEvent.isComposing ||
+                    event.nativeEvent.keyCode === 229)
+                )
+                  event.preventDefault();
+              }}
               disabled={adding}
               autoFocus
               aria-required
