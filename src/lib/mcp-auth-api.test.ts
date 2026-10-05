@@ -196,6 +196,7 @@ describe("Cookie-authenticated consent and connection routes", () => {
     expect(html).toContain("/api/mcp/settings");
     expect(html).not.toContain("<script>");
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("referrer-policy")).toBe("same-origin");
     expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
     expect(responseCookies(response)).toContain("__Host-rss-mcp-consent-");
     expect(responseCookies(response)).toContain("synthetic-refreshed-session");
@@ -314,6 +315,7 @@ describe("Cookie-authenticated consent and connection routes", () => {
     const props = await approveMcpConnection(mock.env.RSS_DATA, "account-a", null);
     const settings = await settingsGet(request(`${ORIGIN}/api/mcp/settings`));
     const html = await settings.text();
+    expect(settings.headers.get("referrer-policy")).toBe("same-origin");
     expect(html).toContain('name="account" value="account-a"');
     expect(html).toContain("すべての読み取り連携を解除");
     expect(html).not.toContain("<script");

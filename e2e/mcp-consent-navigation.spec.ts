@@ -19,6 +19,8 @@ interface Diagnostics {
   unexpectedRequests: string[];
   consoleErrors: string[];
   formPosts: number;
+  formOrigins: (string | null)[];
+  externalReferers: (string | null)[];
 }
 
 function productionBrowserHeaders(): Record<string, string> {
@@ -37,6 +39,8 @@ async function serveConsentFixture(
     unexpectedRequests: [],
     consoleErrors: [],
     formPosts: 0,
+    formOrigins: [],
+    externalReferers: [],
   };
   page.on("console", (message) => {
     if (message.type() === "error") diagnostics.consoleErrors.push(message.text());
@@ -72,6 +76,7 @@ async function serveConsentFixture(
     if (request.url() === AUTHORIZE_URL && method === "POST") {
       diagnostics.formPosts++;
       const headers = await request.allHeaders();
+      diagnostics.formOrigins.push(headers.origin ?? null);
       const form = await readMcpConsentForm(
         new Request(request.url(), {
           method,
@@ -113,9 +118,11 @@ async function serveConsentFixture(
     }
     if (
       method === "GET" &&
-      ((url.origin === CLIENT_ORIGIN && url.pathname === "/callback") ||
+      ((url.origin === CLIENT_ORIGIN && ["/callback", "/referrer-probe"].includes(url.pathname)) ||
         (url.origin === IDP_ORIGIN && url.pathname === "/auth/login"))
     ) {
+      const headers = await request.allHeaders();
+      diagnostics.externalReferers.push(headers.referer ?? null);
       return route.fulfill({
         contentType: "text/html; charset=utf-8",
         body: "<!doctype html><meta charset='utf-8'><h1>Synthetic destination</h1>",
@@ -184,6 +191,8 @@ for (const scenario of [
       await page.waitForURL((url) => url.origin === scenario.destination, { timeout: 5_000 });
       expect(new URL(page.url()).searchParams.get(scenario.parameter)).toBe(scenario.value);
       expect(diagnostics.formPosts).toBe(1);
+      expect(diagnostics.formOrigins).toEqual([RSS_ORIGIN]);
+      expect(diagnostics.externalReferers).toEqual([null]);
       expect(diagnostics.unexpectedRequests).toEqual([]);
       expect(diagnostics.consoleErrors).toEqual([]);
     } finally {
@@ -191,3 +200,84 @@ for (const scenario of [
     }
   });
 }
+
+test("MCP response policy preserves settings-style disconnect form Origin", async ({
+  context,
+  page,
+}, testInfo) => {
+  const diagnostics: Diagnostics = {
+    requests: [],
+    unexpectedRequests: [],
+    consoleErrors: [],
+    formPosts: 0,
+    formOrigins: [],
+    externalReferers: [],
+  };
+  // The same native form fields/action as the production settings page, with
+  // production MCP response headers. No settings handler, session or grant is run.
+  const settingsUrl = `${RSS_ORIGIN}/api/mcp/settings`;
+  await context.route("**/*", async (route) => {
+    const request = route.request();
+    diagnostics.requests.push(`${request.method()} ${request.url()}`);
+    if (request.url() === settingsUrl && request.method() === "GET") {
+      return route.fulfill({
+        headers: productionBrowserHeaders(),
+        body: '<!doctype html><html lang="ja"><meta charset="utf-8"><form method="post" action="/api/mcp/settings"><input type="hidden" name="account" value="synthetic-account-a"><button type="submit">このRSSアカウントのすべての読み取り連携を解除</button></form></html>',
+      });
+    }
+    if (request.url() === settingsUrl && request.method() === "POST") {
+      diagnostics.formPosts++;
+      const headers = await request.allHeaders();
+      diagnostics.formOrigins.push(headers.origin ?? null);
+      const form = new URLSearchParams(request.postData() ?? "");
+      const valid = headers.origin === RSS_ORIGIN && form.get("account") === "synthetic-account-a";
+      return route.fulfill({
+        status: valid ? 200 : 400,
+        headers: productionBrowserHeaders(),
+        body: valid ? '<p role="status">Synthetic disconnect form accepted</p>' : "Invalid form",
+      });
+    }
+    if (new URL(request.url()).pathname === "/favicon.ico") {
+      return route.fulfill({ status: 204, body: "" });
+    }
+    diagnostics.unexpectedRequests.push(`${request.method()} ${request.url()}`);
+    return route.abort();
+  });
+  try {
+    await page.goto(settingsUrl);
+    await page
+      .getByRole("button", { name: "このRSSアカウントのすべての読み取り連携を解除" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText("Synthetic disconnect form accepted");
+    expect(diagnostics.formOrigins).toEqual([RSS_ORIGIN]);
+    expect(diagnostics.formPosts).toBe(1);
+    expect(diagnostics.unexpectedRequests).toEqual([]);
+  } finally {
+    await attachDiagnostics(page, diagnostics, testInfo);
+  }
+});
+
+test("MCP response policy does not send Referer on an external link navigation", async ({
+  context,
+  page,
+}, testInfo) => {
+  const diagnostics = await serveConsentFixture(context, page, "synthetic-account-a");
+  try {
+    await page.goto(AUTHORIZE_URL);
+    // Add only a synthetic link to probe the real document's production referrer
+    // policy. No policy is changed and the destination is fully intercepted.
+    await page.evaluate((target) => {
+      const link = document.createElement("a");
+      link.href = target;
+      link.textContent = "Synthetic external referrer probe";
+      document.body.appendChild(link);
+    }, `${CLIENT_ORIGIN}/referrer-probe`);
+    await page.getByRole("link", { name: "Synthetic external referrer probe" }).click();
+    await page.waitForURL(`${CLIENT_ORIGIN}/referrer-probe`);
+    expect(diagnostics.externalReferers).toEqual([null]);
+    expect(diagnostics.unexpectedRequests).toEqual([]);
+    expect(diagnostics.consoleErrors).toEqual([]);
+  } finally {
+    await attachDiagnostics(page, diagnostics, testInfo);
+  }
+});

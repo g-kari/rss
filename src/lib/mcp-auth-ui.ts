@@ -5,7 +5,7 @@ import { MCP_AUTHORIZE_PATH } from "./mcp-auth";
 export function secureMcpBrowserHeaders(headers: Headers): void {
   headers.set("Cache-Control", "no-store");
   headers.set("Pragma", "no-cache");
-  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("Referrer-Policy", "same-origin");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Frame-Options", "DENY");
   headers.set(

@@ -25,7 +25,7 @@ import {
 } from "./mcp-auth";
 import { createMcpOAuthProvider, mcpOAuthOptions } from "./mcp-provider";
 import { finishMcpLogin, mcpAuthorizationReturn, startMcpLogin } from "./mcp-login";
-import { readMcpConsentForm, renderMcpConsent } from "./mcp-auth-ui";
+import { readMcpConsentForm, renderMcpConsent, secureMcpBrowserHeaders } from "./mcp-auth-ui";
 
 const ORIGIN = "https://rss.example";
 const handler = { fetch: async () => new Response("synthetic") };
@@ -351,6 +351,16 @@ describe("MCP OAuth policy and revocation", () => {
 });
 
 describe("provider-bound consent and safe first-party login resume", () => {
+  it("keeps same-origin native form identity without widening the MCP browser policy", () => {
+    const headers = new Headers();
+    secureMcpBrowserHeaders(headers);
+    expect(headers.get("referrer-policy")).toBe("same-origin");
+    expect(headers.get("cache-control")).toBe("no-store");
+    expect(headers.get("x-frame-options")).toBe("DENY");
+    expect(headers.get("content-security-policy")).toBe(
+      "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+    );
+  });
   it("binds separate tabs to one-use browser handles; refuses another browser, replay and expiry", async () => {
     const first = await provider.beginConsent(auth);
     const second = await provider.beginConsent(auth);
