@@ -71,6 +71,10 @@ app/
     DemoApp.tsx              # fetch interceptor 設定後に App を描画する demo wrapper
     mock.ts                  # /api/* fetch interceptor。mock user / feeds / articles を返してフル機能 demo を提供する
   api/
+    mcp/
+      authorize/route.ts    # GET/POST — rss:read OAuth同意・browser-boundログイン復帰・アカウント確認
+      connection/route.ts   # GET/DELETE — 本人Cookie/CSRF認証の連携状態とR2-first全MCP接続解除
+      settings/route.ts     # GET/POST — スクリプト不要の連携管理/解除画面
     auth/
       login/route.ts         # GET /api/auth/login — OAuth2 開始
       callback/route.ts      # GET /api/auth/callback — コード交換・cookie セット
@@ -380,6 +384,13 @@ src/
     useMasonryLayout.ts      # ResizeObserver で item 高さ変化を監視し、`computeMasonryLayout` 再計算 + `computeScrollAnchorDelta` で scroll anchor 補正を自動実行する hook（rAF deferred で loop limit 警告回避）
     useAsyncFetch.ts         # 非同期 fetch 共通 hook（loading + error + AbortController + auto-fetch + transform ボイラープレートを集約、`useReadingStats` / `useEngagementEntries` / `useRecommendations` / `useFeedGroups` で使用）
   lib/
+    mcp-auth.ts             # Nextとnativeで共有するscope/identity検証・CAS連携revision・短命state
+    mcp-provider.ts         # native Worker専用OAuth provider構成・grant/refresh/revoke検証
+    mcp-auth-ui.ts          # エスケープ済み同意HTML・no-frame/no-cacheヘッダー・有界form解析
+    mcp-login.ts            # 既存0g0ログインのbrowser-bound MCP復帰（通常auth_stateは維持）
+    mcp-boundary.ts         # default-off Worker routing・Host/Origin/Bearer境界・body/rate上限
+    mcp-server.ts           # SDK native stateless MCP・3 read tools・OAuth descriptor・有界入力
+    mcp-data.ts             # 本人購読/最新保持記事のpure read・allowlist DTO・cursor/byte/scan予算
     auth.ts                  # JWT 検証 (JWKS)、トークン交換・リフレッシュ・失効
     server-auth.ts           # ServerSessionData / AuthSession インターフェース + withSession() / withJsonBody() / withBinarySession() / requireSession() / applyRefreshedTokens() / applyRefreshedTokensToResponse() / applyCooldown() / requireString() / assertSameOrigin() / parseJsonBody() / setAccessTokenCookies() / setSessionCookie() / createServerSession() / getServerSession() / updateServerSession() / deleteServerSession() / getAuthSession() / bindDbscToServerSession() / deduplicatedRefresh()
     beta-allowed.ts          # isBetaAllowed() — BETA_ALLOWED_SUBS チェック（next/* 非依存・拒否時に sub prefix を console.warn）
@@ -635,6 +646,7 @@ sessions/{sessionId}.json              # ServerSessionData（userId・refreshTok
 
 ```
 users/{userId}/subscriptions.json       # UserSubscription[]（feedHash・url・customTitle・subscribedAt・filter・nsfw・requestCookie・priority・category・groupId・mutedUntil・lastAccessedAt・view・digestLimit）
+users/{userId}/mcp-connection.json      # MCP connection version/revision/active/updatedAt。R2-first解除と各read/refreshの強整合検証
 users/{userId}/feed-groups.json         # FeedGroup[]（グループ定義: id / name / order / collapsed / muted / createdAt）
 users/{userId}/collections.json         # Collection[]（コレクション定義: id / name / articleIds / createdAt / order）
 users/{userId}/profile.json             # UserProfile（id・sub・email・name・picture）
@@ -712,6 +724,10 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ（永続）
 ```
 
 ## 認証フロー
+
+### 読み取り専用MCP（opt-in）
+
+`worker.ts`のfetchだけが`mcp-boundary.ts`経由で`/mcp`、OAuth metadata、`/api/mcp/*`とMCPタグ付きlogin/callbackを専用providerへ委譲する。通常RSS routeとscheduled/maintenanceは既存経路を維持。`RSS_MCP_ENABLED=true`かつ専用`OAUTH_KV`が必須で、未設定では無効。既存0g0本人sessionから別audience-bound `rss:read` grantを発行し、Cookie/clip/0g0 tokenをMCP認証へ流用しない。KVはhash化secretと暗号化props/最小平文metadata、既存R2は本人連携revisionを保持。詳細・3 tools・最新500件window制限・15分access/30日非活動refresh・R2-first解除・承認別rolloutは`docs/mcp.md`を参照。
 
 ```
 ブラウザ → GET /api/auth/login

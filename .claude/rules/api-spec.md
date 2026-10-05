@@ -6,7 +6,7 @@ paths: "app/api/**/route.ts"
 # API エンドポイント仕様
 
 優先度「高」のエンドポイントを中心に、リクエスト/レスポンス/エラーコードを記載する。
-認証が必要な全エンドポイントは Cookie (`access_token` または `session_id`) が必須。
+通常の認証が必要なエンドポイントは Cookie (`access_token` または `session_id`) が必須。opt-inの`/mcp`は専用OAuth Bearerのみ。Cookie/0g0 token/clip tokenへのfallbackは不可。
 
 ## 共通エラー形式
 
@@ -46,6 +46,19 @@ paths: "app/api/**/route.ts"
 | `api-recommendations.md` | `/api/recommendations/*` (GET / dismiss / refresh)                                                                                                                                                 |
 | `api-misc.md`            | `/api/engagement` / `/api/stats` / `/api/ogp` / `/api/image-proxy` / `/api/video-proxy` / `/api/health` / `/api/release-notes` / `/api/test/seed` / `/api/piper-voice/[file]` / `/api/wasm/[file]` |
 | `api-security.md`        | 横断規範 — 認証 + 所有権チェック二段 / shared cache TTL 短縮で poisoning 影響限定 / dev・e2e endpoint の NODE_ENV + bypass 二重ガード (endpoint 別仕様でなく Route Handler 実装時に参照)           |
+
+## 読み取り専用MCP (2026-10-05)
+
+- defaultは無効。`RSS_MCP_ENABLED=true`と専用`OAUTH_KV` binding、canonical HTTPS APP_BASE_URLの全部が必要。未有効MCP/auth routeは503、metadataは404。通常APIを変更しない。
+- `/mcp`: stateless Streamable HTTP POST。専用resource-bound `rss:read` OAuth Bearer、各要求で本人/expiry/scope/R2連携revisionを検証。JSON-RPC body16KiB。modern2026と2025stateless互換。legacy GET/DELETE sessionは405。toolsは`list_subscriptions({limit?,cursor?})`、`list_articles({feedId,limit?,cursor?,createdSince?})`、`get_article({feedId,articleRef,cursor?})`のみ。objectはstrict、limit default20/max100、本文16KiB継続。最新保持window最大500件だけで全archive/編集差分ではない。
+- `/.well-known/oauth-protected-resource/mcp`（root aliasあり）と`/.well-known/oauth-authorization-server`: exactissuer/resource、S256/CIMD、scope広告。DCRなし。全応答private/no-store。
+- `GET/POST /api/mcp/authorize`: 既存本人session、browser-bound10分state、scope/account/revision確認。同意POSTは同一Origin、formはhandle/decisionのみ4KiB。未ログインは既存0g0 loginを安全に再開して最終account同意へ戻す。拒否/期限切れ/再利用/アカウント変更/不正scope/resourceは拒否。
+- `/api/mcp/token`: OAuth provider所有code/refresh/revoke。フォーム16KiB。access15分、refresh初期/非活動期限30日、自動rotation。上流0g0 credentialは渡さない。
+- `GET /api/mcp/connection`: 本人Cookie認証、`{active,scope,updatedAt,accessTokenLifetimeSeconds,refreshIdleLifetimeSeconds,disconnectScope,limitation}`のみ。secret/grant/tokenは返さない。
+- `DELETE /api/mcp/connection`: 本人Cookie+同一Origin+`X-RSS-Account-Id`=本人session subject、R2の新disabled revisionを先にCAS保存してKV cleanup。200 `{active:false,updatedAt,cleanupComplete}`。account変更409。scopeは本人の全MCP接続。
+- `GET/POST /api/mcp/settings`: 本人向けHTML管理画面/同意付き解除。scriptなし、同一Origin/現在account確認。ChatGPT側disconnectだけや処理中readの即時取消は保証しない。
+- 3 toolsは購読/記事のpure readだけ。既存GET feedsのlastAccessedAt/repair更新を呼ばず、notes/readstate/savedclip/requestCookie/guid/arbitrarymetadata/credential-bearingURLを返さない。記事の命令文はprovenance/warning付きuntrusteddata。
+- data errorsはINVALID_ARGUMENT/INVALID_CURSOR/STALE_CURSOR/NOT_SUBSCRIBED/FEED_UNAVAILABLE/ARTICLE_UNAVAILABLE/CORRUPT_STORAGE/STORAGE_UNAVAILABLE/BUDGET_EXCEEDED。transportはHost/Origin403、query400、body413、無認証/期限/解除401、scope403、authstorage503、best-effort limiter429。raw credentials/storage errorsをecho/logしない。詳細`docs/mcp.md`。
 
 ## SingleFile (2026-09-30)
 

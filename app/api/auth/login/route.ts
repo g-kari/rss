@@ -1,10 +1,31 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { appendMcpHeaders, canonicalMcpOrigin, isMcpEnabled } from "@/lib/mcp-auth";
+import { startMcpLogin } from "@/lib/mcp-login";
 
 export async function GET(request: Request) {
-  const state = crypto.randomUUID();
+  let state = crypto.randomUUID();
+  let mcpHeaders: Headers | null = null;
   const appBaseUrl = process.env.APP_BASE_URL!;
   const authBaseUrl = process.env.AUTH_BASE_URL!;
+  if (new URL(request.url).searchParams.has("mcp_resume")) {
+    try {
+      const { env } = await getCloudflareContext({ async: true });
+      if (!isMcpEnabled(env) || !env.OAUTH_PROVIDER)
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const origin = canonicalMcpOrigin(appBaseUrl);
+      if (new URL(request.url).origin !== origin) throw new Error("Invalid origin");
+      const resumed = await startMcpLogin(request, env.OAUTH_PROVIDER, origin);
+      state = resumed.state;
+      mcpHeaders = resumed.headers;
+    } catch {
+      return NextResponse.json(
+        { error: "Connection login expired. Start the connection again." },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+  }
   const callbackUrl = `${appBaseUrl}/api/auth/callback`;
 
   const clientId = process.env.CLIENT_ID!;
@@ -31,6 +52,10 @@ export async function GET(request: Request) {
   });
 
   const res = NextResponse.redirect(loginUrl.toString());
+  if (mcpHeaders) {
+    appendMcpHeaders(res.headers, mcpHeaders);
+    return res;
+  }
   res.cookies.set("auth_state", state, {
     httpOnly: true,
     secure: true,

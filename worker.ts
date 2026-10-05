@@ -5,14 +5,19 @@ import { runRecommendationPush } from "./src/cron/recommendations";
 import { runCronPrefetch } from "./src/lib/cron-prefetch";
 import { feedWriteMaintenanceResponse, isFeedWritesPaused } from "./src/lib/feed-write-maintenance";
 import { runScheduledSummaryPrecompute } from "./src/lib/summary-precompute";
+import { routeMcpRequest } from "./src/lib/mcp-boundary";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 const openNextFetch = handler.fetch as NonNullable<ExportedHandler<CloudflareEnv>["fetch"]>;
 
 export default {
-  fetch(...[request, env, ctx]: Parameters<typeof openNextFetch>) {
+  async fetch(...[request, env, ctx]: Parameters<typeof openNextFetch>) {
     const maintenance = feedWriteMaintenanceResponse(request, env.RSS_FEED_WRITES_PAUSED);
     if (maintenance) return maintenance;
+    const mcp = await routeMcpRequest(request, env, ctx, {
+      fetch: (...args) => openNextFetch.call(this, ...args),
+    });
+    if (mcp) return mcp;
     // Preserve the original handler arguments and Worker receiver.
     return openNextFetch.call(this, request, env, ctx);
   },

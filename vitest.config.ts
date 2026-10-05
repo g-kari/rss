@@ -14,6 +14,19 @@ export default defineConfig({
   // Resolve build-only OpenNext imports without creating fake production build output.
   plugins: [
     {
+      // Node contract tests cannot import the runtime-only WorkerEntrypoint.
+      // Actual Worker behavior is independently exercised in workerd.
+      name: "test-cloudflare-workers",
+      resolveId(source) {
+        if (source === "cloudflare:workers") return "\0test-cloudflare-workers";
+      },
+      load(id) {
+        if (id === "\0test-cloudflare-workers") {
+          return "export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }";
+        }
+      },
+    },
+    {
       name: "test-opennext-worker",
       resolveId(source, importer) {
         if (
@@ -31,6 +44,7 @@ export default defineConfig({
     },
   ],
   test: {
+    server: { deps: { inline: ["@cloudflare/workers-oauth-provider"] } },
     environment: "happy-dom",
     globals: false,
     include: ["src/**/*.test.{ts,tsx}"],
