@@ -234,6 +234,8 @@ pnpm run test:unit:watch  # Vitest watch モード
 
 > **デプロイについて**: `master` ブランチへの push で Cloudflare Workers 側が自動ビルド＆デプロイを実行する。ローカルで `deploy` を手動実行する必要はない。
 
+フィード更新の件数制限・日付順の互換性・性能計測の範囲は [フィード本文変換前の項目選択](docs/feed-item-selection.md) を参照。
+
 ### Pre-commit フック
 
 `.pre-commit-config.yaml` で以下のフックがコミット時に自動実行される:

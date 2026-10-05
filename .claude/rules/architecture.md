@@ -563,7 +563,7 @@ src/
 1. Cloudflare Cron Trigger が 30 分毎に `scheduled` ハンドラーを起動
 2. `buildFeedUserMap(env)` が全ユーザーの `subscriptions.json` を走査して `feedHash → userId[]` マップを構築
 3. 各 feedHash に対して RSS を 1 度だけ fetch（共有フィード）
-4. RSS/XML と selector HTML は実測 10 MiB 上限。ネットワーク 20 並列に対し本文読込・解析・保存は 2 並列
+4. RSS/XML と selector HTML は実測 10 MiB 上限。メタデータ処理は 20 並列、fetch 開始前に permit を取り、ネットワーク・本文読込・解析・保存のパイプライン全体は 2 並列。RSS/Atom/RDF/JSON は raw 全項目の日付から最新 1000 件を選んで本文を変換する（1000 件以下は発行者順、無指定の `parseFeed` は無制限）。XML 全体のパースと nested content 復元は省略しない。詳細は `docs/feed-item-selection.md`
 5. `mergeNewArticlesWithChanges` が immutable segment を先に保存し、最新 500 件と参照一覧を持つ v2 head を ETag CAS で commit（履歴カスケードなし）
 6. R2 成功後に `ARTICLE_SEARCH` の変更 object を同期。索引失敗は R2 を壊さず、200 記事単位の再開可能な rebuild で修復。D1 は実行全体で 800 query 上限（Paid 向け）
 7. `meta.json` を更新。記事配列や knownIds をバッチ結果に残さず、件数・タイトルだけで Web Push 通知を集計

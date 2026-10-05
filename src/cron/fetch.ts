@@ -2,7 +2,6 @@ import { removeExpiredPushSubscriptions } from "../lib/push-config";
 import type { Article, SharedFeedMeta, PushConfig, FeedArticleCommit } from "../types";
 
 import { parseFeed, type ParsedItem } from "../lib/xml-parser";
-import { compareByPublishedAtDesc } from "../lib/article-utils";
 import { scrapeFeed } from "../lib/llm-feed-generator";
 import { isValidFeedUrl } from "../lib/url";
 import {
@@ -276,12 +275,9 @@ async function fetchAndParseFeed(
   }
 
   const xml = await readResponseText(res, FEED_MAX_BYTES, FETCH_TIMEOUT_MS);
-  const parsed = parseFeed(xml);
-  // 巨大フィードの初回取得で保存・索引の処理量が爆発しないよう
-  // publishedAt 降順で最新 FEED_MAX_ITEMS 件に切り詰める
-  if (parsed.items.length > FEED_MAX_ITEMS) {
-    parsed.items = parsed.items.sort(compareByPublishedAtDesc).slice(0, FEED_MAX_ITEMS);
-  }
+  // Preserve the newest-item policy while avoiding content conversion for losing items.
+  // The complete XML tree and nested-content preservation still run before selection.
+  const parsed = parseFeed(xml, { maxItems: FEED_MAX_ITEMS });
 
   applyFeedSuccess(meta, parsed);
   const lastModified = res.headers.get("Last-Modified");
