@@ -100,6 +100,14 @@ function responseCookies(response: Response): string {
 function formHandle(html: string): string {
   return html.match(/name="handle" value="([A-Za-z0-9_-]+)"/)![1];
 }
+async function continuationTarget(response: Response): Promise<URL> {
+  const html = await response.clone().text();
+  const href = html.match(/<a href="([^"]+)" rel="noreferrer">/)?.[1];
+  expect(href).toBeDefined();
+  expect(html).not.toContain("<script");
+  expect(html).not.toContain('http-equiv="refresh"');
+  return new URL(href!.replaceAll("&amp;", "&"));
+}
 
 beforeEach(async () => {
   mock.userId = "account-a";
@@ -209,9 +217,13 @@ describe("Cookie-authenticated consent and connection routes", () => {
         responseCookies(response),
       ),
     );
-    expect(approved.status).toBe(303);
-    expect(new URL(approved.headers.get("location")!).hostname).toBe("client.example");
-    expect(new URL(approved.headers.get("location")!).searchParams.get("iss")).toBe(ORIGIN);
+    expect(approved.status).toBe(200);
+    expect(approved.headers.has("location")).toBe(false);
+    const target = await continuationTarget(approved);
+    expect(target.hostname).toBe("client.example");
+    expect(target.searchParams.get("iss")).toBe(ORIGIN);
+    expect(approved.headers.get("cache-control")).toBe("no-store");
+    expect(approved.headers.get("content-security-policy")).toContain("form-action 'self'");
     expect((await connectionGet(request(`${ORIGIN}/api/mcp/connection`))).status).toBe(200);
     const metadata = await (await connectionGet(request(`${ORIGIN}/api/mcp/connection`))).text();
     expect(metadata).toContain('"active":true');
@@ -298,9 +310,8 @@ describe("Cookie-authenticated consent and connection routes", () => {
         responseCookies(response),
       ),
     );
-    expect(new URL(denied.headers.get("location")!).searchParams.get("error")).toBe(
-      "access_denied",
-    );
+    expect(denied.status).toBe(200);
+    expect((await continuationTarget(denied)).searchParams.get("error")).toBe("access_denied");
     expect(put).not.toHaveBeenCalled();
     mock.mode = "dbsc";
     const challenge = await authorizeGet(request(authorizationUrl));
@@ -410,11 +421,16 @@ describe("ordinary login and exact OAuth resume callback regression", () => {
         responseCookies(consent),
       ),
     );
-    expect(beginning.status).toBe(303);
+    expect(beginning.status).toBe(200);
     expect(put).not.toHaveBeenCalled();
     mock.cookies.set("auth_state", "existing-normal-login");
     const login = await loginGet(
-      request(beginning.headers.get("location")!, "GET", undefined, responseCookies(beginning)),
+      request(
+        (await continuationTarget(beginning)).href,
+        "GET",
+        undefined,
+        responseCookies(beginning),
+      ),
     );
     const state = new URL(login.headers.get("location")!).searchParams.get("state")!;
     expect(state).toMatch(/^mcp\./);

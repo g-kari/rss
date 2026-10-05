@@ -14,6 +14,34 @@ export function secureMcpBrowserHeaders(headers: Headers): void {
   );
 }
 
+/** A new document breaks form-submission redirects without widening form-action. */
+export function renderMcpNavigation(
+  redirectTo: string,
+  verifiedRedirectUri: string,
+  label: "アプリへ戻る" | "ログインへ進む",
+): string {
+  const target = new URL(redirectTo);
+  const verified = new URL(verifiedRedirectUri);
+  const browserUrl = (url: URL) =>
+    !url.username &&
+    !url.password &&
+    !url.hash &&
+    (url.protocol === "https:" ||
+      (url.protocol === "http:" &&
+        (url.hostname === "localhost" ||
+          url.hostname === "[::1]" ||
+          /^127(?:\.\d{1,3}){3}$/.test(url.hostname))));
+  if (!browserUrl(target) || !browserUrl(verified)) throw new Error("Invalid MCP navigation");
+  // Only OAuth response fields may differ from the provider-validated callback.
+  // The first-party login URI is constructed by the server and supplied as both values.
+  for (const key of ["code", "state", "iss", "error", "error_description", "error_uri"]) {
+    target.searchParams.delete(key);
+    verified.searchParams.delete(key);
+  }
+  if (target.href !== verified.href) throw new Error("MCP navigation target changed");
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RSS読み取り連携の続き</title></head><body style="font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem;line-height:1.6"><main><h1>RSS読み取り連携の続き</h1><p>送信内容を受け付けました。下のリンクから続けてください。</p><p><a href="${escapeHtml(new URL(redirectTo).href)}" rel="noreferrer">${escapeHtml(label)}</a></p><p><a href="/">RSSに戻る</a></p></main></body></html>`;
+}
+
 export function renderMcpConsent(
   description: ConsentDescription,
   handle: string,

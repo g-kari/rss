@@ -25,7 +25,12 @@ import {
 } from "./mcp-auth";
 import { createMcpOAuthProvider, mcpOAuthOptions } from "./mcp-provider";
 import { finishMcpLogin, mcpAuthorizationReturn, startMcpLogin } from "./mcp-login";
-import { readMcpConsentForm, renderMcpConsent, secureMcpBrowserHeaders } from "./mcp-auth-ui";
+import {
+  readMcpConsentForm,
+  renderMcpConsent,
+  renderMcpNavigation,
+  secureMcpBrowserHeaders,
+} from "./mcp-auth-ui";
 
 const ORIGIN = "https://rss.example";
 const handler = { fetch: async () => new Response("synthetic") };
@@ -351,6 +356,52 @@ describe("MCP OAuth policy and revocation", () => {
 });
 
 describe("provider-bound consent and safe first-party login resume", () => {
+  it("renders an explicit escaped continuation for only the validated callback", () => {
+    const base = "https://client.example/callback?fixed=keep";
+    const html = renderMcpNavigation(
+      `${base}&code=synthetic&state=synthetic&iss=${ORIGIN}`,
+      base,
+      "アプリへ戻る",
+    );
+    expect(html).toContain('rel="noreferrer"');
+    expect(html).toContain("fixed=keep&amp;code=synthetic&amp;state=synthetic");
+    expect(html).not.toContain("<script");
+    expect(html).not.toContain('http-equiv="refresh"');
+    expect(() =>
+      renderMcpNavigation("https://other.example/callback?code=synthetic", base, "アプリへ戻る"),
+    ).toThrow();
+    expect(() =>
+      renderMcpNavigation(
+        "https://client.example/other?fixed=keep&code=synthetic",
+        base,
+        "アプリへ戻る",
+      ),
+    ).toThrow();
+    expect(() =>
+      renderMcpNavigation(
+        "https://client.example/callback?fixed=changed&code=synthetic",
+        base,
+        "アプリへ戻る",
+      ),
+    ).toThrow();
+  });
+  it("accepts validated HTTP loopback clients while rejecting unsafe or remote cleartext URLs", () => {
+    for (const base of [
+      "http://localhost:12345/callback",
+      "http://127.0.0.2:12345/callback",
+      "http://[::1]:12345/callback",
+    ])
+      expect(renderMcpNavigation(`${base}?code=synthetic`, base, "アプリへ戻る")).toContain(
+        "アプリへ戻る",
+      );
+    for (const base of [
+      "http://client.example/callback",
+      "javascript:alert(1)",
+      "https://user:password@client.example/callback",
+      "https://client.example/callback#fragment",
+    ])
+      expect(() => renderMcpNavigation(base, base, "アプリへ戻る")).toThrow();
+  });
   it("keeps same-origin native form identity without widening the MCP browser policy", () => {
     const headers = new Headers();
     secureMcpBrowserHeaders(headers);

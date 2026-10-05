@@ -19,11 +19,25 @@ import {
   validateMcpLoginResume,
   McpConnectionError,
 } from "@/lib/mcp-auth";
-import { readMcpConsentForm, renderMcpConsent, secureMcpBrowserHeaders } from "@/lib/mcp-auth-ui";
+import {
+  readMcpConsentForm,
+  renderMcpConsent,
+  renderMcpNavigation,
+  secureMcpBrowserHeaders,
+} from "@/lib/mcp-auth-ui";
 
 function secured(response: NextResponse): NextResponse {
   secureMcpBrowserHeaders(response.headers);
   return response;
+}
+function navigation(
+  redirectTo: string,
+  verifiedRedirectUri: string,
+  label: "アプリへ戻る" | "ログインへ進む",
+): NextResponse {
+  return new NextResponse(renderMcpNavigation(redirectTo, verifiedRedirectUri, label), {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
 }
 function failure(status = 400): NextResponse {
   return secured(
@@ -136,7 +150,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       if (form.decision === "deny") {
         const denied = await provider.denyConsent(request, form.handle);
         await deleteMcpConsentAccount(env.OAUTH_KV!, form.handle);
-        const response = NextResponse.redirect(denied.redirectTo, 303);
+        const response = navigation(denied.redirectTo, denied.request.redirectUri, "アプリへ戻る");
         appendMcpHeaders(response.headers, denied.headers);
         return secured(response);
       }
@@ -150,7 +164,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         });
         const loginUrl = new URL("/api/auth/login", origin);
         loginUrl.searchParams.set("mcp_resume", upstream.state);
-        const response = NextResponse.redirect(loginUrl, 303);
+        const response = navigation(loginUrl.href, loginUrl.href, "ログインへ進む");
         appendMcpHeaders(response.headers, upstream.headers);
         return secured(response);
       }
@@ -163,7 +177,11 @@ export async function POST(request: Request): Promise<NextResponse> {
         metadata: { scope: MCP_SCOPE },
         revokeExistingGrants: false,
       });
-      const response = NextResponse.redirect(completed.redirectTo, 303);
+      const response = navigation(
+        completed.redirectTo,
+        approved.request.redirectUri,
+        "アプリへ戻る",
+      );
       appendMcpHeaders(response.headers, approved.headers);
       return secured(response);
     };
