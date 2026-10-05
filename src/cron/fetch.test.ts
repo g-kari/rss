@@ -419,6 +419,9 @@ describe("feed body concurrency", () => {
       expect(fetch).toHaveBeenCalledTimes(20);
       expect(reading).toBe(0);
       expect(parseFeed).toHaveBeenCalledTimes(10);
+      expect(
+        vi.mocked(parseFeed).mock.calls.every(([, options]) => options?.maxItems === 1000),
+      ).toBe(true);
       expect(scrapeFeed).toHaveBeenCalledTimes(10);
       expect(writeFeedMeta).toHaveBeenCalledTimes(20);
       expect(vi.mocked(writeFeedMeta).mock.calls.every(([, meta]) => !meta.fetchError)).toBe(true);
