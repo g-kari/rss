@@ -74,6 +74,53 @@ beforeEach(() => {
   mocks.reads.mockResolvedValue(readState);
 });
 describe("daily recommendation delivery", () => {
+  it.each([
+    { name: "number", title: 42 },
+    { name: "zero", title: 0 },
+    { name: "boolean", title: true },
+    { name: "false", title: false },
+    { name: "object", title: { text: "Do not coerce" } },
+    { name: "array", title: ["Do not coerce"] },
+    { name: "null", title: null },
+    { name: "missing", title: undefined },
+  ])("keeps legacy $name titles in the digest as absent titles", async ({ title }) => {
+    const { bucket, objects } = memoryBucket();
+    // JSON serialization mirrors the stored Article shape, including an omitted title.
+    const legacy = JSON.parse(JSON.stringify({ ...article, title })) as Article;
+    const sibling = { ...article, id: "sibling", guid: "2", link: "https://example.com/2" };
+    mocks.latest.mockResolvedValue([legacy, sibling]);
+    await sendUserRecommendations(bucket, "user", NOW);
+    expect(mocks.send).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ endpoint: "https://push.example/one" }),
+      {
+        title: "今日のおすすめ",
+        body: " / Useful article",
+        url: "/?recommendations=1",
+        tag: "rss-recommendations-2026-09-30",
+        renotify: false,
+      },
+    );
+    const state = JSON.parse(objects.get("users/user/recommendation-push.json")!.value);
+    expect(state.articleIds).toEqual(["article", "sibling"]);
+    expect(Object.values(state.endpoints)).toEqual(["sent"]);
+    expect(state.seen.map((item: { articleId: string }) => item.articleId)).toEqual([
+      "article",
+      "sibling",
+    ]);
+    await sendUserRecommendations(bucket, "user", NOW + 1800000);
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect(legacy).toEqual(JSON.parse(JSON.stringify({ ...article, title })));
+  });
+  it.each(["", "  <b>新刊 📰 café é 𝄞</b>\n 続き  ", "📰".repeat(51)])(
+    "preserves valid title %j and the existing UTF-16 slice in daily PUSH",
+    async (title) => {
+      const { bucket } = memoryBucket();
+      mocks.latest.mockResolvedValue([{ ...article, title }]);
+      await sendUserRecommendations(bucket, "user", NOW);
+      expect(mocks.send).toHaveBeenCalledOnce();
+      expect(mocks.send.mock.calls[0][1].body).toBe(title.slice(0, 100));
+    },
+  );
   it("sends one digest and never repeats across concurrent calls, retries or the next day", async () => {
     const { bucket } = memoryBucket();
     await Promise.all([

@@ -632,7 +632,7 @@ function parseJsonFeed(data: JsonFeedRoot, maxItems?: number): ParsedFeed {
     const language = getJsonFeedLanguage(item.language, data.language);
     return {
       guid: item.id ?? item.url ?? item.external_url ?? "",
-      title: item.title ?? "",
+      title: typeof item.title === "string" ? item.title : "",
       link,
       summary,
       content,

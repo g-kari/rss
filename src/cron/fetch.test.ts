@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SharedFeedMeta } from "../types";
 import { makeArticle } from "../../e2e/helpers/article";
 import {
+  buildArticle,
   buildBatchedPushPayload,
   fetchAllFeeds,
   fetchAndUpdateSharedFeed,
@@ -654,6 +655,151 @@ describe("completed feed result retention", () => {
     ]);
     expect(single.body).toBe(`${"📰".repeat(79)}…`);
   });
+});
+
+describe("non-string publisher PUSH titles", () => {
+  function jsonFeed(titles: unknown[]): string {
+    return JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "JSON feed",
+      home_page_url: "https://example.com/",
+      items: titles.map((title, index) => ({
+        id: `json-${index}`,
+        title,
+        url: `https://example.com/${index}`,
+        content_text: "Article content",
+      })),
+    });
+  }
+
+  it.each([
+    42,
+    0,
+    true,
+    false,
+    { text: "Not a preview" },
+    ["Not a preview"],
+    null,
+    undefined,
+    "",
+    "新刊 📰 café é 𝄞",
+  ])(
+    "produces display-safe JSON Feed title %j and safely previews legacy titles",
+    async (title) => {
+      const meta = makeMeta();
+      const body = jsonFeed([title]);
+      const parsed = parseFeed(body);
+      const expectedTitle = typeof title === "string" ? title : "";
+      expect(parsed.items[0].title).toBe(expectedTitle);
+      const article = await buildArticle(parsed.items[0], meta.feedHash, meta.url, new Map());
+      expect(typeof article.title).toBe("string");
+      expect(article.title).toBe(expectedTitle);
+      expect(
+        buildBatchedPushPayload([
+          { articles: [article], feedTitle: parsed.title, feedHash: meta.feedHash },
+        ]),
+      ).toEqual({ title: "JSON feed", body: expectedTitle || "新着記事", url: "/" });
+      // Legacy storage can still violate the static Article title type.
+      expect(
+        buildBatchedPushPayload([
+          {
+            articles: [makeArticle({ title: title as string })],
+            feedTitle: parsed.title,
+            feedHash: meta.feedHash,
+          },
+        ]),
+      ).toEqual({ title: "JSON feed", body: expectedTitle || "新着記事", url: "/" });
+    },
+  );
+
+  it.each([
+    { name: "single-article fallback", titles: [42], expectedBody: "新着記事" },
+    {
+      name: "count-only fallback",
+      titles: [42, true, { text: "Not a preview" }, ["Not a preview"]],
+      expectedBody: "4 件の新着記事",
+    },
+    {
+      name: "valid sibling previews",
+      titles: [42, { text: "Not a preview" }, "<b>Useful</b>\n sibling", "Last"],
+      expectedBody: "4 件の新着記事\nUseful sibling\nLast\nほか 2 件",
+    },
+  ])(
+    "keeps cron timestamps and $name after the article commit",
+    async ({ titles, expectedBody }) => {
+      const now = "2026-10-06T08:00:00.000Z";
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(now));
+      const meta = makeMeta();
+      const body = jsonFeed(titles);
+      const users = ["enabled", "off", "silent"];
+      vi.mocked(buildFeedUserMapCached).mockResolvedValue({
+        feedUserMap: new Map([[meta.feedHash, users]]),
+        feedLastAccessMap: new Map(),
+        feedHasPriority: new Set(),
+        privateFeedCookies: new Map(),
+      });
+      vi.mocked(readFeedMeta).mockResolvedValue(meta);
+      let committed = false;
+      vi.mocked(mergeNewArticlesWithChanges).mockImplementation(
+        async (_bucket, _meta, articles) => {
+          expect(articles.map((article) => article.title)).toEqual(
+            titles.map((title) => (typeof title === "string" ? title : "")),
+          );
+          expect(articles.every((article) => typeof article.title === "string")).toBe(true);
+          committed = true;
+          return { newArticles: articles };
+        },
+      );
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+      vi.spyOn(r2, "r2Get").mockImplementation(
+        async <T>(_bucket: R2Bucket, key: string): Promise<T> => {
+          const user = users.find((user) => key === r2.userPushKey(user));
+          return (
+            user
+              ? {
+                  subscriptions: [
+                    {
+                      endpoint: `https://push.example.com/${user}`,
+                      expirationTime: null,
+                      keys: { p256dh: "test", auth: "test" },
+                    },
+                  ],
+                  ...(user === "off" ? { disabledFeeds: { [meta.feedHash]: true } } : {}),
+                  ...(user === "silent"
+                    ? { silentStart: "00:00", silentEnd: "24:00", timezone: "UTC" }
+                    : {}),
+                }
+              : { untouched: "2025-01-01T00:00:00Z" }
+          ) as T;
+        },
+      );
+      const put = vi.spyOn(r2, "r2Put").mockImplementation(async () => {
+        expect(committed).toBe(true);
+      });
+      const push = vi.spyOn(webPush, "sendPushToAll").mockImplementation(async (subscriptions) => {
+        expect(committed).toBe(true);
+        return subscriptions;
+      });
+      await fetchAllFeeds(env);
+      expect(mergeNewArticlesWithChanges).toHaveBeenCalledOnce();
+      expect(writeFeedMeta).toHaveBeenCalledWith(env.RSS_DATA, meta);
+      expect(meta.lastFetchedAt).toBe(now);
+      expect(meta.fetchError).toBeNull();
+      for (const user of users) {
+        expect(put).toHaveBeenCalledWith(env.RSS_DATA, r2.feedLastFetchedKey(user), {
+          untouched: "2025-01-01T00:00:00Z",
+          [meta.feedHash]: now,
+        });
+      }
+      expect(push).toHaveBeenCalledExactlyOnceWith(
+        expect.arrayContaining([
+          expect.objectContaining({ endpoint: "https://push.example.com/enabled" }),
+        ]),
+        { title: "JSON feed", body: expectedBody, url: "/" },
+      );
+    },
+  );
 });
 
 it("preserves per-user push filtering, error notifications, and merged timestamps with compact results", async () => {

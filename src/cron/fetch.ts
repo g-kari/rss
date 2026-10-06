@@ -452,7 +452,9 @@ function truncatePushText(text: string, maxLength: number): string {
   return chars.join("");
 }
 
-function normalizePushTitle(title: string): string {
+function normalizePushTitle(title: unknown): string {
+  // Publisher data can contain non-string JSON Feed titles despite the static Article type.
+  if (typeof title !== "string") return "";
   return truncatePushText(stripHtml(title).replace(/\s+/g, " ").trim(), PUSH_TITLE_MAX_LENGTH);
 }
 
