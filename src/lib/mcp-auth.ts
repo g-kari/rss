@@ -4,6 +4,22 @@ import { sha256Hex } from "./r2";
 
 export const MCP_PATH = "/mcp";
 export const MCP_SCOPE = "rss:read";
+export const MCP_ADD_SCOPE = "rss:subscriptions:add";
+/** Separate feature gate. Merely merging the implementation never enables write grants. */
+export function isMcpSubscriptionAddEnabled(
+  env: Pick<CloudflareEnv, "RSS_MCP_SUBSCRIBE_ENABLED">,
+): boolean {
+  return env.RSS_MCP_SUBSCRIBE_ENABLED === "true";
+}
+export function isMcpScopeSet(scopes: unknown, allowAdd = false): scopes is string[] {
+  return (
+    Array.isArray(scopes) &&
+    scopes.length > 0 &&
+    scopes.length <= 2 &&
+    new Set(scopes).size === scopes.length &&
+    scopes.every((scope) => scope === MCP_SCOPE || (allowAdd && scope === MCP_ADD_SCOPE))
+  );
+}
 export const MCP_AUTHORIZE_PATH = "/api/mcp/authorize";
 export const MCP_TOKEN_PATH = "/api/mcp/token";
 export const MCP_ACCESS_TOKEN_TTL = 900;
@@ -22,6 +38,8 @@ export interface McpConnectionState {
   revision: string;
   active: boolean;
   updatedAt: string;
+  /** Account-level union of explicitly approved scopes, not a grant to any individual token. */
+  approvedScopes?: string[];
 }
 export interface McpConnectionSnapshot {
   state: McpConnectionState | null;
@@ -31,6 +49,7 @@ interface McpConsentAccount {
   userId: string | null;
   revision: string | null;
   expiresAt: number;
+  scopes?: string[];
 }
 export interface McpLoginResume {
   kind: "rss-mcp-login";
@@ -98,7 +117,11 @@ function validState(raw: unknown): raw is McpConnectionState {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return false;
   const value = raw as Record<string, unknown>;
   return (
-    Object.keys(value).length === 4 &&
+    Object.keys(value).every((key) =>
+      ["version", "revision", "active", "updatedAt", "approvedScopes"].includes(key),
+    ) &&
+    Object.keys(value).length >= 4 &&
+    (value.approvedScopes === undefined || isMcpScopeSet(value.approvedScopes, true)) &&
     value.version === 1 &&
     typeof value.revision === "string" &&
     isValidSessionId(value.revision) &&
@@ -145,16 +168,29 @@ export async function approveMcpConnection(
   bucket: R2Bucket,
   userId: string,
   approvedRevision: string | null,
+  approvedScopes: string[] = [MCP_SCOPE],
 ): Promise<McpAuthProps> {
+  if (!isMcpScopeSet(approvedScopes, true)) throw new McpConnectionError("MCP_AUTH_INVALID");
   const snapshot = await readMcpConnection(bucket, userId);
   if ((snapshot.state?.revision ?? null) !== approvedRevision)
     throw new McpConnectionError("MCP_CONNECTION_CONFLICT");
-  if (snapshot.state?.active) return { userId, connectionRevision: snapshot.state.revision };
+  const scopes = [
+    ...new Set([
+      ...(snapshot.state?.active ? (snapshot.state.approvedScopes ?? [MCP_SCOPE]) : []),
+      ...approvedScopes,
+    ]),
+  ];
+  if (
+    snapshot.state?.active &&
+    scopes.every((scope) => (snapshot.state?.approvedScopes ?? [MCP_SCOPE]).includes(scope))
+  )
+    return { userId, connectionRevision: snapshot.state.revision };
   const next: McpConnectionState = {
     version: 1,
-    revision: crypto.randomUUID(),
+    revision: snapshot.state?.active ? snapshot.state.revision : crypto.randomUUID(),
     active: true,
     updatedAt: new Date().toISOString(),
+    ...(scopes.length === 1 && scopes[0] === MCP_SCOPE ? {} : { approvedScopes: scopes }),
   };
   const committed = await bucket.put(connectionKey(userId), JSON.stringify(next), {
     onlyIf: snapshot.etag ? { etagMatches: snapshot.etag } : { etagDoesNotMatch: "*" },
@@ -204,14 +240,17 @@ export async function cleanupMcpGrants(
     return false;
   }
 }
-export function validateMcpAuthorization(request: AuthRequest, appBaseUrl: string): void {
+export function validateMcpAuthorization(
+  request: AuthRequest,
+  appBaseUrl: string,
+  allowAdd = false,
+): void {
   const origin = canonicalMcpOrigin(appBaseUrl);
   if (
     request.resource !== `${origin}${MCP_PATH}` ||
     request.issuer !== origin ||
     request.responseType !== "code" ||
-    request.scope.length !== 1 ||
-    request.scope[0] !== MCP_SCOPE ||
+    !isMcpScopeSet(request.scope, allowAdd) ||
     request.codeChallengeMethod !== "S256" ||
     !request.codeChallenge ||
     !/^[A-Za-z0-9_-]{43}$/.test(request.codeChallenge)
@@ -230,11 +269,14 @@ export async function storeMcpConsentAccount(
   handle: string,
   userId: string | null,
   revision: string | null,
+  scopes: string[] = [MCP_SCOPE],
 ): Promise<void> {
+  if (!isMcpScopeSet(scopes, true)) throw new McpConnectionError("MCP_AUTH_INVALID");
   const account: McpConsentAccount = {
     userId,
     revision,
     expiresAt: Date.now() + MCP_TRANSACTION_TTL * 1_000,
+    ...(scopes.length === 1 && scopes[0] === MCP_SCOPE ? {} : { scopes: [...scopes] }),
   };
   await kv.put(await consentAccountKey(handle), JSON.stringify(account), {
     expirationTtl: MCP_TRANSACTION_TTL,
@@ -256,7 +298,11 @@ export async function readMcpConsentAccount(
     throw new McpConnectionError("MCP_AUTH_INVALID");
   const record = raw as Record<string, unknown>;
   if (
-    Object.keys(record).length !== 3 ||
+    !Object.keys(record).every((key) =>
+      ["userId", "revision", "expiresAt", "scopes"].includes(key),
+    ) ||
+    Object.keys(record).length < 3 ||
+    (record.scopes !== undefined && !isMcpScopeSet(record.scopes, true)) ||
     !(
       record.userId === null ||
       (typeof record.userId === "string" && isValidUserId(record.userId))

@@ -24,13 +24,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       const { state } = await readMcpConnection(env.RSS_DATA, session.userId);
       return NextResponse.json({
         active: state?.active ?? false,
-        scope: MCP_SCOPE,
+        scope: (state?.approvedScopes ?? [MCP_SCOPE]).join(" "),
+        approvedScopes: state?.approvedScopes ?? [MCP_SCOPE],
         updatedAt: state?.updatedAt ?? null,
         accessTokenLifetimeSeconds: MCP_ACCESS_TOKEN_TTL,
         refreshIdleLifetimeSeconds: MCP_REFRESH_TOKEN_TTL,
-        disconnectScope: "All read-only MCP connections for this RSS account",
+        disconnectScope: "All MCP connections for this RSS account",
         limitation:
-          "ChatGPT-side disconnect alone does not guarantee immediate RSS-side revocation; already-in-flight reads cannot be recalled.",
+          "ChatGPT-side disconnect alone does not guarantee immediate RSS-side revocation; already-started reads or subscription additions cannot necessarily be cancelled.",
       });
     }),
   );

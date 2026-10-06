@@ -140,13 +140,7 @@ export async function readUserSubscriptions(
   return r2Get<UserSubscription[]>(bucket, subsKey(userId), []);
 }
 
-export async function writeUserSubscriptions(
-  bucket: R2Bucket,
-  userId: string,
-  subs: UserSubscription[],
-): Promise<void> {
-  await r2Put(bucket, subsKey(userId), subs);
-}
+export { mutateUserSubscriptions } from "./user-subscription-mutations";
 
 // ── Feed 合成（API レスポンス用）────────────────────────────────
 
@@ -361,10 +355,7 @@ export async function readUserIndex(bucket: R2Bucket): Promise<string[]> {
  * 並行書き込みによる競合リスクを最小化するため、追加前に再読み込みする。
  */
 export async function addUserToIndex(bucket: R2Bucket, userId: string): Promise<void> {
-  const index = await readUserIndex(bucket);
-  if (index.includes(userId)) return; // 既に登録済みならスキップ
-  index.push(userId);
-  await r2Put(bucket, USER_INDEX_KEY, index);
+  await mutateUserIndex(bucket, (index) => (index.includes(userId) ? index : [...index, userId]));
 }
 
 /**
@@ -372,10 +363,30 @@ export async function addUserToIndex(bucket: R2Bucket, userId: string): Promise<
  * フィード削除後の購読件数がゼロになった場合のみ呼ぶ想定。
  */
 export async function removeUserFromIndex(bucket: R2Bucket, userId: string): Promise<void> {
-  const index = await readUserIndex(bucket);
-  const filtered = index.filter((id) => id !== userId);
-  if (filtered.length === index.length) return; // 変化なしなら書き込み不要
-  await r2Put(bucket, USER_INDEX_KEY, filtered);
+  await mutateUserIndex(bucket, (index) => index.filter((id) => id !== userId));
+}
+
+/** Conditional index writes prevent concurrent additions for different accounts being lost. */
+async function mutateUserIndex(
+  bucket: R2Bucket,
+  mutate: (index: string[]) => string[],
+): Promise<void> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const object = await bucket.get(USER_INDEX_KEY);
+    if (object && (!object.etag || object.size > 4 * 1024 * 1024))
+      throw new Error("User index is unavailable");
+    const value: unknown = object ? await object.json() : [];
+    if (!Array.isArray(value) || !value.every((id) => typeof id === "string"))
+      throw new Error("User index is unavailable");
+    const next = mutate(value);
+    if (JSON.stringify(next) === JSON.stringify(value)) return;
+    const committed = await bucket.put(USER_INDEX_KEY, JSON.stringify(next), {
+      onlyIf: object ? { etagMatches: object.etag } : { etagDoesNotMatch: "*" },
+      httpMetadata: { contentType: "application/json" },
+    });
+    if (committed) return;
+  }
+  throw new Error("User index update conflict");
 }
 
 export async function buildFeedUserMapCached(

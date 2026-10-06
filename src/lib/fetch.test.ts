@@ -101,6 +101,52 @@ describe("readResponseText", () => {
 });
 
 describe("safe redirects", () => {
+  it("applies an optional stricter policy before the initial network request", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      fetchFollowSafeRedirects("https://example.com/feed?token=secret", {}, 1000, {
+        validateUrl: () => false,
+      }),
+    ).rejects.toThrow("policy");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("applies the stricter policy before every redirected network request", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { Location: "https://example.com/feed?token=secret" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const policy = vi.fn((url: string) => !new URL(url).search);
+    await expect(
+      fetchFollowSafeRedirects("https://example.com/feed", {}, 1000, {
+        validateUrl: policy,
+      }),
+    ).rejects.toThrow("policy");
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(policy.mock.calls.map(([url]) => url)).toEqual([
+      "https://example.com/feed",
+      "https://example.com/feed?token=secret",
+    ]);
+  });
+
+  it("reports the validated final URL without trusting Response.url", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 302, headers: { Location: "/final" } }))
+      .mockResolvedValueOnce(new Response("feed"));
+    vi.stubGlobal("fetch", fetch);
+    const finalUrl = vi.fn();
+    await fetchFollowSafeRedirects("https://example.com/feed", {}, 1000, {
+      validateUrl: () => true,
+      onResponseUrl: finalUrl,
+    });
+    expect(finalUrl).toHaveBeenCalledExactlyOnceWith("https://example.com/final");
+  });
+
   it("cancels intermediate redirect bodies before following", async () => {
     const cancel = vi.fn();
     const fetch = vi

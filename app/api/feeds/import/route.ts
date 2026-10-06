@@ -11,7 +11,8 @@ import {
   getOrCreateFeedMeta,
   assembleClientFeed,
   readUserSubscriptions,
-  writeUserSubscriptions,
+  addUserToIndex,
+  FEED_USER_MAP_CACHE_KEY,
   R2_CONCURRENCY,
   MAX_FEEDS_PER_USER,
 } from "@/lib/shared-feed";
@@ -22,6 +23,7 @@ import { readFeedGroups, writeFeedGroups, MAX_FEED_GROUPS_PER_USER } from "@/lib
 import { extractFeeds, type FeedEntry, type OpmlOutline } from "@/lib/opml";
 import { MAX_OPML_ENTRIES } from "@/lib/validation";
 import { computeNextOrder } from "@/lib/sort-utils";
+import { mutateUserSubscriptions } from "@/lib/user-subscription-mutations";
 
 interface RawParsedOpml {
   opml?: {
@@ -190,13 +192,28 @@ export async function POST(request: Request) {
       subscribedAt,
       groupId: entry.folder ? folderToGroupId.get(entry.folder) : undefined,
     }));
-    for (const sub of newSubs) subs.push(sub);
-    const addedCount = newSubs.length;
+    const accepted = await mutateUserSubscriptions(env.RSS_DATA, session.userId, (current) => {
+      const known = new Set(current.map((s) => s.feedHash));
+      const additions = newSubs
+        .filter((s) => {
+          if (known.has(s.feedHash)) return false;
+          known.add(s.feedHash);
+          return true;
+        })
+        .slice(0, Math.max(0, MAX_FEEDS_PER_USER - current.length));
+      return {
+        subscriptions: [...current, ...additions],
+        result: additions,
+        changed: additions.length > 0,
+      };
+    });
+    const addedCount = accepted.length;
 
     if (addedCount > 0) {
       // R2 PUT と Cache API DELETE は互いに依存しないため並列化（合計レイテンシ短縮）
       await Promise.all([
-        writeUserSubscriptions(env.RSS_DATA, session.userId, subs),
+        addUserToIndex(env.RSS_DATA, session.userId),
+        env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY),
         purgeFeedsCache(origin, session.userId, ctx),
       ]);
       ctx.waitUntil(
@@ -206,7 +223,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const feeds = succeededMetas.map((meta, i) => assembleClientFeed(meta, newSubs[i]));
+    const metaById = new Map(succeededMetas.map((meta) => [meta.feedHash, meta]));
+    const feeds = accepted.flatMap((sub) => {
+      const meta = metaById.get(sub.feedHash);
+      return meta ? [assembleClientFeed(meta, sub)] : [];
+    });
     return NextResponse.json({
       added: addedCount,
       skipped: feedEntries.length - addedCount,

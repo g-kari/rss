@@ -22,6 +22,7 @@ vi.mock("./mcp-data", () => ({
   },
 }));
 import { serveMcpData } from "./mcp-server";
+import { MCP_SCOPE, MCP_ADD_SCOPE } from "./mcp-auth";
 
 function request(method: string, params: object = {}, legacy = false) {
   return new Request("https://rss.example/mcp", {
@@ -71,6 +72,105 @@ beforeEach(() => {
   mock.article.mockResolvedValue({ text: "Stored text" });
 });
 describe("native stateless MCP transport", () => {
+  it("advertises addition only when supplied by the gated boundary, with independent write descriptors", async () => {
+    const addSubscription = vi.fn();
+    const data = await message(
+      await serveMcpData(request("tools/list", {}, true), {} as R2Bucket, "user-one", {
+        scopes: [MCP_SCOPE],
+        subscriptionAdder: { addSubscription },
+      }),
+    );
+    const add = data.result.tools.find(
+      (tool: { name: string }) => tool.name === "add_subscription",
+    );
+    expect(add.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+    expect(add.securitySchemes).toEqual([{ type: "oauth2", scopes: [MCP_ADD_SCOPE] }]);
+    expect(
+      data.result.tools.find((tool: { name: string }) => tool.name === "list_subscriptions")
+        .securitySchemes,
+    ).toEqual([{ type: "oauth2", scopes: [MCP_SCOPE] }]);
+    expect(addSubscription).not.toHaveBeenCalled();
+  });
+  it("read-only tokens cannot add even when the tool is enabled", async () => {
+    const addSubscription = vi.fn();
+    const data = await message(
+      await serveMcpData(
+        request(
+          "tools/call",
+          { name: "add_subscription", arguments: { url: "https://example.org/feed" } },
+          true,
+        ),
+        {} as R2Bucket,
+        "user-one",
+        { scopes: [MCP_SCOPE], subscriptionAdder: { addSubscription } },
+      ),
+    );
+    expect(data.result.isError).toBe(true);
+    expect(JSON.stringify(data)).toContain("MCP_INSUFFICIENT_SCOPE");
+    expect(addSubscription).not.toHaveBeenCalled();
+  });
+  it("write-only tokens cannot read stored subscriptions or articles", async () => {
+    const addSubscription = vi.fn();
+    const data = await message(
+      await serveMcpData(
+        request("tools/call", { name: "list_subscriptions", arguments: {} }, true),
+        {} as R2Bucket,
+        "user-one",
+        { scopes: [MCP_ADD_SCOPE], subscriptionAdder: { addSubscription } },
+      ),
+    );
+    expect(data.result.isError).toBe(true);
+    expect(mock.subscriptions).not.toHaveBeenCalled();
+    expect(JSON.stringify(data)).toContain("MCP_INSUFFICIENT_SCOPE");
+  });
+  it("calls a scope-approved adder with strict fields and reports a committed repair blocker accurately", async () => {
+    const addSubscription = vi.fn().mockResolvedValue({
+      status: "repair_required",
+      feedId: "aaaaaaaaaaaaaaaa",
+      canonicalUrl: "https://example.org/feed",
+      subscriptionCommitted: true,
+      retryable: true,
+    });
+    const access = { scopes: [MCP_ADD_SCOPE], subscriptionAdder: { addSubscription } };
+    const data = await message(
+      await serveMcpData(
+        request(
+          "tools/call",
+          { name: "add_subscription", arguments: { url: "https://example.org/feed" } },
+          true,
+        ),
+        {} as R2Bucket,
+        "user-one",
+        access,
+      ),
+    );
+    expect(addSubscription).toHaveBeenCalledExactlyOnceWith({ url: "https://example.org/feed" });
+    expect(data.result.isError).toBe(true);
+    expect(data.result.structuredContent).toMatchObject({
+      status: "repair_required",
+      subscriptionCommitted: true,
+    });
+    addSubscription.mockClear();
+    await serveMcpData(
+      request(
+        "tools/call",
+        {
+          name: "add_subscription",
+          arguments: { url: "https://example.org/feed", userId: "other" },
+        },
+        true,
+      ),
+      {} as R2Bucket,
+      "user-one",
+      access,
+    );
+    expect(addSubscription).not.toHaveBeenCalled();
+  });
   it("does not create modern subscription/listen streams or transport session operations", async () => {
     for (const method of [
       "subscriptions/listen",

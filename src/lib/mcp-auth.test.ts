@@ -15,6 +15,9 @@ import {
   disconnectMcpConnection,
   isMcpEnabled,
   MCP_SCOPE,
+  MCP_ADD_SCOPE,
+  isMcpScopeSet,
+  isMcpSubscriptionAddEnabled,
   mcpLoginResumeData,
   readMcpConnection,
   readMcpConsentAccount,
@@ -131,6 +134,94 @@ beforeEach(() => {
 });
 
 describe("MCP OAuth policy and revocation", () => {
+  it("keeps subscription additions separately gated and refuses invalid/duplicated scopes", () => {
+    expect(isMcpSubscriptionAddEnabled({})).toBe(false);
+    expect(isMcpSubscriptionAddEnabled({ RSS_MCP_SUBSCRIBE_ENABLED: "TRUE" })).toBe(false);
+    expect(isMcpScopeSet([MCP_SCOPE, MCP_ADD_SCOPE])).toBe(false);
+    expect(isMcpScopeSet([MCP_ADD_SCOPE], true)).toBe(true);
+    expect(isMcpScopeSet([MCP_SCOPE, MCP_ADD_SCOPE], true)).toBe(true);
+    for (const scopes of [
+      [],
+      [MCP_SCOPE, MCP_SCOPE],
+      ["write"],
+      [MCP_SCOPE, MCP_ADD_SCOPE, "other"],
+    ])
+      expect(isMcpScopeSet(scopes, true)).toBe(false);
+    expect(() => validateMcpAuthorization({ ...auth, scope: [MCP_ADD_SCOPE] }, ORIGIN)).toThrow();
+    expect(() =>
+      validateMcpAuthorization({ ...auth, scope: [MCP_ADD_SCOPE] }, ORIGIN, true),
+    ).not.toThrow();
+  });
+  it("refresh never expands a read grant and write-only grants do not silently gain read", async () => {
+    env.RSS_MCP_SUBSCRIBE_ENABLED = "true";
+    const props = await approveMcpConnection(storage.bucket, userId, null, [MCP_ADD_SCOPE]);
+    const callback = mcpOAuthOptions(handler, handler, ORIGIN, true).tokenExchangeCallback!;
+    const options = {
+      grantType: GrantType.REFRESH_TOKEN,
+      clientId: "synthetic",
+      subjectClientId: "synthetic",
+      grantId: "synthetic",
+      userId,
+      scope: [MCP_ADD_SCOPE],
+      requestedScope: [MCP_ADD_SCOPE],
+      resource: `${ORIGIN}/mcp`,
+      props,
+      env,
+    };
+    await expect(callback(options)).resolves.toEqual({ accessTokenScope: [MCP_ADD_SCOPE] });
+    await expect(callback({ ...options, scope: [MCP_SCOPE] })).rejects.toMatchObject({
+      code: "invalid_grant",
+    });
+    await expect(
+      callback({ ...options, requestedScope: [MCP_SCOPE, MCP_ADD_SCOPE] }),
+    ).rejects.toMatchObject({ code: "invalid_grant" });
+    await expect(
+      callback({ ...options, scope: [MCP_SCOPE, MCP_ADD_SCOPE], requestedScope: [MCP_SCOPE] }),
+    ).resolves.toEqual({ accessTokenScope: [MCP_SCOPE] });
+    delete env.RSS_MCP_SUBSCRIBE_ENABLED;
+    await expect(callback(options)).rejects.toMatchObject({ code: "invalid_grant" });
+  });
+  it("new explicit scope approval preserves the read revision but each token still uses its exact scopes", async () => {
+    const readProps = await approveMcpConnection(storage.bucket, userId, null);
+    const writeProps = await approveMcpConnection(
+      storage.bucket,
+      userId,
+      readProps.connectionRevision,
+      [MCP_ADD_SCOPE],
+    );
+    expect(writeProps).toEqual(readProps);
+    expect((await readMcpConnection(storage.bucket, userId)).state?.approvedScopes).toEqual([
+      MCP_SCOPE,
+      MCP_ADD_SCOPE,
+    ]);
+    await expect(assertMcpConnection(storage.bucket, readProps, env)).resolves.toEqual(readProps);
+    const before = storage.put.mock.calls.length;
+    await approveMcpConnection(storage.bucket, userId, readProps.connectionRevision, [MCP_SCOPE]);
+    expect(storage.put).toHaveBeenCalledTimes(before);
+    await disconnectMcpConnection(storage.bucket, userId);
+    await expect(assertMcpConnection(storage.bucket, writeProps, env)).rejects.toThrow();
+  });
+  it("pending consent stores only the exact displayed scopes, independently from caller form fields", async () => {
+    const handle = "a".repeat(43);
+    await storeMcpConsentAccount(namespace.kv, handle, userId, null, [MCP_ADD_SCOPE]);
+    expect((await readMcpConsentAccount(namespace.kv, handle)).scopes).toEqual([MCP_ADD_SCOPE]);
+    const html = renderMcpConsent(
+      {
+        clientId: "synthetic",
+        clientName: "Synthetic",
+        redirectUri: "https://client.example/callback",
+        redirectHost: "client.example",
+        redirectIsLoopback: false,
+        scope: [MCP_ADD_SCOPE],
+      },
+      handle,
+      userId,
+    );
+    expect(html).toContain(MCP_ADD_SCOPE);
+    expect(html).toContain("購読追加の連携を許可");
+    expect(html).not.toContain("保存済み記事本文も読み取り対象");
+    expect(html).not.toContain('name="scope"');
+  });
   it("defaults off; configures a single exact read resource, CIMD, bounded lifetimes, no DCR/external credentials", () => {
     expect(isMcpEnabled({})).toBe(false);
     expect(isMcpEnabled({ RSS_MCP_ENABLED: "true" })).toBe(false);
