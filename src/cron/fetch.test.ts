@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SharedFeedMeta } from "../types";
+import { makeArticle } from "../../e2e/helpers/article";
 import {
   buildBatchedPushPayload,
   fetchAllFeeds,
@@ -537,34 +538,127 @@ describe("completed feed result retention", () => {
     },
   );
 
-  it("keeps notification payloads identical for compact summaries", () => {
+  it("keeps single-article behavior and previews compact multi-article summaries", () => {
     expect(
       buildBatchedPushPayload([
-        { articleCount: 1, firstArticleTitle: "Headline", feedTitle: "Feed", feedHash: "a" },
+        { articleCount: 1, articleTitles: ["Headline"], feedTitle: "Feed", feedHash: "a" },
       ]),
     ).toEqual({ title: "Feed", body: "Headline", url: "/" });
     expect(
       buildBatchedPushPayload([
-        { articleCount: 1, firstArticleTitle: "", feedTitle: "Feed", feedHash: "a" },
+        { articleCount: 1, articleTitles: [], feedTitle: "Feed", feedHash: "a" },
       ]),
     ).toEqual({ title: "Feed", body: "新着記事", url: "/" });
     expect(
       buildBatchedPushPayload([
-        { articleCount: 3, firstArticleTitle: "Headline", feedTitle: "Feed", feedHash: "a" },
+        { articleCount: 3, articleTitles: ["Headline"], feedTitle: "Feed", feedHash: "a" },
       ]),
-    ).toEqual({ title: "Feed", body: "3 件の新着記事", url: "/" });
+    ).toEqual({ title: "Feed", body: "3 件の新着記事\nHeadline\nほか 2 件", url: "/" });
     expect(
       buildBatchedPushPayload([
-        { articleCount: 3, firstArticleTitle: "Headline", feedTitle: "Feed", feedHash: "a" },
-        { articleCount: 2, firstArticleTitle: "Other", feedTitle: "Other feed", feedHash: "b" },
+        {
+          articleCount: 3,
+          articleTitles: ["Headline", "Second"],
+          feedTitle: "Feed",
+          feedHash: "a",
+        },
+        { articleCount: 2, articleTitles: ["Other"], feedTitle: "Other feed", feedHash: "b" },
       ]),
-    ).toEqual({ title: "RSS Reader", body: "5 件の新着記事（2 フィード）", url: "/" });
+    ).toEqual({
+      title: "RSS Reader",
+      body: "5 件の新着記事（2 フィード）\nHeadline\nOther\nSecond\nほか 2 件",
+      url: "/",
+    });
+  });
+
+  it("shows at most three representative titles across feeds before adding second titles", () => {
+    const payload = buildBatchedPushPayload([
+      {
+        articles: ["A1", "A2", "A3", "A4"].map((title) => makeArticle({ title })),
+        feedTitle: "A",
+        feedHash: "a",
+      },
+      { articles: [makeArticle({ title: "B1" })], feedTitle: "B", feedHash: "b" },
+      { articles: [makeArticle({ title: "C1" })], feedTitle: "C", feedHash: "c" },
+      { articles: [makeArticle({ title: "D1" })], feedTitle: "D", feedHash: "d" },
+    ]);
+    expect(payload).toEqual({
+      title: "RSS Reader",
+      body: "7 件の新着記事（4 フィード）\nA1\nB1\nC1\nほか 4 件",
+      url: "/",
+    });
+  });
+
+  it("counts articles without usable titles and scans past blanks for previews", () => {
+    const payload = buildBatchedPushPayload([
+      {
+        articles: ["", " \n\t", "<b></b>", "<b>Useful</b>\n heading", "Last"].map((title) =>
+          makeArticle({ title }),
+        ),
+        feedTitle: "Feed",
+        feedHash: "a",
+      },
+    ]);
+    expect(payload.body).toBe("5 件の新着記事\nUseful heading\nLast\nほか 3 件");
+  });
+
+  it.each(["", " \n\t", "<b></b>"])(
+    "uses the single-article fallback for unusable title %j",
+    (title) => {
+      expect(
+        buildBatchedPushPayload([
+          { articles: [makeArticle({ title })], feedTitle: "Feed", feedHash: "a" },
+        ]),
+      ).toEqual({ title: "Feed", body: "新着記事", url: "/" });
+    },
+  );
+
+  it("keeps count-only fallbacks for all-blank titles and empty batches", () => {
+    expect(
+      buildBatchedPushPayload([
+        {
+          articles: [makeArticle({ title: "" }), makeArticle({ title: " " })],
+          feedTitle: "Feed",
+          feedHash: "a",
+        },
+      ]).body,
+    ).toBe("2 件の新着記事");
+    expect(buildBatchedPushPayload([])).toEqual({
+      title: "RSS Reader",
+      body: "0 件の新着記事（0 フィード）",
+      url: "/",
+    });
+    expect(buildBatchedPushPayload([{ articles: [], feedTitle: "Feed", feedHash: "a" }])).toEqual({
+      title: "Feed",
+      body: "0 件の新着記事",
+      url: "/",
+    });
+  });
+
+  it("bounds Unicode titles and body without splitting emoji or losing the remaining count", () => {
+    const payload = buildBatchedPushPayload([
+      {
+        articles: Array.from({ length: 1000 }, () => makeArticle({ title: "📰".repeat(10000) })),
+        feedTitle: "🗞️".repeat(1000),
+        feedHash: "a",
+      },
+    ]);
+    expect(Array.from(payload.title)).toHaveLength(80);
+    expect(Array.from(payload.body).length).toBeLessThanOrEqual(300);
+    expect(payload.body).toBe(
+      `1000 件の新着記事\n${"📰".repeat(79)}…\n${"📰".repeat(79)}…\n${"📰".repeat(79)}…\nほか 997 件`,
+    );
+    expect(new TextEncoder().encode(JSON.stringify(payload)).length).toBeLessThan(4000);
+    const single = buildBatchedPushPayload([
+      { articles: [makeArticle({ title: "📰".repeat(81) })], feedTitle: "Feed", feedHash: "a" },
+    ]);
+    expect(single.body).toBe(`${"📰".repeat(79)}…`);
   });
 });
 
 it("preserves per-user push filtering, error notifications, and merged timestamps with compact results", async () => {
   const hashes = ["one", "two", "error"];
-  const users = ["all", "filtered"];
+  const users = ["all", "filtered", "off", "silent"];
   vi.mocked(buildFeedUserMapCached).mockResolvedValue({
     feedUserMap: new Map(hashes.map((hash) => [hash, users])),
     feedLastAccessMap: new Map(),
@@ -576,7 +670,10 @@ it("preserves per-user push filtering, error notifications, and merged timestamp
     consecutiveErrors: hash === "error" ? 4 : 0,
   }));
   vi.mocked(mergeNewArticlesWithChanges).mockImplementation(async (_bucket, meta, articles) => ({
-    newArticles: meta.feedHash === "two" ? [...articles, ...articles] : articles,
+    newArticles:
+      meta.feedHash === "two"
+        ? [makeArticle({ title: "Disabled one" }), makeArticle({ title: "Disabled two" })]
+        : articles,
   }));
   vi.stubGlobal(
     "fetch",
@@ -588,7 +685,7 @@ it("preserves per-user push filtering, error notifications, and merged timestamp
     ),
   );
   const configurations = new Map<string, PushConfig>(
-    users.map((user) => [
+    users.map((user): [string, PushConfig] => [
       r2.userPushKey(user),
       {
         subscriptions: [
@@ -598,7 +695,13 @@ it("preserves per-user push filtering, error notifications, and merged timestamp
             keys: { p256dh: "test", auth: "test" },
           },
         ],
-        disabledFeeds: user === "filtered" ? { two: true, error: true } : undefined,
+        disabledFeeds:
+          user === "filtered"
+            ? { two: true, error: true }
+            : user === "off"
+              ? { one: true, two: true, error: true }
+              : undefined,
+        ...(user === "silent" ? { silentStart: "00:00", silentEnd: "24:00", timezone: "UTC" } : {}),
       },
     ]),
   );
@@ -616,10 +719,16 @@ it("preserves per-user push filtering, error notifications, and merged timestamp
       .filter(([subscriptions]) => subscriptions[0].endpoint.endsWith(user))
       .map(([, payload]) => payload);
   expect(payloadsFor("all")).toEqual([
-    { title: "RSS Reader", body: "3 件の新着記事（2 フィード）", url: "/" },
+    {
+      title: "RSS Reader",
+      body: "3 件の新着記事（2 フィード）\nItem\nDisabled one\nDisabled two",
+      url: "/",
+    },
     { title: "フィードのエラー", body: "「Original」の取得に連続して失敗しています", url: "/" },
   ]);
   expect(payloadsFor("filtered")).toEqual([{ title: "Updated", body: "Item", url: "/" }]);
+  expect(payloadsFor("off")).toEqual([]);
+  expect(payloadsFor("silent")).toEqual([]);
   for (const user of users) {
     expect(put).toHaveBeenCalledWith(env.RSS_DATA, r2.feedLastFetchedKey(user), {
       untouched: "2025-01-01T00:00:00Z",
