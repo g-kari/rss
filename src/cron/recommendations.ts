@@ -100,7 +100,8 @@ async function loadUserPool(bucket: R2Bucket, userId: string, config: PushConfig
           id,
           feedHash,
           guid,
-          title,
+          // Legacy stored titles can violate Article's static string contract.
+          title: typeof title === "string" ? title : "",
           link,
           summary,
           publishedAt,
