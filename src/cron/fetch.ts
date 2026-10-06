@@ -2,7 +2,6 @@ import { removeExpiredPushSubscriptions } from "../lib/push-config";
 import type { Article, SharedFeedMeta, PushConfig, FeedArticleCommit } from "../types";
 
 import { parseFeed, type ParsedItem } from "../lib/xml-parser";
-import { compareByPublishedAtDesc } from "../lib/article-utils";
 import { scrapeFeed } from "../lib/llm-feed-generator";
 import { isValidFeedUrl } from "../lib/url";
 import {
@@ -35,6 +34,7 @@ import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 import { serializeError } from "../lib/serialize-error";
 import { appendAccessKeyIfRsshub, getRSSHubInstance, getRSSHubAccessKey } from "../lib/rsshub";
 import { isInSilentHours } from "../lib/push-silent-hours";
+import { stripHtml } from "../lib/html";
 import {
   createSearchIndexBudget,
   ensureFeedSearchIndex,
@@ -276,12 +276,9 @@ async function fetchAndParseFeed(
   }
 
   const xml = await readResponseText(res, FEED_MAX_BYTES, FETCH_TIMEOUT_MS);
-  const parsed = parseFeed(xml);
-  // 巨大フィードの初回取得で保存・索引の処理量が爆発しないよう
-  // publishedAt 降順で最新 FEED_MAX_ITEMS 件に切り詰める
-  if (parsed.items.length > FEED_MAX_ITEMS) {
-    parsed.items = parsed.items.sort(compareByPublishedAtDesc).slice(0, FEED_MAX_ITEMS);
-  }
+  // Preserve the newest-item policy while avoiding content conversion for losing items.
+  // The complete XML tree and nested-content preservation still run before selection.
+  const parsed = parseFeed(xml, { maxItems: FEED_MAX_ITEMS });
 
   applyFeedSuccess(meta, parsed);
   const lastModified = res.headers.get("Last-Modified");
@@ -441,10 +438,42 @@ export interface FeedNewArticles {
   feedHash: string;
 }
 
+const PUSH_PREVIEW_TITLE_LIMIT = 3;
+const PUSH_TITLE_MAX_LENGTH = 80;
+const PUSH_BODY_MAX_LENGTH = 300;
+
+/** Code-point truncation keeps surrogate pairs intact and only copies a bounded prefix. */
+function truncatePushText(text: string, maxLength: number): string {
+  const chars: string[] = [];
+  for (const char of text) {
+    if (chars.length === maxLength) return `${chars.slice(0, -1).join("")}…`;
+    chars.push(char);
+  }
+  return chars.join("");
+}
+
+function normalizePushTitle(title: unknown): string {
+  // Publisher data can contain non-string JSON Feed titles despite the static Article type.
+  if (typeof title !== "string") return "";
+  return truncatePushText(stripHtml(title).replace(/\s+/g, " ").trim(), PUSH_TITLE_MAX_LENGTH);
+}
+
+/** Retain up to three short plain-text titles, never article bodies or metadata. */
+function collectPushArticleTitles(articles: Article[]): string[] {
+  const titles: string[] = [];
+  for (const article of articles) {
+    const title = normalizePushTitle(article.title);
+    if (!title) continue;
+    titles.push(title);
+    if (titles.length === PUSH_PREVIEW_TITLE_LIMIT) break;
+  }
+  return titles;
+}
+
 /** バッチ完了を待つ間、本文や knownIds を保持しない通知専用の集約値。 */
 interface FeedNotificationSummary {
   articleCount: number;
-  firstArticleTitle: string;
+  articleTitles: string[];
   feedTitle: string;
   feedHash: string;
 }
@@ -456,24 +485,45 @@ export function buildBatchedPushPayload(
     "articles" in entry
       ? {
           articleCount: entry.articles.length,
-          firstArticleTitle: entry.articles[0]?.title ?? "",
+          articleTitles: collectPushArticleTitles(entry.articles),
           feedTitle: entry.feedTitle,
           feedHash: entry.feedHash,
         }
       : entry,
   );
   const totalCount = summaries.reduce((sum, e) => sum + e.articleCount, 0);
-  if (summaries.length === 1) {
-    const { articleCount, firstArticleTitle, feedTitle } = summaries[0];
-    const body =
-      articleCount === 1 ? firstArticleTitle || "新着記事" : `${articleCount} 件の新着記事`;
-    return { title: feedTitle, body, url: "/" };
+  const title = summaries.length === 1 ? normalizePushTitle(summaries[0].feedTitle) : "RSS Reader";
+  if (summaries.length === 1 && totalCount === 1) {
+    return {
+      title,
+      body: normalizePushTitle(summaries[0].articleTitles[0] ?? "") || "新着記事",
+      url: "/",
+    };
   }
-  return {
-    title: "RSS Reader",
-    body: `${totalCount} 件の新着記事（${feedEntries.length} フィード）`,
-    url: "/",
-  };
+
+  const countText =
+    summaries.length === 1
+      ? `${totalCount} 件の新着記事`
+      : `${totalCount} 件の新着記事（${summaries.length} フィード）`;
+  const previews: string[] = [];
+  // First show one title from each feed, then fill spare slots with their second/third.
+  for (let index = 0; index < PUSH_PREVIEW_TITLE_LIMIT; index++) {
+    for (const summary of summaries) {
+      if (previews.length === PUSH_PREVIEW_TITLE_LIMIT || previews.length === totalCount) break;
+      const preview = normalizePushTitle(summary.articleTitles[index] ?? "");
+      if (!preview) continue;
+      const remaining = totalCount - previews.length - 1;
+      const suffix = remaining > 0 ? `\nほか ${remaining} 件` : "";
+      const used = Array.from([countText, ...previews, ""].join("\n") + suffix).length;
+      const available = PUSH_BODY_MAX_LENGTH - used;
+      if (available < 2) continue;
+      previews.push(truncatePushText(preview, available));
+    }
+  }
+  const remaining = totalCount - previews.length;
+  // Missing titles still count as articles. With none usable, keep the count-only fallback.
+  const suffix = previews.length > 0 && remaining > 0 ? `\nほか ${remaining} 件` : "";
+  return { title, body: [countText, ...previews].join("\n") + suffix, url: "/" };
 }
 
 /**
@@ -594,7 +644,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
     `cron: skipped ${skipped}/${allFeedHashes.length} inactive feeds, fetching ${activeFeedHashes.length}`,
   );
 
-  // 完了済みフィードは通知用のスカラーだけ残す。pMapSettled に Article[] や
+  // 完了済みフィードは通知用の件数と短いタイトルだけ残す。pMapSettled に Article[] や
   // SharedFeedMeta (knownIds 等) を返すと全フィード分がバッチ終端まで保持される。
   const userFeedMap = new Map<string, FeedNotificationSummary[]>();
   const userFeedErrorMap = new Map<string, FeedNotificationSummary[]>();
@@ -613,9 +663,9 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
       if (!meta) return;
       const summary: FeedNotificationSummary = {
         feedHash,
-        feedTitle: meta.title ?? "RSS",
+        feedTitle: normalizePushTitle(meta.title ?? "RSS"),
         articleCount: newArticles.length,
-        firstArticleTitle: newArticles.length === 1 ? newArticles[0].title : "",
+        articleTitles: collectPushArticleTitles(newArticles),
       };
       const lastFetchedAt = meta.lastFetchedAt;
       // applyFeedError は閾値でクランプするため、エラースキップ時も従来どおり通知する。
