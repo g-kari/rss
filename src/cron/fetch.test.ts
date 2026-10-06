@@ -802,85 +802,112 @@ describe("non-string publisher PUSH titles", () => {
   );
 });
 
-it("preserves per-user push filtering, error notifications, and merged timestamps with compact results", async () => {
-  const hashes = ["one", "two", "error"];
-  const users = ["all", "filtered", "off", "silent"];
-  vi.mocked(buildFeedUserMapCached).mockResolvedValue({
-    feedUserMap: new Map(hashes.map((hash) => [hash, users])),
-    feedLastAccessMap: new Map(),
-    feedHasPriority: new Set(),
-    privateFeedCookies: new Map(),
-  });
-  vi.mocked(readFeedMeta).mockImplementation(async (_bucket, hash) => ({
-    ...makeMeta(hash),
-    consecutiveErrors: hash === "error" ? 4 : 0,
-  }));
-  vi.mocked(mergeNewArticlesWithChanges).mockImplementation(async (_bucket, meta, articles) => ({
-    newArticles:
-      meta.feedHash === "two"
-        ? [makeArticle({ title: "Disabled one" }), makeArticle({ title: "Disabled two" })]
-        : articles,
-  }));
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async (url: string) =>
-        new Response(url.endsWith("error") ? "error" : XML, {
-          status: url.endsWith("error") ? 500 : 200,
-        }),
-    ),
-  );
-  const configurations = new Map<string, PushConfig>(
-    users.map((user): [string, PushConfig] => [
-      r2.userPushKey(user),
-      {
-        subscriptions: [
-          {
-            endpoint: `https://push.example.com/${user}`,
-            expirationTime: null,
-            keys: { p256dh: "test", auth: "test" },
-          },
-        ],
-        disabledFeeds:
-          user === "filtered"
-            ? { two: true, error: true }
-            : user === "off"
-              ? { one: true, two: true, error: true }
-              : undefined,
-        ...(user === "silent" ? { silentStart: "00:00", silentEnd: "24:00", timezone: "UTC" } : {}),
-      },
-    ]),
-  );
-  vi.spyOn(r2, "r2Get").mockImplementation(
-    async <T>(_bucket: R2Bucket, key: string): Promise<T> =>
-      (configurations.get(key) ?? { untouched: "2025-01-01T00:00:00Z" }) as T,
-  );
-  const put = vi.spyOn(r2, "r2Put").mockResolvedValue(undefined);
-  const push = vi
-    .spyOn(webPush, "sendPushToAll")
-    .mockImplementation(async (subscriptions) => subscriptions);
-  await fetchAllFeeds(env);
-  const payloadsFor = (user: string) =>
-    push.mock.calls
-      .filter(([subscriptions]) => subscriptions[0].endpoint.endsWith(user))
-      .map(([, payload]) => payload);
-  expect(payloadsFor("all")).toEqual([
-    {
-      title: "RSS Reader",
-      body: "3 件の新着記事（2 フィード）\nItem\nDisabled one\nDisabled two",
-      url: "/",
-    },
-    { title: "フィードのエラー", body: "「Original」の取得に連続して失敗しています", url: "/" },
-  ]);
-  expect(payloadsFor("filtered")).toEqual([{ title: "Updated", body: "Item", url: "/" }]);
-  expect(payloadsFor("off")).toEqual([]);
-  expect(payloadsFor("silent")).toEqual([]);
-  for (const user of users) {
-    expect(put).toHaveBeenCalledWith(env.RSS_DATA, r2.feedLastFetchedKey(user), {
-      untouched: "2025-01-01T00:00:00Z",
-      error: "2026-01-01T00:00:00Z",
-      one: expect.any(String),
-      two: expect.any(String),
+it.each([
+  { rotationOffset: 0, now: "2026-10-06T09:00:00.000Z" },
+  { rotationOffset: 1, now: "2026-10-06T08:30:00.000Z" },
+  { rotationOffset: 2, now: "2026-10-06T08:00:00.000Z" },
+])(
+  "preserves per-user push filtering, errors, and timestamps at rotation offset $rotationOffset",
+  async ({ rotationOffset, now }) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(now));
+    const hashes = ["one", "two", "error"];
+    const users = ["all", "filtered", "off", "silent"];
+    vi.mocked(buildFeedUserMapCached).mockResolvedValue({
+      feedUserMap: new Map(hashes.map((hash) => [hash, users])),
+      feedLastAccessMap: new Map(),
+      feedHasPriority: new Set(),
+      privateFeedCookies: new Map(),
     });
-  }
-});
+    vi.mocked(readFeedMeta).mockImplementation(async (_bucket, hash) => ({
+      ...makeMeta(hash),
+      consecutiveErrors: hash === "error" ? 4 : 0,
+    }));
+    vi.mocked(mergeNewArticlesWithChanges).mockImplementation(async (_bucket, meta, articles) => ({
+      newArticles:
+        meta.feedHash === "two"
+          ? [makeArticle({ title: "Disabled one" }), makeArticle({ title: "Disabled two" })]
+          : articles,
+    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async (url: string) =>
+          new Response(url.endsWith("error") ? "error" : XML, {
+            status: url.endsWith("error") ? 500 : 200,
+          }),
+      ),
+    );
+    const configurations = new Map<string, PushConfig>(
+      users.map((user): [string, PushConfig] => [
+        r2.userPushKey(user),
+        {
+          subscriptions: [
+            {
+              endpoint: `https://push.example.com/${user}`,
+              expirationTime: null,
+              keys: { p256dh: "test", auth: "test" },
+            },
+          ],
+          disabledFeeds:
+            user === "filtered"
+              ? { two: true, error: true }
+              : user === "off"
+                ? { one: true, two: true, error: true }
+                : undefined,
+          ...(user === "silent"
+            ? { silentStart: "00:00", silentEnd: "24:00", timezone: "UTC" }
+            : {}),
+        },
+      ]),
+    );
+    vi.spyOn(r2, "r2Get").mockImplementation(
+      async <T>(_bucket: R2Bucket, key: string): Promise<T> =>
+        (configurations.get(key) ?? { untouched: "2025-01-01T00:00:00Z" }) as T,
+    );
+    const put = vi.spyOn(r2, "r2Put").mockResolvedValue(undefined);
+    const push = vi
+      .spyOn(webPush, "sendPushToAll")
+      .mockImplementation(async (subscriptions) => subscriptions);
+    const map = vi.spyOn(concurrency, "pMapSettled");
+    await fetchAllFeeds(env);
+    expect(map.mock.calls[0][0]).toEqual([
+      ...hashes.slice(rotationOffset),
+      ...hashes.slice(0, rotationOffset),
+    ]);
+    expect(push).toHaveBeenCalledTimes(3);
+    const payloadsFor = (user: string) =>
+      push.mock.calls
+        .filter(([subscriptions]) => subscriptions[0].endpoint.endsWith(user))
+        .map(([, payload]) => payload);
+    const allPayloads = payloadsFor("all");
+    expect(allPayloads).toHaveLength(2);
+    const [{ body, ...newArticlePayload }, errorPayload] = allPayloads;
+    expect(newArticlePayload).toEqual({ title: "RSS Reader", url: "/" });
+    const [count, ...previews] = body.split("\n");
+    expect(count).toBe("3 件の新着記事（2 フィード）");
+    // Feed summaries arrive in completion order, which may vary with the batch rotation.
+    // Keep exact membership and the one-per-feed first round without ordering those feeds.
+    expect(previews).toHaveLength(3);
+    expect([...previews].sort()).toEqual(["Disabled one", "Disabled two", "Item"]);
+    expect(previews.slice(0, 2).sort()).toEqual(["Disabled one", "Item"]);
+    expect(previews[2]).toBe("Disabled two");
+    expect(errorPayload).toEqual({
+      title: "フィードのエラー",
+      body: "「Original」の取得に連続して失敗しています",
+      url: "/",
+    });
+    expect(payloadsFor("filtered")).toEqual([{ title: "Updated", body: "Item", url: "/" }]);
+    expect(payloadsFor("off")).toEqual([]);
+    expect(payloadsFor("silent")).toEqual([]);
+    expect(put).toHaveBeenCalledTimes(users.length);
+    for (const user of users) {
+      expect(put).toHaveBeenCalledWith(env.RSS_DATA, r2.feedLastFetchedKey(user), {
+        untouched: "2025-01-01T00:00:00Z",
+        error: "2026-01-01T00:00:00Z",
+        one: now,
+        two: now,
+      });
+    }
+  },
+);
