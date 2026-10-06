@@ -17,7 +17,7 @@ test.describe("buildBatchedPushPayload", () => {
     expect(payload.url).toBe("/");
   });
 
-  test("単一フィード・複数記事の場合は件数を表示", () => {
+  test("単一フィード・複数記事の場合は件数と代表タイトルを表示", () => {
     const entries: FeedNewArticles[] = [
       {
         articles: [makeArticle(), makeArticle({ id: "a2" }), makeArticle({ id: "a3" })],
@@ -27,10 +27,10 @@ test.describe("buildBatchedPushPayload", () => {
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("Dev Blog");
-    expect(payload.body).toBe("3 件の新着記事");
+    expect(payload.body).toBe("3 件の新着記事\nTest Article\nTest Article\nTest Article");
   });
 
-  test("複数フィードの場合はフィード数を含めたサマリーを表示", () => {
+  test("複数フィードの場合はフィード数と代表タイトルを表示", () => {
     const entries: FeedNewArticles[] = [
       {
         articles: [makeArticle(), makeArticle({ id: "a2" })],
@@ -41,7 +41,9 @@ test.describe("buildBatchedPushPayload", () => {
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("RSS Reader");
-    expect(payload.body).toBe("3 件の新着記事（2 フィード）");
+    expect(payload.body).toBe(
+      "3 件の新着記事（2 フィード）\nTest Article\nTest Article\nTest Article",
+    );
   });
 
   test("単一フィード・タイトル空の記事は「新着記事」フォールバック", () => {

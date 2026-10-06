@@ -71,7 +71,7 @@ test.describe("buildBatchedPushPayload", () => {
     expect(payload.body).toBe("新着記事");
   });
 
-  test("フィード1件・記事複数件のとき: title=feedTitle, body=「N件の新着記事」", () => {
+  test("フィード1件・記事複数件のとき: 件数と代表タイトルを表示", () => {
     const entries: FeedNewArticles[] = [
       {
         articles: [makeArticle(), makeArticle({ id: "b2" }), makeArticle({ id: "c3" })],
@@ -81,10 +81,10 @@ test.describe("buildBatchedPushPayload", () => {
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("テストフィード");
-    expect(payload.body).toBe("3 件の新着記事");
+    expect(payload.body).toBe("3 件の新着記事\nTest Article\nTest Article\nTest Article");
   });
 
-  test("フィード複数件のとき: title=「RSS Reader」, body=「N件の新着記事（Mフィード）」", () => {
+  test("フィード複数件のとき: 件数・フィード数と代表タイトルを表示", () => {
     const entries: FeedNewArticles[] = [
       {
         articles: [makeArticle(), makeArticle({ id: "b2" })],
@@ -99,7 +99,9 @@ test.describe("buildBatchedPushPayload", () => {
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("RSS Reader");
-    expect(payload.body).toBe("3 件の新着記事（2 フィード）");
+    expect(payload.body).toBe(
+      "3 件の新着記事（2 フィード）\nTest Article\nTest Article\nTest Article",
+    );
   });
 
   test("フィード複数件・合計1件のとき: title=「RSS Reader」", () => {
@@ -109,7 +111,7 @@ test.describe("buildBatchedPushPayload", () => {
     ];
     const payload = buildBatchedPushPayload(entries);
     expect(payload.title).toBe("RSS Reader");
-    expect(payload.body).toBe("1 件の新着記事（2 フィード）");
+    expect(payload.body).toBe("1 件の新着記事（2 フィード）\nTest Article");
   });
 });
 
