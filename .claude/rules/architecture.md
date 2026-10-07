@@ -399,7 +399,7 @@ src/
     html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()
     article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese() / createReadingTimeCache (#685 メモ化)
     image-extractor.ts       # bestSrcFromSrcset() / collectImageUrlsFromHtml() / collectImageUrls()
-    fetch.ts                 # RSS/HTML フェッチヘルパー (タイムアウト・リトライ)
+    fetch.ts                 # RSS/HTML フェッチヘルパー (既存timeout・安全redirect、OGP共有signalの伝播・部分bodyの取消/cleanup)
     fetch-article-content.ts # /api/content 内のコンテンツ取得ロジック
     feed-discovery.ts        # フィード URL 自動検出
     ai-cache.ts              # AI 結果 R2 キャッシュ
@@ -433,7 +433,7 @@ src/
     menu-class.ts            # 全 dropdown / context menu 共通の container class 定数 `BASE_MENU_CLASS`（背景・枠・角丸・影・overflow — PortalMenuShell / ContextMenuShell / ArticleContextMenu / GalleryContextMenu の 4 箇所重複を集約）
     context-menu-position.ts # コンテキストメニュー / ポップアップの viewport-aware ポジショニング純粋関数（computeContextMenuPosition — ArticleContextMenu / GalleryContextMenu / FeedItemComponent menuAnchor 分岐の inline IIFE 重複を集約、refactor 監査 finding）
     selection-popup-position.ts # テキスト選択ポップアップ (SelectionExcludePopup) の viewport-aware ポジショニング純粋関数（computeSelectionPopupLayout — popup 実測サイズを受けて viewport 左右端 / 上端のはみ出しを補正）
-    ogp.ts                   # OGP メタデータ取得ロジック
+    ogp.ts                   # OGP メタデータ取得（通常HTTPのheaders/body共有5秒予算、Twitter fallback全候補共有3秒予算）
     ogp-cache-ttl.ts         # OGP cache TTL 算出純粋関数（computeOgpCacheTtl — Twitter fallback 経路の TTL を 1 日に短縮して poisoning 影響範囲を限定）
     ogp-cache-schema.ts      # OGP cache schema 拡張 + lazy migration 純粋関数 (#808 Phase 1、v1 string → v2 object 変換 / title・description は次 fetch で追記する lazy migration / parseOgpCacheEntry / parseOgpCache / getOgpImage)
     ogp-cache-lru.ts         # OGP cache の true-LRU eviction 純粋関数（mergeWithLruEviction — 旧 FIFO eviction を LRU に修正、#1088 Finding 2）
@@ -1067,6 +1067,7 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `selection-popup-position.spec.ts`              | `src/lib/selection-popup-position.ts#computeSelectionPopupLayout` — テキスト選択ポップアップの viewport-aware ポジショニング純粋関数（popup 実測サイズを受けて左右端 / 上端のはみ出しを補正、#1089）                                                                                                                                                       |
 | `modal-popup-lock-coverage.spec.ts`             | `src/lib/popup-lock.ts` — ポップアップ多重防止                                                                                                                                                                                                                                                                                                             |
 | `obsidian.spec.ts`                              | `src/lib/obsidian.ts` — Obsidian URI 生成                                                                                                                                                                                                                                                                                                                  |
+| `ogp.deadline.test.ts`                          | `fetchPageOgpMeta` / `fetchTwitterFallbackImage` の共有期限・停止body取消・候補境界・late/ignored abort・元error保持・safe redirect/byte上限（fake clock・実通信なし）                                                                                                                                                                                     |
 | `ogp-url-normalize.spec.ts`                     | `/api/ogp` URL 正規化                                                                                                                                                                                                                                                                                                                                      |
 | `ogp-cache-ttl.spec.ts`                         | `src/lib/ogp-cache-ttl.ts` — `computeOgpCacheTtl` 純粋関数（Twitter fallback 経路 1 日 / 通常成功 30 日 / 空応答 1 日 / 全 4 分岐網羅、#706 cache poisoning 防御）                                                                                                                                                                                         |
 | `ogp-cache-schema.spec.ts`                      | `src/lib/ogp-cache-schema.ts` — `parseOgpCacheEntry` / `parseOgpCache` / `getOgpImage` 純粋関数 (#808 Phase 1、v1 string → v2 object lazy migration / title・description は次 fetch で追記 / 不正値 safe fallback、20 ケース網羅)                                                                                                                          |
