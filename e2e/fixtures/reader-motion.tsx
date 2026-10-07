@@ -122,6 +122,25 @@ function Reader() {
                   Change feed
                 </button>
                 <button onClick={next}>Next article</button>
+                <button
+                  onClick={() => {
+                    setSelected((old) => ({
+                      ...old,
+                      title: "日本語とEnglishの長い記事タイトル".repeat(12),
+                    }));
+                    setPane("view");
+                  }}
+                >
+                  Long Japanese title
+                </button>
+                <button
+                  onClick={() => {
+                    setSelected((old) => ({ ...old, title: "UnbrokenEnglishTitle".repeat(30) }));
+                    setPane("view");
+                  }}
+                >
+                  Long unbroken title
+                </button>
                 <button onClick={() => setPane("list")}>Show list</button>
                 <button onClick={() => setSettingsOpen(true)}>Open settings</button>
                 <button onClick={() => setWidth((old) => (old === 420 ? 460 : 420))}>

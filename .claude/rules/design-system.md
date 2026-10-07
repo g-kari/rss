@@ -81,18 +81,20 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 ## タイポグラフィ
 
-Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）以上を最小値にする。主要な FeedViewTabs の「記事・画像・動画・SNS」はこの組み合わせを使い、`whitespace-nowrap` でラベルを一行に保つ。アイコンはラベルの上に置き、150px のリサイズ最小幅 / 200px の既定幅 / 220px のサイドバー / 320px のモバイルで収める。light / dark、44px の操作高（200px 以上は幅も 44px 以上）を production CSS の native fixture で確認する。150px では従来の 4 列を保ち、操作幅は 24px 以上を確認する。これは #1384 の主要ビュータブだけの段階対応で、他の navigation / control / metadata / Reader title の全体 scale は別途評価する。
+Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）以上を最小値にする。主要な FeedViewTabs の「記事・画像・動画・SNS」はこの組み合わせを使い、`whitespace-nowrap` でラベルを一行に保つ。アイコンはラベルの上に置き、150px のリサイズ最小幅 / 200px の既定幅 / 220px のサイドバー / 320px のモバイルで収める。light / dark、44px の操作高（200px 以上は幅も 44px 以上）を production CSS の native fixture で確認する。150px では従来の 4 列を保ち、操作幅は 24px 以上を確認する。これは #1384 の主要ビュータブの段階対応。
 
-| 用途                       | クラス                                                                            |
-| -------------------------- | --------------------------------------------------------------------------------- |
-| UI フォント・記事本文      | `font-sans` (Reddit Sans + IBM Plex Sans JP)                                      |
-| 記事タイトル (ArticleView) | `text-[22px] font-light text-text-strong tracking-[0.02em]`                       |
-| 未読記事タイトル           | `text-[13px] font-medium text-text-strong`                                        |
-| 既読記事タイトル           | `text-[13px] font-normal text-text-muted`                                         |
-| 記事本文                   | `text-[16px] leading-[1.9] tracking-[0.02em] text-text-soft` (`.article-content`) |
-| メタ情報                   | `text-[11px] text-text-muted`                                                     |
-| フィード名                 | `text-[13px]`                                                                     |
-| セクションヘッダー         | `text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted`             |
+Reader title は `.reader-title` の semantic role を使う。タイトルだけの `.reader-typography` を named inline-size container とし、利用できる文字幅が35rem未満なら1.5rem、35rem以上なら1.75rem、40rem以上なら2rem（既定24 / 28 / 32px）。viewport breakpointは本文ペインのリサイズ幅と一致しないため使わない。`font-medium`、既存の3行clamp / em基準の予約高、`text-text-strong`を維持し、`overflow-wrap: anywhere`で長い英単語を収める。root remに従ってブラウザーの既定文字拡大も反映する。header / popup / bodyをcontainerへ含めない。他のnavigation / control / metadataの全体scaleは #1384 の残課題。
+
+| 用途                       | クラス                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| UI フォント・記事本文      | `font-sans` (Reddit Sans + IBM Plex Sans JP)                                        |
+| 記事タイトル (ArticleView) | `reader-title font-medium text-text-strong tracking-[0.02em]`（24 / 28 / 32px相当） |
+| 未読記事タイトル           | `text-[13px] font-medium text-text-strong`                                          |
+| 既読記事タイトル           | `text-[13px] font-normal text-text-muted`                                           |
+| 記事本文                   | `text-[16px] leading-[1.9] tracking-[0.02em] text-text-soft` (`.article-content`)   |
+| メタ情報                   | `text-[11px] text-text-muted`                                                       |
+| フィード名                 | `text-[13px]`                                                                       |
+| セクションヘッダー         | `text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted`               |
 
 ## レイアウト
 

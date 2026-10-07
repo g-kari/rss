@@ -13,6 +13,7 @@ export default defineConfig({
     "immersive-native-video.spec.ts",
     "immersive-quality.spec.ts",
     "reader-motion.spec.ts",
+    "reader-title.spec.ts",
     "quick-reading-settings.spec.ts",
     "settings-navigation.spec.ts",
     "json-restore.spec.ts",

@@ -114,6 +114,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("Reader title typography contract", () => {
+  it.each(["日本語の長い記事タイトル".repeat(12), "UnbrokenTitle".repeat(30)])(
+    "keeps the semantic heading and arrival anchor for %s",
+    (title) => {
+      render(<Reader article={{ ...baseArticle, title }} />);
+      const heading = screen.getByRole("heading", { level: 1, name: title });
+      expect(heading).toHaveClass("reader-title");
+      expect(heading).toHaveAttribute("data-reader-arrival", "title");
+      expect(heading.closest(".reader-typography")).not.toBeNull();
+      expect(heading).toHaveClass("line-clamp-3", "min-h-[calc(3*1.375em)]");
+    },
+  );
+});
+
 function IntegratedPanels({ article, ...props }: ReaderProps) {
   // AppShell registers mobile history before focus, and leaves the pane reader
   // mounted while FocusModeOverlay renders its own reader instance.
