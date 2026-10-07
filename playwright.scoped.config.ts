@@ -25,6 +25,7 @@ export default defineConfig({
     "article-note.spec.ts",
     "feed-add-paste.spec.ts",
     "article-actions-keyboard.spec.ts",
+    "push-test-feedback.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
