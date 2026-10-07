@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useContext } from "react";
-import { timeAgo } from "../../lib/article-utils";
+import { timeAgo, resolveThumbnailSources } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { BulkSelectionCtx } from "../../contexts/BulkSelectionContext";
@@ -48,6 +48,7 @@ export const CardArticleItem = memo(function CardArticleItem({
     onContextMenu,
   );
   const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
+  const thumbnailFallbacks = useMemo(() => resolveThumbnailSources(article, {}), [article]);
   return (
     <div
       role="article"
@@ -76,6 +77,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       {thumb && (
         <ArticleThumbnail
           thumb={thumb}
+          fallbacks={thumbnailFallbacks}
           className="w-full aspect-video object-contain bg-surface-subtle flex-shrink-0"
         />
       )}
