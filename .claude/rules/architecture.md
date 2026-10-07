@@ -300,7 +300,7 @@ src/
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
     useRecommendationDismissals.ts # 記事推薦非表示（30日・200件、既定local、通知opt-in時だけ同期）
     useRecommendationPushSettings.ts # 日次おすすめ時刻・同意設定の保存とアカウント分離
-    useOgpCache.ts           # /api/ogp fetch (OGP 画像キャッシュ)
+    useOgpCache.ts           # /api/ogp fetch (表示URLの重複除去キュー・10件同時処理・150ms開始間隔・切替時取消と共通URL継続・画像キャッシュ)
     useImageDownload.ts      # 記事画像一括ダウンロード
     usePushNotifications.ts  # Web Push サブスクリプション管理
     useSearchHistory.ts      # 検索履歴管理 (localStorage)
