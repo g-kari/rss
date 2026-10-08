@@ -543,7 +543,7 @@ src/
     piper-voices.ts          # piper-plus TTS engine で利用可能な voice 定義と配信方式 (R2 セルフホスト vs HuggingFace 直 fetch) のガイド
   cron/
     recommendations.ts       # 30分cronを再利用する日次おすすめoutboxと端末別配信
-    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env) — メタデータ確認20並列、fetch開始から本文解析・保存まで共有2並列
+    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env) — メタデータ確認20並列、ヘッダー取得12並列、本文解析・保存3並列
 ```
 
 ## データフロー
@@ -563,7 +563,7 @@ src/
 1. Cloudflare Cron Trigger が 30 分毎に `scheduled` ハンドラーを起動
 2. `buildFeedUserMap(env)` が全ユーザーの `subscriptions.json` を走査して `feedHash → userId[]` マップを構築
 3. 各 feedHash に対して RSS を 1 度だけ fetch（共有フィード）
-4. RSS/XML と selector HTML は実測 10 MiB 上限。メタデータ処理は 20 並列、fetch 開始前に permit を取り、ネットワーク・本文読込・解析・保存のパイプライン全体は 2 並列。RSS/Atom/RDF/JSON は raw 全項目の日付から最新 1000 件を選んで本文を変換する（1000 件以下は発行者順、無指定の `parseFeed` は無制限）。XML 全体のパースと nested content 復元は省略しない。詳細は `docs/feed-item-selection.md`
+4. RSS/XML と selector HTML は実測 10 MiB 上限。メタデータ処理は 20 並列。ヘッダー取得は 12 並列、本文の読み込み・decode・parse・保存は 3 並列で、上限バイト数とは独立に制御する。解析枠が無い応答は読まずに破棄して取り直す。RSS/Atom/RDF/JSON は raw 全項目の日付から最新 1000 件を選んで本文を変換する（1000 件以下は発行者順、無指定の `parseFeed` は無制限）。XML 全体のパースと nested content 復元は省略しない。詳細は `docs/feed-item-selection.md`
 5. `mergeNewArticlesWithChanges` が immutable segment を先に保存し、最新 500 件と参照一覧を持つ v2 head を ETag CAS で commit（履歴カスケードなし）
 6. R2 成功後に `ARTICLE_SEARCH` の変更 object を同期。索引失敗は R2 を壊さず、200 記事単位の再開可能な rebuild で修復。D1 は実行全体で 800 query 上限（Paid 向け）
 7. `meta.json` を更新。記事配列や knownIds をバッチ結果に残さず、件数・タイトルだけで Web Push 通知を集計

@@ -7,6 +7,7 @@ import { isValidFeedUrl } from "../lib/url";
 import {
   fetchFollowSafeRedirects,
   readResponseText,
+  rejectDeclaredOversizedBody,
   FEED_MAX_BYTES,
   computeNextFetchEarliestAt,
   RSS_USER_AGENT,
@@ -29,7 +30,12 @@ import {
   readLatestArticles,
   assembleClientFeed,
 } from "../lib/shared-feed";
-import { createConcurrencyLimiter, pMapSettled, rotateBatchStart } from "../lib/concurrency";
+import {
+  createConcurrencyLimiter,
+  pMapSettled,
+  rotateBatchStart,
+  type ConcurrencyLimiter,
+} from "../lib/concurrency";
 import { INACTIVE_FEED_DAYS } from "../lib/article-ttl";
 import { serializeError } from "../lib/serialize-error";
 import { appendAccessKeyIfRsshub, getRSSHubInstance, getRSSHubAccessKey } from "../lib/rsshub";
@@ -72,10 +78,34 @@ const FETCH_TIMEOUT_MS = 15_000;
 /** 1 フィードあたりの最大記事数。巨大フィードの初回取得で R2 操作が爆発しないよう制限 */
 const FEED_MAX_ITEMS = 1000;
 
-/** メタデータ確認・スキップ判定の並行数。上流 fetch は下の共有 permit 内でのみ開始する。 */
+/** メタデータ確認・スキップ判定の並行数。本文そのものは持たない。 */
 const FEED_WORKER_CONCURRENCY = 20;
-/** fetch 開始から本文読み込み・パース・保存までの並行数。未読 Response を待機列に置かない。 */
-const FEED_PIPELINE_CONCURRENCY = 2;
+/**
+ * 応答ヘッダーまでの上流 fetch 並行数。本文はここでは読まない。
+ * 10MB 上限とは独立。解析枠が空いていなければ応答は破棄して取り直す。
+ */
+export const FEED_NETWORK_CONCURRENCY = 12;
+/**
+ * 本文読み込み・UTF-8 decode・XML/HTML parse・記事保存の並行数。
+ * 同時にメモリへ載るフィード本文の本数をこの値で抑える。
+ */
+export const FEED_PARSE_CONCURRENCY = 3;
+
+export interface FeedStageLimits {
+  network: ConcurrencyLimiter;
+  parse: ConcurrencyLimiter;
+}
+
+function createFeedStageLimits(): FeedStageLimits {
+  return {
+    network: createConcurrencyLimiter(FEED_NETWORK_CONCURRENCY),
+    parse: createConcurrencyLimiter(FEED_PARSE_CONCURRENCY),
+  };
+}
+
+function isFeedStageLimits(limit: ConcurrencyLimiter | FeedStageLimits): limit is FeedStageLimits {
+  return typeof limit !== "function";
+}
 /** cron 実行時のユーザー並行処理数上限（Push 通知用） */
 const USER_FETCH_CONCURRENCY = 3;
 
@@ -211,29 +241,71 @@ interface FetchedFeedArticles {
 
 type ConsumeFeedArticles = (fetched: FetchedFeedArticles) => Promise<Article[]>;
 
-/** CSS セレクタが設定されている生成フィードの HTML をスクレイプして記事を取得する。 */
-async function fetchAndScrapeWithSelectors(
-  env: FetchEnv,
-  meta: SharedFeedMeta,
-  consume: ConsumeFeedArticles,
-  requestCookie?: string,
-): Promise<Article[]> {
-  const selectors = meta.cssSelectors!;
-  const headers: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
-  if (requestCookie) headers["Cookie"] = requestCookie;
-  const fetchUrl = appendAccessKeyIfRsshub(meta.url, getRSSHubInstance(), getRSSHubAccessKey());
-  const res = await fetchViaBinding(env, fetchUrl, { headers });
-  if (!res.ok) {
-    void res.body?.cancel().catch(() => {});
-    if (res.status === 429)
-      throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
-    throw new Error(`${res.status} ${meta.url}`);
-  }
+function cancelResponse(response: Response): void {
+  void response.body?.cancel().catch(() => {});
+}
 
-  const html = await readResponseText(res, FEED_MAX_BYTES, FETCH_TIMEOUT_MS);
-  const parsed = scrapeFeed(html, selectors, meta.siteUrl || meta.url, meta.title);
-  applyFeedSuccess(meta, parsed);
-  return consume(await buildArticlesFromItems(env.RSS_DATA, meta, parsed.items));
+/**
+ * ヘッダー取得と本文解析を別スロットで行う。
+ * 解析枠が埋まっている応答は読まずにキャンセルし、枠を確保してから再取得する。
+ * 未読の本文を待ち行列に残さない。
+ */
+async function runWithSeparateLimits<T>(
+  limits: FeedStageLimits,
+  open: () => Promise<Response>,
+  settle: (response: Response) => Promise<{ action: "done"; value: T } | { action: "read" }>,
+  read: (response: Response) => Promise<T>,
+): Promise<T> {
+  let parseHeld = false;
+  const releaseParse = () => {
+    if (!parseHeld) return;
+    parseHeld = false;
+    limits.parse.release();
+  };
+  try {
+    for (;;) {
+      await limits.network.acquire();
+      let response: Response | null = null;
+      let shouldRead = false;
+      let waitForParse = false;
+      try {
+        response = await open();
+        const settled = await settle(response);
+        if (settled.action === "done") {
+          releaseParse();
+          return settled.value;
+        }
+        if (!parseHeld && !limits.parse.tryAcquire()) {
+          cancelResponse(response);
+          response = null;
+          waitForParse = true;
+        } else {
+          if (!parseHeld) parseHeld = true;
+          shouldRead = true;
+        }
+      } finally {
+        limits.network.release();
+      }
+      if (waitForParse) {
+        await limits.parse.acquire();
+        parseHeld = true;
+        continue;
+      }
+      if (shouldRead && response) return await read(response);
+    }
+  } finally {
+    releaseParse();
+  }
+}
+
+function settleHttpStatus(response: Response, url: string): void {
+  if (!response.ok) {
+    cancelResponse(response);
+    if (response.status === 429)
+      throw new RateLimitError(parseRetryAfter(response.headers.get("Retry-After")));
+    throw new Error(`${response.status} ${url}`);
+  }
+  rejectDeclaredOversizedBody(response, FEED_MAX_BYTES);
 }
 
 /**
@@ -246,51 +318,53 @@ async function fetchAndParseFeed(
   env: FetchEnv,
   meta: SharedFeedMeta,
   options: { conditional?: boolean; requestCookie?: string },
+  limits: FeedStageLimits | null,
   consume: ConsumeFeedArticles,
 ): Promise<Article[]> {
-  // LLM 生成フィード（CSS セレクタが設定されている場合）はスクレイピングで取得
-  if (meta.cssSelectors) {
-    return fetchAndScrapeWithSelectors(env, meta, consume, options.requestCookie);
+  const headers: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
+  if (options.requestCookie) headers["Cookie"] = options.requestCookie;
+  if (!meta.cssSelectors && options.conditional) {
+    if (meta.etag) headers["If-None-Match"] = meta.etag;
+    if (meta.lastModified) headers["If-Modified-Since"] = meta.lastModified;
   }
-
-  const reqHeaders: Record<string, string> = { "User-Agent": RSS_USER_AGENT };
-  if (options.requestCookie) reqHeaders["Cookie"] = options.requestCookie;
-  if (options.conditional) {
-    if (meta.etag) reqHeaders["If-None-Match"] = meta.etag;
-    if (meta.lastModified) reqHeaders["If-Modified-Since"] = meta.lastModified;
-  }
-  // RSSHub インスタンスへのリクエストなら ACCESS_KEY を動的付与（保存 URL には含めない）
   const fetchUrl = appendAccessKeyIfRsshub(meta.url, getRSSHubInstance(), getRSSHubAccessKey());
-  const res = await fetchViaBinding(env, fetchUrl, { headers: reqHeaders });
-  if (res.status === 304) {
-    resetFeedSuccessState(meta);
-    applyCacheControl(meta, res.headers.get("Cache-Control"));
-    void res.body?.cancel().catch(() => {});
-    return [];
+  const open = () => fetchViaBinding(env, fetchUrl, { headers });
+  const settle = async (
+    response: Response,
+  ): Promise<{ action: "done"; value: Article[] } | { action: "read" }> => {
+    if (!meta.cssSelectors && response.status === 304) {
+      resetFeedSuccessState(meta);
+      applyCacheControl(meta, response.headers.get("Cache-Control"));
+      cancelResponse(response);
+      return { action: "done", value: [] };
+    }
+    settleHttpStatus(response, meta.url);
+    return { action: "read" };
+  };
+  const read = async (response: Response): Promise<Article[]> => {
+    const body = await readResponseText(response, FEED_MAX_BYTES, FETCH_TIMEOUT_MS);
+    const parsed = meta.cssSelectors
+      ? scrapeFeed(body, meta.cssSelectors, meta.siteUrl || meta.url, meta.title)
+      : parseFeed(body, { maxItems: FEED_MAX_ITEMS });
+    applyFeedSuccess(meta, parsed);
+    if (!meta.cssSelectors) {
+      const lastModified = response.headers.get("Last-Modified");
+      const etag = response.headers.get("ETag");
+      // CRLF を含む値は後続の fetch ヘッダーインジェクションや DoS の原因になるため除去する。
+      // RFC 7232 では ETag は最大数百文字程度が想定されるため 512 文字で切り詰める。
+      if (lastModified) meta.lastModified = lastModified.replace(/[\r\n]/g, "").slice(0, 128);
+      if (etag) meta.etag = etag.replace(/[\r\n]/g, "").slice(0, 512);
+      applyCacheControl(meta, response.headers.get("Cache-Control"));
+    }
+    // 保存と索引更新が終わるまで解析枠を保持し、解析済み配列を溜めない。
+    return consume(await buildArticlesFromItems(env.RSS_DATA, meta, parsed.items));
+  };
+  if (!limits) {
+    const response = await open();
+    const settled = await settle(response);
+    return settled.action === "done" ? settled.value : read(response);
   }
-  if (!res.ok) {
-    void res.body?.cancel().catch(() => {});
-    if (res.status === 429)
-      throw new RateLimitError(parseRetryAfter(res.headers.get("Retry-After")));
-    throw new Error(`${res.status} ${meta.url}`);
-  }
-
-  const xml = await readResponseText(res, FEED_MAX_BYTES, FETCH_TIMEOUT_MS);
-  // Preserve the newest-item policy while avoiding content conversion for losing items.
-  // The complete XML tree and nested-content preservation still run before selection.
-  const parsed = parseFeed(xml, { maxItems: FEED_MAX_ITEMS });
-
-  applyFeedSuccess(meta, parsed);
-  const lastModified = res.headers.get("Last-Modified");
-  const etag = res.headers.get("ETag");
-  // CRLF を含む値は後続の fetch ヘッダーインジェクションや DoS の原因になるため除去する。
-  // RFC 7232 では ETag は最大数百文字程度が想定されるため 512 文字で切り詰める。
-  if (lastModified) meta.lastModified = lastModified.replace(/[\r\n]/g, "").slice(0, 128);
-  if (etag) meta.etag = etag.replace(/[\r\n]/g, "").slice(0, 512);
-  applyCacheControl(meta, res.headers.get("Cache-Control"));
-
-  // 保存が詰まっても、解析済み記事がネットワーク並行数分たまらないよう permit を保持する。
-  return consume(await buildArticlesFromItems(env.RSS_DATA, meta, parsed.items));
+  return runWithSeparateLimits(limits, open, settle, read);
 }
 
 /**
@@ -317,7 +391,7 @@ export async function fetchAndUpdateSharedFeed(
   feedHash: string,
   forceRetry = false,
   requestCookie?: string,
-  limitFeed = createConcurrencyLimiter(FEED_PIPELINE_CONCURRENCY),
+  limitFeed?: ConcurrencyLimiter | FeedStageLimits,
 ): Promise<{ newArticles: Article[]; meta: SharedFeedMeta | null }> {
   assertFeedWritesAllowed(env);
   const meta = await readFeedMeta(env.RSS_DATA, feedHash);
@@ -341,16 +415,26 @@ export async function fetchAndUpdateSharedFeed(
     }
   };
 
+  const stages: FeedStageLimits =
+    limitFeed && isFeedStageLimits(limitFeed)
+      ? limitFeed
+      : limitFeed
+        ? { network: limitFeed, parse: limitFeed }
+        : createFeedStageLimits();
+  // A caller-supplied single limiter is one shared gate (tests and backpressure).
+  // Separate network/parse limits must not be nested inside that same gate.
+  const separateStages = !limitFeed || isFeedStageLimits(limitFeed);
+
   if (!forceRetry) {
     if (meta.rateLimitedUntil && new Date(meta.rateLimitedUntil).getTime() > Date.now()) {
-      if (env.ARTICLE_SEARCH) await limitFeed(() => repairSearchIndex());
+      if (env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
       await repairFeedArticleMetadata(env.RSS_DATA, meta);
       return { newArticles: [], meta };
     }
     if ((meta.consecutiveErrors ?? 0) >= CONSECUTIVE_ERROR_SKIP_THRESHOLD) {
       const lastErrorMs = meta.lastErrorAt ? new Date(meta.lastErrorAt).getTime() : 0;
       if (Date.now() - lastErrorMs < FEED_ERROR_RETRY_INTERVAL_MS) {
-        if (env.ARTICLE_SEARCH) await limitFeed(() => repairSearchIndex());
+        if (env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
         await repairFeedArticleMetadata(env.RSS_DATA, meta);
         return { newArticles: [], meta };
       }
@@ -358,7 +442,7 @@ export async function fetchAndUpdateSharedFeed(
     // Cache-Control: max-age で示されたキャッシュ寿命内なら cron 取得をスキップし
     // 配信元サーバーへの不要なアクセスを抑制する（手動 refresh は forceRetry=true で通す）
     if (meta.nextFetchEarliestAt && new Date(meta.nextFetchEarliestAt).getTime() > Date.now()) {
-      if (env.ARTICLE_SEARCH) await limitFeed(() => repairSearchIndex());
+      if (env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
       await repairFeedArticleMetadata(env.RSS_DATA, meta);
       return { newArticles: [], meta };
     }
@@ -384,32 +468,34 @@ export async function fetchAndUpdateSharedFeed(
   let newArticles: Article[] = [];
   let checkedSearchIndex = false;
   let persistedMetadata = false;
+  const consumeArticles: ConsumeFeedArticles = async ({ articles: fetched, existingLatest }) => {
+    const result = await mergeNewArticlesWithChanges(
+      env.RSS_DATA,
+      meta,
+      fetched,
+      existingLatest ?? [],
+      { allowLegacyMigration: isArticleStorageV2Enabled(env) },
+    );
+    // Keep the parse permit while writing the index: full article arrays must
+    // not queue behind D1 outside the memory gate.
+    await repairSearchIndex(result.commit);
+    checkedSearchIndex = true;
+    await repairFeedArticleMetadata(env.RSS_DATA, meta);
+    await writeFeedMeta(env.RSS_DATA, meta);
+    persistedMetadata = true;
+    return result.newArticles;
+  };
   try {
-    // Acquire before fetch: queued feeds must not hold unread response bodies.
-    newArticles = await limitFeed(() =>
+    const parse = (stageLimits: FeedStageLimits | null) =>
       fetchAndParseFeed(
         env,
         meta,
         { conditional: !forceRetry, requestCookie },
-        async ({ articles: fetched, existingLatest }) => {
-          const result = await mergeNewArticlesWithChanges(
-            env.RSS_DATA,
-            meta,
-            fetched,
-            existingLatest ?? [],
-            { allowLegacyMigration: isArticleStorageV2Enabled(env) },
-          );
-          // Keep the body permit while writing the index: full article arrays must
-          // not queue behind D1 outside the memory/concurrency gate.
-          await repairSearchIndex(result.commit);
-          checkedSearchIndex = true;
-          await repairFeedArticleMetadata(env.RSS_DATA, meta);
-          await writeFeedMeta(env.RSS_DATA, meta);
-          persistedMetadata = true;
-          return result.newArticles;
-        },
-      ),
-    );
+        stageLimits,
+        consumeArticles,
+      );
+    // One shared limiter already caps memory. Do not also take its network and parse slots.
+    newArticles = separateStages ? await parse(stages) : await stages.parse(() => parse(null));
   } catch (e) {
     Object.assign(meta, priorFetchState);
     // The winner may still be cascading legacy archives. Do not persist our stale
@@ -422,7 +508,7 @@ export async function fetchAndUpdateSharedFeed(
     }
   }
 
-  if (!checkedSearchIndex && env.ARTICLE_SEARCH) await limitFeed(() => repairSearchIndex());
+  if (!checkedSearchIndex && env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
   if (!persistedMetadata) {
     await repairFeedArticleMetadata(env.RSS_DATA, meta);
     await writeFeedMeta(env.RSS_DATA, meta);
@@ -649,7 +735,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
   const userFeedMap = new Map<string, FeedNotificationSummary[]>();
   const userFeedErrorMap = new Map<string, FeedNotificationSummary[]>();
   const userTimestamps = new Map<string, Record<string, string>>();
-  const limitFeed = createConcurrencyLimiter(FEED_PIPELINE_CONCURRENCY);
+  const stages = createFeedStageLimits();
   await pMapSettled(
     rotateBatchStart(activeFeedHashes, Math.floor(Date.now() / (30 * 60 * 1000))),
     async (feedHash) => {
@@ -658,7 +744,7 @@ export async function fetchAllFeeds(env: FetchEnv): Promise<void> {
         feedHash,
         false,
         privateFeedCookies.get(feedHash),
-        limitFeed,
+        stages,
       );
       if (!meta) return;
       const summary: FeedNotificationSummary = {
@@ -733,11 +819,11 @@ export async function fetchArticles(env: FetchEnv, userId: string): Promise<void
   env = withMaintenanceBudget(env);
   const subs = await readUserSubscriptions(env.RSS_DATA, userId);
   if (subs.length === 0) return;
-  const limitFeed = createConcurrencyLimiter(FEED_PIPELINE_CONCURRENCY);
+  const stages = createFeedStageLimits();
   await pMapSettled(
     rotateBatchStart(subs, Math.floor(Date.now() / (30 * 60 * 1000))),
     async (s) => {
-      await fetchAndUpdateSharedFeed(env, s.feedHash, true, s.requestCookie, limitFeed);
+      await fetchAndUpdateSharedFeed(env, s.feedHash, true, s.requestCookie, stages);
     },
     FEED_WORKER_CONCURRENCY,
   );
