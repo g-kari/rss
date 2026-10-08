@@ -132,6 +132,18 @@ export async function readBodyBytesPartial(
 }
 
 /**
+ * Content-Length が上限を超える応答は本文を読まずに拒否する。
+ * 欠落・過少申告・圧縮転送では宣言を信用せず、読み取り側で実測も制限する。
+ */
+export function rejectDeclaredOversizedBody(response: Response, maxBytes: number): void {
+  const contentLength = response.headers.get("Content-Length");
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
+    void response.body?.cancel().catch(() => {});
+    throw new BodyTooLargeError(maxBytes);
+  }
+}
+
+/**
  * レスポンスをバイト数で制限しながら UTF-8 デコードする。超過時は部分成功にしない。
  * Content-Length は早期拒否にのみ使い、欠落・過少申告・圧縮に備えて実測も必ず制限する。
  * 生バイトの全チャンク保持 + 結合コピーを避け、本文待ちにもタイムアウトを適用する。
@@ -141,11 +153,7 @@ export async function readResponseText(
   maxBytes: number,
   timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<string> {
-  const contentLength = response.headers.get("Content-Length");
-  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
-    void response.body?.cancel().catch(() => {});
-    throw new BodyTooLargeError(maxBytes);
-  }
+  rejectDeclaredOversizedBody(response, maxBytes);
   if (!response.body) return "";
   const reader = response.body.getReader();
   return withTimeout(timeoutMs, async (signal) => {
