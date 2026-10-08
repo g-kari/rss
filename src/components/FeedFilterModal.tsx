@@ -206,7 +206,7 @@ export default function FeedFilterModal({ feed, title, initialFilter, onClose, o
           <button
             onClick={() => void handleSave()}
             disabled={saving}
-            className="flex-1 min-h-[44px] py-2 text-[12px] tracking-[0.04em] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-40"
+            className="flex-1 min-h-[44px] py-2 text-[12px] tracking-[0.04em] bg-accent hover:bg-accent-hover text-accent-contrast rounded-lg transition-all duration-200 disabled:opacity-40"
           >
             {saving ? "保存中..." : "保存"}
           </button>

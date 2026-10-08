@@ -177,10 +177,10 @@ export function PreviewArea({
   return (
     <div className="border border-border-subtle rounded-lg p-3 bg-surface-base">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           Preview
         </span>
-        <span className="text-[10px] text-text-faint">幅 {CONTENT_WIDTH_LABELS[contentWidth]}</span>
+        <span className="text-meta text-text-faint">幅 {CONTENT_WIDTH_LABELS[contentWidth]}</span>
       </div>
       <div
         className={`mx-auto ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} text-text-soft tracking-[0.02em]`}

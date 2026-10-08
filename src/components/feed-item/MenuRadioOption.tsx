@@ -38,7 +38,7 @@ export function MenuRadioOption({
         onClose();
         if (!checked) onSelect();
       }}
-      className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left ${checked ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
+      className={`w-full flex items-center gap-2 px-3 py-2 text-control hover:bg-surface-subtle transition-colors text-left ${checked ? "text-text-strong bg-surface-subtle" : "text-text-default"}`}
     >
       <span
         className={`w-2 h-2 rounded-full flex-shrink-0 ${checked ? "bg-accent-dot" : "bg-transparent border border-text-faint"}`}

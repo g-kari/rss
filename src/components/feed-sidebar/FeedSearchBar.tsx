@@ -11,7 +11,7 @@ export default function FeedSearchBar({ value, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="px-3 py-2 border-b border-border-subtle">
-      <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-subtle rounded-md border border-border-subtle focus-within:border-border-default transition-colors duration-200">
+      <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-base rounded-md border border-border-subtle focus-within:border-border-default transition-colors duration-200">
         <svg
           width="11"
           height="11"
@@ -41,7 +41,7 @@ export default function FeedSearchBar({ value, onChange }: Props) {
               inputRef.current?.blur();
             }
           }}
-          className="flex-1 bg-transparent text-[12px] text-text-default placeholder:text-text-faint outline-none min-w-0"
+          className="flex-1 bg-transparent text-control text-text-default placeholder:text-text-faint outline-none min-w-0"
         />
         {value && (
           <button

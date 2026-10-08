@@ -66,7 +66,7 @@ export default function ImageGallery({ images }: Props) {
   return (
     <>
       <section className="mt-8 pt-6 border-t border-border-subtle">
-        <p className="text-[10px] tracking-[0.2em] uppercase text-text-muted mb-3">画像一覧</p>
+        <p className="text-meta tracking-[0.2em] uppercase text-text-muted mb-3">画像一覧</p>
         <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
           {images.map((src, i) => (
             <button

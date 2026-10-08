@@ -67,7 +67,7 @@ export default function SnoozeMenu({ articleId, onSnooze, onSelectNext }: Props)
           className="min-w-[180px]"
         >
           <div className="px-3 pt-2 pb-1">
-            <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+            <p className="text-meta font-medium tracking-[0.15em] uppercase text-text-muted">
               スヌーズ
             </p>
           </div>

@@ -204,7 +204,7 @@ export default function FeedQuickSwitchModal({
                 role="option"
                 aria-selected={i === cursor}
                 tabIndex={-1}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 ${
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-150 ${
                   i === cursor ? "bg-surface-subtle" : "hover:bg-surface-hover"
                 }`}
                 onPointerDown={() => {
@@ -219,7 +219,7 @@ export default function FeedQuickSwitchModal({
                   {opt.label}
                 </span>
                 {opt.category && (
-                  <span className="text-[10px] text-text-faint truncate max-w-[80px] flex-shrink-0">
+                  <span className="text-meta text-text-faint truncate max-w-[80px] flex-shrink-0">
                     {opt.category}
                   </span>
                 )}
@@ -234,13 +234,13 @@ export default function FeedQuickSwitchModal({
         </div>
 
         <div className="flex items-center gap-3 px-3 py-2 border-t border-border-subtle flex-shrink-0">
-          <span className="text-[10px] text-text-faint">
+          <span className="text-meta text-text-faint">
             <kbd className="font-mono">↑↓</kbd> 移動
           </span>
-          <span className="text-[10px] text-text-faint">
+          <span className="text-meta text-text-faint">
             <kbd className="font-mono">Enter</kbd> 選択
           </span>
-          <span className="text-[10px] text-text-faint">
+          <span className="text-meta text-text-faint">
             <kbd className="font-mono">Esc</kbd> 閉じる
           </span>
         </div>

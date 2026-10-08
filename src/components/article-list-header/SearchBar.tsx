@@ -240,7 +240,7 @@ export default function SearchBar() {
             setShowHistory(false);
             setSavingSearch({ name: query, query });
           }}
-          className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] text-text-muted hover:text-text-strong transition-colors px-1.5 py-0.5"
+          className="absolute right-5 top-1/2 -translate-y-1/2 text-meta text-text-muted hover:text-text-strong transition-colors px-1.5 py-0.5"
           title="この検索条件を保存"
         >
           保存
@@ -287,7 +287,7 @@ export default function SearchBar() {
             // Safari mouse clicks can blur to null before click. Keep the editor mounted;
             // saving still happens only on submit, never on pointer press.
             onMouseDown={(e) => e.preventDefault()}
-            className="text-[10px] px-2 py-0.5 bg-ink text-ink-text rounded-md hover:bg-ink-hover transition-colors flex-shrink-0 disabled:opacity-50"
+            className="text-meta px-2 py-0.5 bg-ink text-ink-text rounded-md hover:bg-ink-hover transition-colors flex-shrink-0 disabled:opacity-50"
           >
             保存
           </button>
@@ -295,7 +295,7 @@ export default function SearchBar() {
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={closeSaveEditor}
-            className="text-[10px] px-2 py-0.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
+            className="text-meta px-2 py-0.5 text-text-muted hover:text-text-strong transition-colors flex-shrink-0"
           >
             キャンセル
           </button>
@@ -318,7 +318,7 @@ export default function SearchBar() {
           {savedCount > 0 && (
             <div
               role="presentation"
-              className="px-2.5 pt-1.5 pb-1 text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted"
+              className="px-2.5 pt-1.5 pb-1 text-meta font-medium tracking-[0.25em] uppercase text-text-muted"
             >
               保存済み
             </div>
@@ -335,7 +335,7 @@ export default function SearchBar() {
                 {isHistorySectionStart && (
                   <div
                     role="presentation"
-                    className="border-t border-border-subtle mt-1 px-2.5 pt-1.5 pb-1 text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted"
+                    className="border-t border-border-subtle mt-1 px-2.5 pt-1.5 pb-1 text-meta font-medium tracking-[0.25em] uppercase text-text-muted"
                   >
                     履歴
                   </div>

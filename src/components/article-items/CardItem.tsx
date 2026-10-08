@@ -83,7 +83,7 @@ export const CardArticleItem = memo(function CardArticleItem({
       )}
       <div className="p-2.5 flex flex-col gap-1 flex-1">
         {showFeedName && feedName && (
-          <span className="text-[10px] text-text-faint truncate tracking-[0.04em]">{feedName}</span>
+          <span className="text-meta text-text-faint truncate tracking-[0.04em]">{feedName}</span>
         )}
         <h3
           id={`article-title-${article.id}`}
@@ -102,16 +102,16 @@ export const CardArticleItem = memo(function CardArticleItem({
           <div className="flex items-center gap-1.5 min-w-0">
             <time
               dateTime={article.publishedAt ?? undefined}
-              className="text-[10px] text-text-faint flex-shrink-0"
+              className="text-meta text-text-faint flex-shrink-0"
             >
               {timeAgoText}
             </time>
             {article.author && (
-              <span className="text-[10px] text-text-faint truncate">{article.author}</span>
+              <span className="text-meta text-text-faint truncate">{article.author}</span>
             )}
             <ReadingTimeBadge
               article={article}
-              className="text-[10px] text-text-faint flex-shrink-0"
+              className="text-meta text-text-faint flex-shrink-0"
             />
             {duplicateFeedNames && duplicateFeedNames.length > 0 && (
               <DuplicateBadge feedNames={duplicateFeedNames} />

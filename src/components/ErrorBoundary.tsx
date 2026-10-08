@@ -67,7 +67,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               strokeLinecap="round"
             />
           </svg>
-          <p className="text-[10px] tracking-[0.25em] uppercase text-text-faint">
+          <p className="text-meta tracking-[0.25em] uppercase text-text-faint">
             {this.props.label ?? "Error"}
           </p>
           <p className="text-[13px] text-text-muted leading-relaxed max-w-[200px]">

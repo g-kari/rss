@@ -73,7 +73,7 @@ export default function LandingPage() {
         </p>
         <a
           href="/api/auth/login"
-          className="animate-fade-up inline-flex items-center gap-2 px-8 py-3 bg-ink hover:bg-ink-hover text-ink-text text-[13px] tracking-[0.06em] rounded-full transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+          className="animate-fade-up inline-flex items-center gap-2 px-8 py-3 bg-accent hover:bg-accent-hover text-accent-contrast text-[13px] tracking-[0.06em] rounded-full transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
           style={{ animationDelay: "180ms" }}
         >
           0g0 ID でログイン

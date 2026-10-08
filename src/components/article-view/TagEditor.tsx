@@ -52,7 +52,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
       {tags.map((t) => (
         <span
           key={t}
-          className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-default"
+          className="inline-flex items-center gap-0.5 text-meta px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-default"
         >
           <span>#{t}</span>
           <button
@@ -91,7 +91,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
             }
           }}
           onBlur={commit}
-          className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-strong border border-border-default outline-none focus:border-text-muted w-24"
+          className="text-meta px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-strong border border-border-default outline-none focus:border-text-muted w-24"
         />
       ) : (
         canAdd && (
@@ -101,7 +101,7 @@ export default function TagEditor({ articleId, tags, onAddTag, onRemoveTag }: Pr
             onClick={() => setEditing(true)}
             title="タグを追加"
             aria-label="タグを追加"
-            className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
+            className="text-meta px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
           >
             + タグ
           </button>
