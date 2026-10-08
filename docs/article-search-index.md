@@ -8,6 +8,14 @@ R2 remains the source of truth. `ARTICLE_SEARCH` is a separate, disposable D1 pr
 
 Applying migration 0003 intentionally makes previously indexed feeds unready until their rebuild completes. Do not manually mark old rows ready. It changes no R2 source data.
 
+## Default R2 index
+
+`GET /api/articles?q=` reads `feeds/{feedHash}/search/manifest.json` when `sourceRevision` matches the article head revision. A hit loads that manifest and one docs object, then uses the existing evaluator, saved-article precedence, and date ordering. It does not read `latest.json` or history pages.
+
+Ingestion with `maintainSearchIndex` upserts the changed articles when the previous revision is already indexed. Otherwise it rebuilds from the current snapshot. Rate-limit, error-cooldown, and cache skips backfill a missing index without fetching the upstream feed. An index write failure is logged and does not roll back article objects. A missing, stale, oversized, or unreadable index falls back to the bounded page scan so search keeps working during backfill.
+
+Each docs object is capped at 32 MiB. A larger feed stays on the page scan until the opt-in D1 index below is ready. Adding the `ARTICLE_SEARCH` binding still does not activate D1, and `RSS_ARTICLE_SEARCH_INDEX=true` remains fail-closed.
+
 ## Request behavior
 
 This section applies after explicit `RSS_ARTICLE_SEARCH_INDEX=true` activation. With that flag unset, false or invalid, requests retain legacy full-text search, using dual-format R2 readers and at most four concurrent article object reads. Merely adding `ARTICLE_SEARCH` does not enable request/index-maintenance access to D1. This preserves search availability during a normal deployment before database setup and backfill. See [migration commands](migration-commands.md) for the separate rollout gates.
@@ -136,7 +144,7 @@ Highly duplicated article IDs remain an independent amplification risk: the arti
 
 Automatic indexes are statement-local and cover the requested subscription context. The duplicate lookup’s observed three-column record holds feed hash, position and rowid. Selective FTS predicates can also cause a separate outer-subscription lookup index: mixed queries such as `title:rare-needle feed:fixture` include the title as a fourth column. Those plans may copy long titles into temporary index records, so additional storage depends on subscription count and context bytes, not just short feed hashes. Article bodies/hits are not newly materialized; exact temporary memory and production Worker memory were not measured. Existing top-K sorting and candidate expansion remain. All measured search variants wrote zero persistent rows. Local `rows_read` reductions are not production latency, billing savings or a Free-plan availability guarantee; actual plan, corpus size, query distribution and maintenance/backfill costs still require separate review.
 
-This optimization runs only after explicit indexed-search activation. It does not create/bind D1, backfill articles, enable either rollout gate or close the remaining operational portion of #1378. Legacy search still scans every physical article object, with four concurrent reads, a top-K body heap and an exact seen-ID set. D1-only activation can index existing legacy arrays using the separate rebuild runner; changing R2 to v2 is not a requirement of this query improvement. Production preparation, backfill costs, writer pause/drain, readiness verification and activation still require separate operator approval. Removing this hint is a code-only rollback with no schema or persisted-data change.
+This optimization runs only after explicit indexed-search activation. It does not create/bind D1, backfill articles, or enable either rollout gate. When the R2 search index is missing or stale, search still scans physical article objects, with four concurrent reads, a top-K body heap and an exact seen-ID set. D1-only activation can index existing legacy arrays using the separate rebuild runner; changing R2 to v2 is not a requirement of this query improvement. Production preparation, backfill costs, writer pause/drain, readiness verification and activation still require separate operator approval. Removing this hint is a code-only rollback with no schema or persisted-data change.
 
 References:
 

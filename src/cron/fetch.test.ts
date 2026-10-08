@@ -209,7 +209,7 @@ describe("safe article rollout defaults", () => {
         expect.any(Object),
         expect.any(Array),
         [],
-        { allowLegacyMigration: false },
+        { allowLegacyMigration: false, maintainSearchIndex: true },
       );
       expect(index).not.toHaveBeenCalled();
       expect(prepare).not.toHaveBeenCalled();
@@ -235,7 +235,7 @@ describe("safe article rollout defaults", () => {
       expect.any(Object),
       expect.any(Array),
       [],
-      { allowLegacyMigration: true },
+      { allowLegacyMigration: true, maintainSearchIndex: true },
     );
     expect(index).toHaveBeenCalledWith(db, env.RSS_DATA, expect.any(Object), undefined);
   });
