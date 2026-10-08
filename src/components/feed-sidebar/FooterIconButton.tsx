@@ -42,7 +42,7 @@ export default function FooterIconButton({
 
 export function StatItem({ value, label }: { value: number; label: string }) {
   return (
-    <span className="text-[10px] text-text-faint leading-none">
+    <span className="text-meta text-text-faint leading-none">
       <span className="text-text-muted tabular-nums">{value}</span>
       <span className="ml-0.5">{label}</span>
     </span>

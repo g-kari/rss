@@ -224,4 +224,68 @@ describe("R2 article search index", () => {
     });
     expect(found.map((item) => item.title)).toEqual(["Updated needle"]);
   });
+
+  it("backfills pending spill, sealed spill segments, and frozen legacy pages", async () => {
+    const mock = bucket();
+    const latest = article(1, { id: "latest", summary: "latestneedle" });
+    const pending = article(2, { id: "pending", summary: "pendingneedle" });
+    const sealed = article(3, { id: "sealed", summary: "sealedneedle" });
+    const legacy = article(4, { id: "legacy", summary: "legacyneedle" });
+    const spillKey = `feeds/${FEED}/articles/segments/spill-0.json`;
+    const meta: SharedFeedMeta = {
+      feedHash: FEED,
+      url: "https://example.com/feed",
+      title: "Example",
+      siteUrl: "https://example.com",
+      lastFetchedAt: null,
+      fetchError: null,
+      articleCount: 4,
+      pageCount: 1,
+      knownIds: [latest.id, pending.id, sealed.id, legacy.id],
+    };
+    mock.seed(META, meta);
+    mock.seed(HEAD, [latest]);
+    mock.seed(`feeds/${FEED}/articles/overflow-pending.json`, [pending]);
+    mock.seed(spillKey, [sealed]);
+    mock.seed(`feeds/${FEED}/articles/p2.json`, [legacy]);
+    mock.seed(`feeds/${FEED}/articles/overflow-manifest.json`, {
+      version: 1,
+      pendingCount: 1,
+      sealed: [{ objectKey: spillKey, count: 1 }],
+      nextSeal: 1,
+      legacyPageCount: 1,
+      legacyTailCount: 1,
+    });
+    await ensureFeedR2SearchIndex(mock.api, FEED, meta);
+    const manifest = JSON.parse(
+      mock.store.get(feedSearchManifestKey(FEED))!.body,
+    ) as FeedR2SearchManifest;
+    const docs = JSON.parse(mock.store.get(manifest.objectKey)!.body) as Article[];
+    expect(docs.map((item) => item.id)).toEqual(["latest", "pending", "sealed", "legacy"]);
+    expect(mock.reads).toEqual(
+      expect.arrayContaining([
+        `feeds/${FEED}/articles/overflow-manifest.json`,
+        `feeds/${FEED}/articles/overflow-pending.json`,
+        spillKey,
+        `feeds/${FEED}/articles/p2.json`,
+      ]),
+    );
+    const subscriptions = [
+      { feedHash: FEED, url: meta.url, subscribedAt: "2026-01-01T00:00:00.000Z" },
+    ];
+    for (const [query, id] of [
+      ["pendingneedle", "pending"],
+      ["sealedneedle", "sealed"],
+      ["legacyneedle", "legacy"],
+    ] as const) {
+      const found = await searchLegacyArticles({
+        bucket: mock.api,
+        query,
+        subscriptions,
+        savedArticles: [],
+        readState,
+      });
+      expect(found.map((item) => item.id)).toEqual([id]);
+    }
+  });
 });

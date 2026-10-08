@@ -4,14 +4,42 @@
   --font-sans:
     var(--loaded-reddit-sans), var(--loaded-ibm-plex-sans-jp), BlinkMacSystemFont, system-ui,
     sans-serif;
+  /* Typography scale (#1384): 用途ごとの最小サイズ。text-[10px] 等の直書きより優先する。
+   *   badge   10px  バッジ・カウンタ・キー表記のみ
+   *   meta    11px  副次メタ情報 (時刻・フィード名・件数)
+   *   control 12px  ナビ / タブ / コントロールラベルの下限
+   *   ui      13px  サイドバー・一覧の標準文字
+   *   primary 14px  主要コントロール
+   *   reader-title  Reader の記事タイトル (viewport に応じて 24〜32px) */
+  --text-badge: 0.625rem;
+  --text-badge--line-height: 0.875rem;
+  --text-meta: 0.6875rem;
+  --text-meta--line-height: 1rem;
+  --text-control: 0.75rem;
+  --text-control--line-height: 1rem;
+  --text-ui: 0.8125rem;
+  --text-ui--line-height: 1.25rem;
+  --text-primary: 0.875rem;
+  --text-primary--line-height: 1.375rem;
+  --text-reader-title: clamp(1.5rem, 1.15rem + 1.1vw, 2rem);
+  --text-reader-title--line-height: 1.3;
   /* セマンティックカラー (デフォルト = ライトテーマ / stone パレット) */
   --color-surface-base: #fafaf9; /* stone-50: メイン背景 */
   --color-surface-elevated: #ffffff; /* white: サイドバー・カード */
   --color-surface-subtle: #f5f5f4; /* stone-100: 中立の補助面 */
   --color-surface-hover: #fafaf9; /* stone-50: ホバー */
-  /* 現在位置は未読ドットと分離し、背景 + 側線 / 下線で示す (#1381)。 */
-  --color-selection-surface: #f0fdfa; /* teal-50 */
-  --color-selection-accent: #0f766e; /* teal-700: selection-surface 上で 5.2:1 */
+  /* 3 ペインの面の段階 (#1382): nav (Sidebar) < base (List) < elevated (Reader)。
+   * Reader を最も明るく落ち着いた面にして主役にする。nav 上の補助ボタンは surface-hover を使う。 */
+  --color-surface-nav: #f5f5f4; /* stone-100: サイドバー面 */
+  /* UI accent (#1386): 現在位置・アクティブタブ・主 CTA・focus の補助表現だけに使う。
+   * bookmark / like / memo / error / status / feed-star 等の意味色には流用しない。 */
+  --color-accent: #0f766e; /* teal-700: accent-subtle 上 5.2:1 / white 上 5.5:1 */
+  --color-accent-hover: #115e59; /* teal-800 */
+  --color-accent-subtle: #f0fdfa; /* teal-50: 選択背景 */
+  --color-accent-contrast: #ffffff; /* accent 背景上のテキスト */
+  /* 現在位置は未読ドットと分離し、背景 + 側線 / 下線で示す (#1381)。accent の別名。 */
+  --color-selection-surface: var(--color-accent-subtle);
+  --color-selection-accent: var(--color-accent);
   --color-border-default: #e7e5e4; /* stone-200: 主ボーダー */
   --color-border-subtle: #f5f5f4; /* stone-100: 薄ボーダー */
   --color-text-strong: #292524; /* stone-800: 見出し・選択 */
@@ -77,8 +105,11 @@
   --color-surface-elevated: #18181b; /* zinc-900 */
   --color-surface-subtle: #27272a; /* zinc-800 */
   --color-surface-hover: rgba(39, 39, 42, 0.5); /* zinc-800/50 */
-  --color-selection-surface: #102c2b;
-  --color-selection-accent: #5eead4; /* teal-300: selection-surface 上で 10.0:1 */
+  --color-surface-nav: #09090b; /* zinc-950: List と同面。Reader (zinc-900) だけが浮く */
+  --color-accent: #5eead4; /* teal-300: accent-subtle 上 10.0:1 */
+  --color-accent-hover: #99f6e4; /* teal-200 */
+  --color-accent-subtle: #102c2b;
+  --color-accent-contrast: #09090b; /* zinc-950: accent 背景上 (teal-300 に対し 12:1 以上) */
   --color-border-default: #27272a; /* zinc-800 */
   --color-border-subtle: rgba(39, 39, 42, 0.5);
   --color-text-strong: #e4e4e7; /* zinc-200 */
@@ -214,17 +245,35 @@ body {
   }
 }
 
+/* Motion grammar (#1387)。時間と easing は用途で 3 + 3 に限定する。
+ *   fast     150ms  hover / press / 色の変化          (Tailwind: duration-150)
+ *   standard 200ms  menu / tab / 小さな状態変化       (Tailwind: duration-200)
+ *   slow     300ms  pane / modal / 構造の遷移         (Tailwind: duration-300)
+ *   ease-interaction  色・opacity など往復する変化
+ *   ease-entrance     出現 (fade-up / slide-up / slide-in-right)
+ *   ease-exit         退場 (fade-out)
+ * 進行状況バー・Undo の残り時間・読み上げなど時計として働く時間はこの scale に含めない。
+ * prefers-reduced-motion: reduce では末尾の media query が transform / fade を止める。 */
+:root {
+  --motion-fast: 150ms;
+  --motion-standard: 200ms;
+  --motion-slow: 300ms;
+  --ease-interaction: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
 .animate-fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeUp var(--motion-slow) var(--ease-entrance) both;
 }
 
 .animate-fade-out {
-  animation: fadeOut 0.25s ease-out both;
+  animation: fadeOut var(--motion-standard) var(--ease-exit) both;
   pointer-events: none;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out both;
+  animation: fadeIn var(--motion-standard) var(--ease-interaction) both;
 }
 
 @keyframes slideUp {
@@ -237,7 +286,7 @@ body {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideUp var(--motion-slow) var(--ease-entrance) both;
 }
 
 @keyframes slideInRight {
@@ -250,7 +299,7 @@ body {
 }
 
 .animate-slide-in-right {
-  animation: slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideInRight var(--motion-standard) var(--ease-entrance) both;
 }
 
 @keyframes undoProgress {
@@ -813,6 +862,17 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* 構造理解に不要な移動 (transform) を伴う出現は止め、状態理解に必要な spinner は残す (#1387)。 */
+  .animate-fade-up,
+  .animate-slide-up,
+  .animate-slide-in-right {
+    animation: none !important;
+  }
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

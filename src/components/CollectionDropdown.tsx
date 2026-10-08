@@ -152,7 +152,7 @@ export default function CollectionDropdown({
           {canBulkAddBookmarks && (
             <>
               <div className="border-t border-border-subtle my-1" />
-              <p className="px-3 py-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+              <p className="px-3 py-1 text-meta font-medium tracking-[0.15em] uppercase text-text-muted">
                 ブックマーク全件追加 ({bookmarkCount})
               </p>
               {collections.map((c) => (

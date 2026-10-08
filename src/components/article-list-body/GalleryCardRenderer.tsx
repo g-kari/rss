@@ -8,11 +8,11 @@ import { useSyncedRef } from "@/hooks/useSyncedRef";
 import { GalleryItemCtx } from "./gallery-context";
 
 const GALLERY_CARD_WRAPPER_STYLE_VISIBLE = {
-  transition: "opacity 0.25s ease",
+  transition: "opacity var(--motion-standard) var(--ease-interaction)",
   opacity: 1,
 };
 const GALLERY_CARD_WRAPPER_STYLE_DELETING = {
-  transition: "opacity 0.25s ease",
+  transition: "opacity var(--motion-standard) var(--ease-exit)",
   opacity: 0,
   pointerEvents: "none" as const,
 };

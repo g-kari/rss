@@ -8,7 +8,11 @@ import type {
 } from "../types";
 import { compareByDateDesc } from "./article-utils";
 import { r2Put } from "./r2";
-import { LegacyArticleWriteConflictError, mergeLegacyArticles } from "./shared-feed-legacy";
+import {
+  LegacyArticleWriteConflictError,
+  mergeLegacyArticles,
+  readLegacyOverflowLayout,
+} from "./shared-feed-legacy";
 export { LegacyArticleWriteConflictError } from "./shared-feed-legacy";
 import { KNOWN_IDS_MAX, MAX_PAGES, PAGE_SIZE } from "./shared-feed-constants";
 
@@ -152,6 +156,7 @@ export async function readFeedArticleSnapshot(
       etag: object?.etag,
       exists: object !== null,
       legacy: false,
+      spill: false,
     };
   }
   const resolvedMeta =
@@ -164,30 +169,36 @@ export async function readFeedArticleSnapshot(
   ) {
     throw new Error(`Missing latest article object for existing feed: ${feedHash}`);
   }
+  const spill = await readLegacyOverflowLayout(bucket, feedHash);
   const segments: FeedArticleSegment[] = [];
-  // pageCount counts historical files, not the highest page number.
-  for (let page = 2; page <= Math.min((resolvedMeta?.pageCount ?? 0) + 1, MAX_PAGES); page++) {
-    segments.push({
-      objectKey: `feeds/${feedHash}/articles/p${page}.json`,
-      count: PAGE_SIZE,
-      priority: page,
-      // Legacy descriptors are used for physical iteration only, never range pruning.
-      newest: { id: "", publishedAt: null, createdAt: "" },
-      oldest: { id: "", publishedAt: null, createdAt: "" },
-    });
+  if (!spill) {
+    // pageCount counts historical files, not the highest page number.
+    for (let page = 2; page <= Math.min((resolvedMeta?.pageCount ?? 0) + 1, MAX_PAGES); page++) {
+      segments.push({
+        objectKey: `feeds/${feedHash}/articles/p${page}.json`,
+        count: PAGE_SIZE,
+        priority: page,
+        // Legacy descriptors are used for physical iteration only, never range pruning.
+        newest: { id: "", publishedAt: null, createdAt: "" },
+        oldest: { id: "", publishedAt: null, createdAt: "" },
+      });
+    }
   }
   return {
     revision: `legacy:${object?.etag ?? "missing"}`,
     latest: stored,
-    segments,
-    nextSegmentId: 1,
+    segments: spill?.segments ?? segments,
+    nextSegmentId: spill?.nextSegmentId ?? 1,
     knownIds: resolvedMeta?.knownIds ?? stored.map((article) => article.id),
     articleLocations: {},
-    articleCount: resolvedMeta?.articleCount ?? stored.length,
-    pageCount: resolvedMeta?.pageCount ?? 0,
+    articleCount: spill
+      ? stored.length + spill.archiveCount
+      : (resolvedMeta?.articleCount ?? stored.length),
+    pageCount: spill?.pageCount ?? resolvedMeta?.pageCount ?? 0,
     etag: object?.etag,
     exists: object !== null,
     legacy: true,
+    spill: spill !== null,
   };
 }
 
@@ -260,6 +271,29 @@ async function* orderedArchive(
   }
 }
 
+/** Walk a newest-first spill by declared counts. Empty date bounds must not be date-merged. */
+async function readCountedPage(
+  bucket: R2Bucket,
+  segments: FeedArticleSegment[],
+  skip: number,
+  limit: number,
+): Promise<Article[]> {
+  const result: Article[] = [];
+  let remaining = skip;
+  for (const segment of [...segments].sort((a, b) => a.priority - b.priority)) {
+    if (result.length >= limit) break;
+    if (remaining >= segment.count) {
+      remaining -= segment.count;
+      continue;
+    }
+    const articles = await readRequiredArticles(bucket, segment.objectKey);
+    const take = Math.min(limit - result.length, Math.max(0, articles.length - remaining));
+    for (let index = 0; index < take; index++) result.push(articles[remaining + index]);
+    remaining = 0;
+  }
+  return result;
+}
+
 /** Preserve logical newest-first pages, including the historical oversized final-page contract. */
 export async function readArticlePage(
   bucket: R2Bucket,
@@ -269,7 +303,7 @@ export async function readArticlePage(
   if (!Number.isInteger(page) || page < 1 || page > MAX_PAGES) return [];
   if (page === 1) return readLatestArticles(bucket, feedHash);
   const state = await readFeedArticleSnapshot(bucket, feedHash);
-  if (state.legacy) {
+  if (state.legacy && !state.spill) {
     const object = await bucket.get(`feeds/${feedHash}/articles/p${page}.json`);
     if (!object && page <= state.pageCount + 1) {
       throw new Error(`Missing article object: feeds/${feedHash}/articles/p${page}.json`);
@@ -278,6 +312,7 @@ export async function readArticlePage(
   }
   const skip = (page - 2) * PAGE_SIZE;
   const limit = page === MAX_PAGES ? Infinity : PAGE_SIZE;
+  if (state.spill) return readCountedPage(bucket, state.segments, skip, limit);
   const result: Article[] = [];
   for await (const article of orderedArchive(bucket, state.segments, skip)) {
     result.push(article);

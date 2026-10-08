@@ -1,12 +1,12 @@
 /**
  * Rollout compatibility writer restored from 86137b2's shared-feed.ts.
- * Keep the original legacy array/pN merge semantics until explicit migration is enabled.
+ * Keep latest.json as an Article[] until explicit v2 migration is enabled.
  * The caller supplies an ETag-guarded latest write to prevent a concurrent v2 downgrade.
- * Archive writes retain the legacy cascade behavior; this is not the v2 performance path.
+ * Overflow is appended in O(1) objects. Frozen pN pages are never rewritten.
  */
-import type { Article, SharedFeedMeta } from "../types";
+import type { Article, FeedArticleSegment, SharedFeedMeta } from "../types";
 import { compareByDateDesc } from "./article-utils";
-import { r2Get, r2Put } from "./r2";
+import { r2Put } from "./r2";
 import { KNOWN_IDS_MAX, MAX_PAGES, PAGE_SIZE } from "./shared-feed-constants";
 
 /** Callers must skip metadata/index writes: the winning legacy cascade may still be in flight. */
@@ -23,6 +23,238 @@ function pageKey(feedHash: string, page: number): string {
   return `feeds/${feedHash}/articles/p${page}.json`;
 }
 
+export function overflowManifestKey(feedHash: string): string {
+  return `feeds/${feedHash}/articles/overflow-manifest.json`;
+}
+
+export function overflowPendingKey(feedHash: string): string {
+  return `feeds/${feedHash}/articles/overflow-pending.json`;
+}
+
+const EMPTY_BOUND: FeedArticleSegment["newest"] = { id: "", publishedAt: null, createdAt: "" };
+
+/** Commit record for the append-only legacy archive. Readers trust this over meta.pageCount. */
+export interface LegacyOverflowManifest {
+  version: 1;
+  pendingCount: number;
+  sealed: Array<{ objectKey: string; count: number }>;
+  nextSeal: number;
+  /** Historical pN files that existed before the first spill. Middle pages are full. */
+  legacyPageCount: number;
+  /** Length of p{legacyPageCount+1}. May exceed PAGE_SIZE when that page was already oversized. */
+  legacyTailCount: number;
+}
+
+export function legacyArchiveCount(manifest: LegacyOverflowManifest): number {
+  const legacy =
+    manifest.legacyPageCount === 0
+      ? 0
+      : (manifest.legacyPageCount - 1) * PAGE_SIZE + manifest.legacyTailCount;
+  return (
+    manifest.pendingCount +
+    manifest.sealed.reduce((sum, segment) => sum + segment.count, 0) +
+    legacy
+  );
+}
+
+export function spillLogicalPageCount(archiveCount: number): number {
+  if (archiveCount <= 0) return 0;
+  return Math.min(MAX_PAGES - 1, Math.ceil(archiveCount / PAGE_SIZE));
+}
+
+function spillObjectKey(feedHash: string, seal: number): string {
+  return `feeds/${feedHash}/articles/segments/spill-${seal}.json`;
+}
+
+function assertManifest(value: unknown, feedHash: string): LegacyOverflowManifest {
+  if (!value || typeof value !== "object") {
+    throw new Error(`Invalid overflow manifest: ${feedHash}`);
+  }
+  const manifest = value as LegacyOverflowManifest;
+  const prefix = `feeds/${feedHash}/articles/segments/spill-`;
+  const sealed = manifest.sealed;
+  if (
+    manifest.version !== 1 ||
+    !Number.isSafeInteger(manifest.pendingCount) ||
+    manifest.pendingCount < 0 ||
+    manifest.pendingCount >= PAGE_SIZE ||
+    !Number.isSafeInteger(manifest.nextSeal) ||
+    manifest.nextSeal < 0 ||
+    !Number.isSafeInteger(manifest.legacyPageCount) ||
+    manifest.legacyPageCount < 0 ||
+    manifest.legacyPageCount >= MAX_PAGES ||
+    !Number.isSafeInteger(manifest.legacyTailCount) ||
+    manifest.legacyTailCount < 0 ||
+    (manifest.legacyPageCount === 0
+      ? manifest.legacyTailCount !== 0
+      : manifest.legacyTailCount < 1) ||
+    !Array.isArray(sealed) ||
+    sealed.length > manifest.nextSeal ||
+    sealed.some(
+      (segment) =>
+        !segment ||
+        typeof segment.objectKey !== "string" ||
+        !segment.objectKey.startsWith(prefix) ||
+        !/^spill-\d+\.json$/.test(segment.objectKey.slice(prefix.length - "spill-".length)) ||
+        !Number.isSafeInteger(segment.count) ||
+        segment.count < 1 ||
+        segment.count > PAGE_SIZE,
+    )
+  ) {
+    throw new Error(`Invalid overflow manifest: ${feedHash}`);
+  }
+  return manifest;
+}
+
+async function readJsonArray(
+  bucket: R2Bucket,
+  key: string,
+  missing: "throw" | "empty",
+): Promise<Article[] | null> {
+  const object = await bucket.get(key);
+  if (!object) {
+    if (missing === "empty") return null;
+    throw new Error(`Missing article object: ${key}`);
+  }
+  const stored = await object.json<unknown>();
+  if (!Array.isArray(stored)) throw new Error(`Invalid article object: ${key}`);
+  return stored as Article[];
+}
+
+/** Null when this feed still uses untouched pN pages. Corrupt manifests throw. */
+export async function readLegacyOverflowLayout(
+  bucket: R2Bucket,
+  feedHash: string,
+): Promise<{
+  segments: FeedArticleSegment[];
+  archiveCount: number;
+  pageCount: number;
+  nextSegmentId: number;
+} | null> {
+  const object = await bucket.get(overflowManifestKey(feedHash));
+  if (!object) return null;
+  const manifest = assertManifest(await object.json<unknown>(), feedHash);
+  const segments: FeedArticleSegment[] = [];
+  const newestPieces = (manifest.pendingCount > 0 ? 1 : 0) + manifest.sealed.length;
+  let priority = -newestPieces;
+  if (manifest.pendingCount > 0) {
+    segments.push({
+      objectKey: overflowPendingKey(feedHash),
+      count: manifest.pendingCount,
+      priority: priority++,
+      newest: EMPTY_BOUND,
+      oldest: EMPTY_BOUND,
+    });
+  }
+  for (const sealed of manifest.sealed) {
+    segments.push({
+      objectKey: sealed.objectKey,
+      count: sealed.count,
+      priority: priority++,
+      newest: EMPTY_BOUND,
+      oldest: EMPTY_BOUND,
+    });
+  }
+  for (let page = 2; page <= manifest.legacyPageCount + 1; page++) {
+    segments.push({
+      objectKey: pageKey(feedHash, page),
+      count: page === manifest.legacyPageCount + 1 ? manifest.legacyTailCount : PAGE_SIZE,
+      priority: page,
+      newest: EMPTY_BOUND,
+      oldest: EMPTY_BOUND,
+    });
+  }
+  const archiveCount = legacyArchiveCount(manifest);
+  return {
+    segments,
+    archiveCount,
+    pageCount: spillLogicalPageCount(archiveCount),
+    nextSegmentId: newestPieces + 1,
+  };
+}
+
+/**
+ * Persist overflow after latest.json has been committed.
+ * A crash before the manifest write matches the old cascade window: latest can move before
+ * the archive commit. Existing pN objects are not rewritten, so a rollback can still read them.
+ */
+async function appendLegacyOverflow(
+  bucket: R2Bucket,
+  meta: SharedFeedMeta,
+  overflow: Article[],
+): Promise<void> {
+  const manifestKey = overflowManifestKey(meta.feedHash);
+  const pendingKey = overflowPendingKey(meta.feedHash);
+  const existing = await bucket.get(manifestKey);
+  let manifest: LegacyOverflowManifest;
+  if (existing) {
+    manifest = assertManifest(await existing.json<unknown>(), meta.feedHash);
+  } else {
+    const legacyPageCount = meta.pageCount ?? 0;
+    if (
+      !Number.isSafeInteger(legacyPageCount) ||
+      legacyPageCount < 0 ||
+      legacyPageCount >= MAX_PAGES
+    ) {
+      throw new Error(`Invalid legacy page count for ${meta.feedHash}`);
+    }
+    let legacyTailCount = 0;
+    if (legacyPageCount > 0) {
+      const tail = await readJsonArray(
+        bucket,
+        pageKey(meta.feedHash, legacyPageCount + 1),
+        "throw",
+      );
+      legacyTailCount = tail?.length ?? 0;
+      if (legacyTailCount < 1) {
+        throw new Error(`Invalid legacy tail for ${meta.feedHash}`);
+      }
+    }
+    manifest = {
+      version: 1,
+      pendingCount: 0,
+      sealed: [],
+      nextSeal: 0,
+      legacyPageCount,
+      legacyTailCount,
+    };
+  }
+
+  let carried: Article[] = [];
+  if (existing) {
+    if (manifest.pendingCount > 0) {
+      const pending = await readJsonArray(bucket, pendingKey, "throw");
+      if (pending?.length !== manifest.pendingCount) {
+        throw new Error(`Invalid overflow pending page: ${meta.feedHash}`);
+      }
+      carried = pending ?? [];
+    }
+  } else {
+    // No manifest yet: a pending object is an uncommitted first spill, not a sealed leftover.
+    carried = (await readJsonArray(bucket, pendingKey, "empty")) ?? [];
+  }
+  // Newer overflow wins.
+  const combined = deduplicateById([...overflow, ...carried]);
+  const keep = combined.length % PAGE_SIZE;
+  const pendingArticles = combined.slice(0, keep);
+  const toSeal = combined.slice(keep);
+  const sealedNow: LegacyOverflowManifest["sealed"] = [];
+  for (let start = 0; start < toSeal.length; start += PAGE_SIZE) {
+    const chunk = toSeal.slice(start, start + PAGE_SIZE);
+    const objectKey = spillObjectKey(meta.feedHash, manifest.nextSeal++);
+    await r2Put(bucket, objectKey, chunk);
+    sealedNow.push({ objectKey, count: chunk.length });
+  }
+  manifest.sealed = [...sealedNow, ...manifest.sealed];
+  manifest.pendingCount = pendingArticles.length;
+  if (pendingArticles.length > 0) await r2Put(bucket, pendingKey, pendingArticles);
+  await r2Put(bucket, manifestKey, manifest);
+
+  const archiveCount = legacyArchiveCount(manifest);
+  meta.pageCount = spillLogicalPageCount(archiveCount);
+  if (archiveCount > (MAX_PAGES - 1) * PAGE_SIZE) meta.oversizeAlert = true;
+}
+
 /** 日付降順ソート (publishedAt 優先、null は createdAt にフォールバック) */
 function sortByDate(articles: Article[]): Article[] {
   return [...articles].sort(compareByDateDesc);
@@ -36,122 +268,6 @@ function deduplicateById(articles: Article[]): Article[] {
     seen.add(a.id);
     return true;
   });
-}
-
-/**
- * カスケード中の 1 ページ分の書き込みと次ページの先読みを並列実行する。
- * 続きの overflow が残っていて次ページが maxPages 内なら PUT(N) と GET(N+1) を
- * Promise.all で並列実行し、R2 のラウンドトリップを 1 回節約する。
- */
-async function flushPageAndPrefetchNext(
-  bucket: R2Bucket,
-  feedHash: string,
-  pageNum: number,
-  page: Article[],
-  hasMoreOverflow: boolean,
-  nextPage: number,
-  maxPages: number,
-): Promise<Article[] | null> {
-  if (hasMoreOverflow && nextPage <= maxPages) {
-    const [, nextExisting] = await Promise.all([
-      r2Put(bucket, pageKey(feedHash, pageNum), page),
-      r2Get<Article[]>(bucket, pageKey(feedHash, nextPage), []),
-    ]);
-    return nextExisting;
-  }
-  await r2Put(bucket, pageKey(feedHash, pageNum), page);
-  return null;
-}
-
-/**
- * Issue #131: maxPages を超過して残った overflow を末尾ページに追記する。
- * silent drop よりも整合性を優先するため、PAGE_SIZE 超過状態で保存される。
- * 警告ログを出して運用監視できるようにする。
- */
-async function appendOverflowToFinalPage(
-  bucket: R2Bucket,
-  feedHash: string,
-  overflow: Article[],
-  maxPages: number,
-  pageSize: number,
-): Promise<void> {
-  const lastKey = pageKey(feedHash, maxPages);
-  const existing = await r2Get<Article[]>(bucket, lastKey, []);
-  const merged = sortByDate(deduplicateById([...overflow, ...existing]));
-  await r2Put(bucket, lastKey, merged);
-  console.warn(
-    `[shared-feed] feedHash=${feedHash} exceeded MAX_PAGES=${maxPages}. ` +
-      `Appended ${overflow.length} articles to p${maxPages} ` +
-      `(page now holds ${merged.length} items, exceeds PAGE_SIZE=${pageSize}).`,
-  );
-}
-
-/**
- * overflow を pageNum ページに先頭挿入し、溢れたぶんを次ページへカスケードする。
- * overflow は pageNum ページの既存コンテンツより「新しい」記事（すでにソート済み）。
- * 戻り値: 実際に書き込んだ最大ページ番号。
- *
- * Issue #131: MAX_PAGES を超過した場合、残った overflow を末尾ページ (p{MAX_PAGES}) に
- * 追記してデータ喪失を防ぐ。PAGE_SIZE を超過した状態で保存されるが、silent drop よりも
- * 整合性を優先する。警告ログで運用監視できるようにする。
- */
-async function cascadeLegacyOverflow(
-  bucket: R2Bucket,
-  feedHash: string,
-  overflow: Article[],
-  pageNum: number,
-  options?: { maxPages?: number; pageSize?: number },
-): Promise<{ lastWrittenPage: number; oversized: boolean }> {
-  const maxPages = options?.maxPages ?? MAX_PAGES;
-  const pageSize = options?.pageSize ?? PAGE_SIZE;
-
-  let currentOverflow = overflow;
-  let currentPage = pageNum;
-  let lastWrittenPage = pageNum - 1;
-
-  // 先読み: 最初のページを取得
-  let prefetched: Article[] | null =
-    currentOverflow.length > 0 && currentPage <= maxPages
-      ? await r2Get<Article[]>(bucket, pageKey(feedHash, currentPage), [])
-      : null;
-
-  while (currentOverflow.length > 0 && currentPage <= maxPages) {
-    const existing = prefetched ?? [];
-
-    // overflow (新しい) + existing (古い) を結合して重複排除・ソート
-    const merged = sortByDate(deduplicateById([...currentOverflow, ...existing]));
-
-    if (merged.length <= pageSize) {
-      await r2Put(bucket, pageKey(feedHash, currentPage), merged);
-      lastWrittenPage = currentPage;
-      currentOverflow = [];
-      break;
-    }
-
-    const page = merged.slice(0, pageSize);
-    currentOverflow = merged.slice(pageSize);
-    const nextPage = currentPage + 1;
-
-    prefetched = await flushPageAndPrefetchNext(
-      bucket,
-      feedHash,
-      currentPage,
-      page,
-      currentOverflow.length > 0,
-      nextPage,
-      maxPages,
-    );
-
-    lastWrittenPage = currentPage;
-    currentPage = nextPage;
-  }
-
-  if (currentOverflow.length > 0) {
-    await appendOverflowToFinalPage(bucket, feedHash, currentOverflow, maxPages, pageSize);
-    return { lastWrittenPage: maxPages, oversized: true };
-  }
-
-  return { lastWrittenPage, oversized: false };
 }
 
 /**
@@ -239,14 +355,7 @@ export async function mergeLegacyArticles(
     const newLatest = merged.slice(0, PAGE_SIZE);
     const overflow = merged.slice(PAGE_SIZE);
     await writeLatest(newLatest);
-    const { lastWrittenPage: maxPage, oversized } = await cascadeLegacyOverflow(
-      bucket,
-      meta.feedHash,
-      overflow,
-      2,
-    );
-    meta.pageCount = Math.max(meta.pageCount, maxPage - 1); // pageCount は p2以降の数
-    if (oversized) meta.oversizeAlert = true;
+    await appendLegacyOverflow(bucket, meta, overflow);
   }
 
   // knownIds を更新: latest ページ ID を末尾に置いて切り詰め時に必ず残るようにする

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useContext } from "react";
-import { timeAgo } from "../../lib/article-utils";
+import { timeAgo, resolveThumbnailSources } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { BulkSelectionCtx } from "../../contexts/BulkSelectionContext";
@@ -46,6 +46,7 @@ export const ListArticleItem = memo(function ListArticleItem({
     onContextMenu,
   );
   const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
+  const thumbnailFallbacks = useMemo(() => resolveThumbnailSources(article, {}), [article]);
   return (
     <div
       role="article"
@@ -71,7 +72,7 @@ export const ListArticleItem = memo(function ListArticleItem({
       </span>
       <div className="flex-1 min-w-0">
         {showFeedName && feedName && (
-          <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">
+          <span className="text-meta text-text-faint tracking-[0.04em] mb-0.5 block truncate">
             {feedName}
           </span>
         )}
@@ -106,7 +107,13 @@ export const ListArticleItem = memo(function ListArticleItem({
         </div>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-        {thumb && <ArticleThumbnail thumb={thumb} className="w-14 h-14 object-cover rounded" />}
+        {thumb && (
+          <ArticleThumbnail
+            thumb={thumb}
+            fallbacks={thumbnailFallbacks}
+            className="w-14 h-14 object-cover rounded"
+          />
+        )}
         <ArticleActions
           className="flex items-center gap-0.5 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 transition-opacity duration-150 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-focus-within:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto"
           isRead={isRead}
