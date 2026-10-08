@@ -30,7 +30,7 @@ export default function SingleFileSettings({ userId, active }: Props) {
   }
   return (
     <section className="flex flex-col gap-3" aria-label="SingleFile 連携設定">
-      <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+      <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
         SingleFile 連携
       </span>
       <p className="text-[12px] text-text-soft leading-relaxed">

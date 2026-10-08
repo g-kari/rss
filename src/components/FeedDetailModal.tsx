@@ -183,7 +183,7 @@ export default function FeedDetailModal({ feed, onClose }: Props) {
 function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted mb-2">
+      <div className="text-meta font-medium tracking-[0.2em] uppercase text-text-muted mb-2">
         {title}
       </div>
       <div className="space-y-1.5">{children}</div>

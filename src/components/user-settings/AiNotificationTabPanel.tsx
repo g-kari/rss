@@ -347,7 +347,7 @@ export default function AiNotificationTabPanel({
         )}
         {pushEnabled && (
           <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-            <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+            <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
               Push 通知設定
             </span>
             <RecommendationNotificationSettings
@@ -373,7 +373,7 @@ export default function AiNotificationTabPanel({
                 5回連続でフィードの取得に失敗したときに Push 通知で知らせます。
               </span>
             </div>
-            <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted pt-2">
+            <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted pt-2">
               Push 通知サイレント時間帯
             </span>
             <SettingRow label="開始時刻">

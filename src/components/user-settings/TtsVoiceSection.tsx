@@ -47,7 +47,7 @@ export default function TtsVoiceSection() {
   if (!supported) {
     return (
       <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           読み上げ音声
         </span>
         <span className="text-[12px] text-text-muted">
@@ -70,7 +70,7 @@ export default function TtsVoiceSection() {
 
   return (
     <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-      <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+      <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
         読み上げ音声
       </span>
 
@@ -113,7 +113,7 @@ export default function TtsVoiceSection() {
       {/* Piper voice のクレジット表記 (つくよみちゃんコーパス利用規約に基づく必須掲載) */}
       {piperCreditVoice?.credit && (
         <div className="border border-border-default rounded p-3 bg-surface-elevated flex flex-col gap-2">
-          <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+          <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
             音声素材クレジット
           </span>
           <p className="text-[13px] text-text-default whitespace-pre-line leading-relaxed">

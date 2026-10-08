@@ -179,4 +179,13 @@ describe("SidebarHeader の通常モード解除", () => {
     expect(screen.getByLabelText("有効化演出")).toHaveTextContent("true");
     expect(screen.getByLabelText("モード")).toHaveTextContent("false");
   });
+  it("フィード追加は常に見えるラベル付きの主操作として表示し、accessible name を維持する", () => {
+    const props = makeProps();
+    render(<SidebarHeader {...props} nsfwMode={false} />);
+    const add = screen.getByRole("button", { name: "フィードを追加" });
+    expect(add).toHaveTextContent("追加");
+    expect(add).toHaveClass("bg-accent", "text-accent-contrast");
+    fireEvent.click(add);
+    expect(props.onToggleInput).toHaveBeenCalledOnce();
+  });
 });

@@ -80,9 +80,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
       )}
       <div className="p-3">
         {showFeedName && feedName && (
-          <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase">
-            {feedName}
-          </span>
+          <span className="text-meta text-text-faint tracking-[0.06em] uppercase">{feedName}</span>
         )}
         <h3
           id={`article-title-${article.id}`}

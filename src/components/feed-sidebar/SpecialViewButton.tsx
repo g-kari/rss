@@ -27,7 +27,7 @@ export default function SpecialViewButton({
     >
       <span className="text-[13px] tracking-[0.02em] truncate min-w-0">{label}</span>
       {count !== undefined && count > 0 && (
-        <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+        <span className="text-meta text-text-muted tabular-nums flex-shrink-0">
           {formatCount(count)}
         </span>
       )}

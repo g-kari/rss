@@ -39,7 +39,7 @@ export default function WeeklyGoalSection({ weeklyTotal }: { weeklyTotal: number
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           週間目標
         </span>
         <div className="flex items-center gap-1 text-[11px] tabular-nums">
@@ -79,14 +79,14 @@ export default function WeeklyGoalSection({ weeklyTotal }: { weeklyTotal: number
       </div>
       <div className="h-1.5 bg-surface-subtle rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full transition-all duration-300"
           style={{
             width: `${pct}%`,
             backgroundColor: achieved ? "var(--color-accent-dot)" : "var(--color-ink)",
           }}
         />
       </div>
-      <span className="text-[10px] text-text-faint text-right tabular-nums">{pct}%</span>
+      <span className="text-badge text-text-faint text-right tabular-nums">{pct}%</span>
     </div>
   );
 }

@@ -43,7 +43,7 @@ export default function CompactListBody({
           >
             {item.type === "header" ? (
               <div className="px-4 pt-3 pb-1" role="heading" aria-level={3}>
-                <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
                   {item.label}
                 </span>
               </div>

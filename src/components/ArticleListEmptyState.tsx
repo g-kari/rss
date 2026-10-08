@@ -104,7 +104,7 @@ export default function ArticleListEmptyState({
             <button
               type="button"
               onClick={onAddFeed}
-              className="mt-2 px-3 py-1.5 bg-ink hover:bg-ink-hover text-ink-text text-[12px] rounded-lg transition-all duration-200"
+              className="mt-2 px-3 py-1.5 bg-accent hover:bg-accent-hover text-accent-contrast text-[12px] rounded-lg transition-all duration-200"
             >
               フィードを追加
             </button>

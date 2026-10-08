@@ -65,7 +65,7 @@ export default function CollectionsSection({
   return (
     <div className="mt-1 pt-2 border-t border-border-subtle">
       <div className="px-4 pb-1 flex items-center gap-1">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           Collections
         </span>
         {showSortButton && (
@@ -73,7 +73,7 @@ export default function CollectionsSection({
             onClick={cycleSortBy}
             aria-label={`コレクション並び順: ${COLLECTION_SORT_BY_LABELS[sortBy]} (クリックで切替)`}
             title={`並び順: ${COLLECTION_SORT_BY_LABELS[sortBy]}`}
-            className="ml-auto w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
+            className="ml-auto w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-all"
           >
             <svg
               aria-hidden="true"
@@ -93,7 +93,7 @@ export default function CollectionsSection({
         {loadError && onRetryCollections && (
           <button
             onClick={onRetryCollections}
-            className={`${showSortButton ? "" : "ml-auto"} text-[11px] text-text-muted hover:text-text-default px-2 py-1`}
+            className={`${showSortButton ? "" : "ml-auto"} text-meta text-text-muted hover:text-text-default px-2 py-1`}
             title="再読み込み"
           >
             再試行
@@ -102,7 +102,7 @@ export default function CollectionsSection({
         {!loadError && onCreateCollection && (
           <button
             onClick={() => onCreateCollection("")}
-            className={`${showSortButton ? "" : "ml-auto"} w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all`}
+            className={`${showSortButton ? "" : "ml-auto"} w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-all`}
             aria-label="コレクションを作成"
             title="コレクションを作成"
           >
@@ -137,7 +137,7 @@ export default function CollectionsSection({
             title={c.name}
           >
             <span className="text-[13px] truncate">{c.name}</span>
-            <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+            <span className="text-meta text-text-muted tabular-nums flex-shrink-0">
               {formatCount(c.articleIds.length)}
             </span>
           </button>

@@ -116,7 +116,8 @@ export default function GalleryMasonrySelf<T>({
                 top: `${top}px`,
                 left: `${col * (effectiveColumnWidth + columnGutter)}px`,
                 width: `${effectiveColumnWidth}px`,
-                transition: "top 0.3s ease, left 0.3s ease",
+                transition:
+                  "top var(--motion-slow) var(--ease-interaction), left var(--motion-slow) var(--ease-interaction)",
               }}
             >
               <Render data={data} index={index} width={effectiveColumnWidth} />

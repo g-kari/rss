@@ -71,7 +71,7 @@ export const ListArticleItem = memo(function ListArticleItem({
       </span>
       <div className="flex-1 min-w-0">
         {showFeedName && feedName && (
-          <span className="text-[10px] text-text-faint tracking-[0.04em] mb-0.5 block truncate">
+          <span className="text-meta text-text-faint tracking-[0.04em] mb-0.5 block truncate">
             {feedName}
           </span>
         )}
