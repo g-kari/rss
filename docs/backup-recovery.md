@@ -9,7 +9,7 @@ R2 バケット `rss-reader-data` に保存されているユーザーデータ�
 
 - **ユーザーデータ喪失リスク**: 購読リスト (`users/{userId}/subscriptions.json`)、既読状態 (`users/{userId}/read-state.json`)、ノート・スヌーズ・ブックマークはすべて R2 にしか存在しない。ロールバック・誤削除・バケット破損で即座に失われる。
 - **Cloudflare R2 はバージョニング非対応**: オブジェクト上書き時の履歴が自動保持されない。誤って `subscriptions.json` を空配列で上書きすると元に戻せない。
-- **共有フィードは再取得可能だが過去ログは消える**: `feeds/{feedHash}/articles/p{N}.json` にカスケードされた過去ページは外部 RSS に残っていない場合が多く、一度消すと復元不能。
+- **共有フィードは再取得可能だが過去ログは消える**: `feeds/{feedHash}/articles/p{N}.json` に残っている過去ページと、追加分の `overflow-manifest.json` / `overflow-pending.json` / `segments/spill-*.json` は外部 RSS に残っていない場合が多く、一度消すと復元不能。
 - **AI キャッシュの再計算は Workers AI コスト**: `ai-cache/` は運用コスト最適化の観点でバックアップ対象。
 
 ## R2 ストレージ構造 (バックアップ対象)
@@ -194,7 +194,7 @@ npx wrangler r2 object put rss-reader-data/users/${USER_ID}/read-state.json \
 
 ### ケース 3: 特定フィードの記事ログ復元
 
-カスケードされた過去ページ (`feeds/{feedHash}/articles/p2.json` など) の復元:
+過去ページ (`feeds/{feedHash}/articles/p2.json` や `overflow-manifest.json` など) の復元:
 
 ```bash
 FEED_HASH="<対象フィードの hash>"
