@@ -64,6 +64,13 @@ bucket_name = "rss-reader-data"
 # migrations_dir = "migrations/article-search"
 # Binding alone does not activate D1 reads/writes: RSS_ARTICLE_SEARCH_INDEX=true is required.
 
+# MCP/OAuth is disabled unless RSS_MCP_ENABLED="true" AND a dedicated OAUTH_KV
+# binding are supplied after approved provisioning/rollout. Never share RATE_LIMIT
+# storage or enable this while only merging code. See docs/mcp.md.
+# [[kv_namespaces]]
+# binding = "OAUTH_KV"
+# id = "<approved-dedicated-oauth-namespace-id>"
+
 # レートリミット用 KV namespace
 # ⚠️ デプロイ前に以下を実行して id を取得・設定すること:
 #   npx wrangler kv namespace create RATE_LIMIT

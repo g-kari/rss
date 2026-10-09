@@ -12,6 +12,16 @@ interface CacheStorage {
 type AiModelId = Parameters<Ai["run"]>[0];
 
 interface CloudflareEnv extends Partial<SearchIndexEnv> {
+  /** Explicit opt-in after OAuth storage provisioning and approved rollout. Unset is OFF. */
+  RSS_MCP_ENABLED?: string;
+  /** Canonical app origin, used by the native MCP/OAuth boundary. */
+  APP_BASE_URL?: string;
+  /** Native OAuth exchanges must retain the existing beta access boundary. */
+  BETA_ALLOWED_SUBS?: string;
+  /** Separate OAuth state storage. Never alias the existing rate-limit namespace. */
+  OAUTH_KV?: KVNamespace;
+  /** Request-local helper injected by the OAuth provider before OpenNext consent routes. */
+  OAUTH_PROVIDER?: import("@cloudflare/workers-oauth-provider").OAuthHelpers;
   /** Opt in only after writer drain and verified storage migration preparation. */
   RSS_ARTICLE_STORAGE_V2?: string;
   /** Opt in only after the D1 binding, schema and all relevant feed indexes are ready. */

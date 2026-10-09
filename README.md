@@ -591,6 +591,9 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ
 | Tailwind CSS                            | MIT          |
 | @opennextjs/cloudflare                  | MIT          |
 | @cloudflare/puppeteer                   | Apache-2.0   |
+| @cloudflare/workers-oauth-provider      | MIT          |
+| @modelcontextprotocol/server            | Apache-2.0   |
+| zod                                     | MIT          |
 | @mozilla/readability                    | Apache-2.0   |
 | fast-xml-parser                         | MIT          |
 | linkedom                                | ISC          |
@@ -623,6 +626,14 @@ Piper TTS engine の voice として **つくよみちゃんコーパス** (CC B
 
 記事詳細ビューの設計・UXは [Readeck](https://codeberg.org/readeck/readeck) (AGPL v3.0) を参考にしています。
 コードの直接流用はなく、設計・機能アイデアのみを参考にしています。
+
+## 読み取り専用 MCP 連携
+
+OAuthで本人が許可すると、MCP clientが購読一覧と現在購読中のフィードの保存済み記事を読める構成です。個人メモ、既読・お気に入り履歴、保存クリップ、認証情報は共有せず、購読編集・既読化・AI呼び出しは行いません。記事は最新保持window（各feed最大500件）が対象で、本文は有界な続き取得に対応します。
+
+初期状態は無効です。専用OAuth KVの準備と明示gate、本番設定/接続許可の承認が必要で、コードをmergeしただけでは公開されません。MCP endpointは`/mcp`、本人向け連携管理は`/api/mcp/settings`です。access15分、refreshは30日非活動で失効。RSS側から本人の全MCP接続を解除できます。稼働後の通常Cloudflare従量usageは増えます。
+
+構成・scope・失効の限界・有界read契約・承認別rolloutは[docs/mcp.md](./docs/mcp.md)を参照してください。
 
 ## SingleFile 連携
 

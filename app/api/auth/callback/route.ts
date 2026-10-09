@@ -12,6 +12,10 @@ import { escapeHtml } from "@/lib/html";
 import { buildSecureSessionRegistrationHeader, generateDbscChallenge } from "@/lib/dbsc";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UserProfile } from "@/types";
+import { appendMcpHeaders, canonicalMcpOrigin, isMcpEnabled } from "@/lib/mcp-auth";
+import { finishMcpLogin, isMcpLoginState, mcpAuthorizationReturn } from "@/lib/mcp-login";
+import type { ResumedUpstream } from "@cloudflare/workers-oauth-provider";
+import type { McpLoginResume } from "@/lib/mcp-auth";
 
 /**
  * 認証エラーレスポンスを生成し、auth_state クッキーを削除する。
@@ -20,22 +24,32 @@ import type { UserProfile } from "@/types";
  * Content-Type に charset=utf-8 を明示して日本語が文字化けしないようにする。
  * トップページへの再ログインリンクを併記してユーザーの復帰を容易にする。
  */
-function authError(message: string, status: number): Response {
+function authError(
+  message: string,
+  status: number,
+  extraHeaders?: Headers,
+  preserveAuthState = false,
+): Response {
   const cookieClear = `auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
   const body = `<!doctype html><meta charset="utf-8"><title>認証エラー</title><body style="font-family:system-ui,sans-serif;padding:2rem;max-width:480px;margin:auto"><h1 style="font-size:1.1rem">${escapeHtml(message)}</h1><p style="color:#666;font-size:.9rem">時間をおいて再度お試しください。</p><p><a href="/">トップページに戻る</a></p></body>`;
-  return new Response(body, {
-    status,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Set-Cookie": cookieClear,
-    },
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
   });
+  if (!preserveAuthState) headers.append("Set-Cookie", cookieClear);
+  if (extraHeaders) appendMcpHeaders(headers, extraHeaders);
+  return new Response(body, { status, headers });
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const mcpLogin = isMcpLoginState(state);
+  let mcpResume: ResumedUpstream<McpLoginResume> | null = null;
+  const mcpHeaders = new Headers();
+  const error = (message: string, status: number) =>
+    authError(message, status, mcpHeaders, mcpLogin);
 
   const cookieStore = await cookies();
   const savedState = cookieStore.get("auth_state")?.value;
@@ -61,11 +75,11 @@ export async function GET(request: Request) {
 
   // code の長さ・文字種チェック（認可コードは英数字・ハイフン・アンダースコアのみ、最大512文字）
   if (code && (code.length > 512 || !/^[\w-]+$/.test(code))) {
-    return authError("認証エラー: 不正な認可コード", 400);
+    return error("認証エラー: 不正な認可コード", 400);
   }
 
   // state 不一致の具体的な理由をログに残す（どのケースで失敗したかすぐに判別できるようにする）
-  if (!code || !state || !savedState || !timingSafeEqual(state, savedState)) {
+  if (!code || !state || (!mcpLogin && (!savedState || !timingSafeEqual(state, savedState)))) {
     const reason = !code
       ? "code_missing"
       : !state
@@ -74,7 +88,7 @@ export async function GET(request: Request) {
           ? "auth_state_cookie_missing"
           : "state_mismatch";
     console.error("[auth/callback] state check failed", { reason });
-    return authError(`認証エラー: state 不一致 (${reason})`, 400);
+    return error(`認証エラー: state 不一致 (${reason})`, 400);
   }
 
   const appBaseUrl = process.env.APP_BASE_URL!;
@@ -85,11 +99,30 @@ export async function GET(request: Request) {
     parsedAppBase = new URL(appBaseUrl);
   } catch {
     console.error("[auth/callback] invalid APP_BASE_URL:", appBaseUrl);
-    return authError("サーバー設定エラー", 500);
+    return error("サーバー設定エラー", 500);
   }
   if (parsedAppBase.protocol !== "https:") {
     console.error("[auth/callback] APP_BASE_URL must be HTTPS:", appBaseUrl);
-    return authError("サーバー設定エラー", 500);
+    return error("サーバー設定エラー", 500);
+  }
+
+  if (mcpLogin) {
+    try {
+      const { env } = await getCloudflareContext({ async: true });
+      if (
+        !isMcpEnabled(env) ||
+        !env.OAUTH_PROVIDER ||
+        new URL(request.url).origin !== canonicalMcpOrigin(appBaseUrl)
+      )
+        throw new Error("MCP login unavailable");
+      mcpResume = await finishMcpLogin(request, env.OAUTH_PROVIDER, canonicalMcpOrigin(appBaseUrl));
+      appendMcpHeaders(mcpHeaders, mcpResume.headers);
+    } catch {
+      return error(
+        "認証エラー: 連携ログインが期限切れです。連携を最初からやり直してください。",
+        400,
+      );
+    }
   }
 
   const callbackUrl = `${appBaseUrl}/api/auth/callback`;
@@ -102,7 +135,7 @@ export async function GET(request: Request) {
   const tokens = await exchangeCode(code, callbackUrl);
   if (!tokens) {
     console.error("[auth/callback] exchangeCode returned null");
-    return authError("認証エラー: トークン交換失敗", 401);
+    return error("認証エラー: トークン交換失敗", 401);
   }
   console.log("[auth/callback] exchangeCode success", {
     hasAccessToken: !!tokens.access_token,
@@ -131,13 +164,15 @@ export async function GET(request: Request) {
       tokenIss,
       expectedIss: authBaseUrl,
     });
-    return authError("認証エラー: トークン検証失敗", 401);
+    return error("認証エラー: トークン検証失敗", 401);
   }
   const sub = payload.sub;
 
   // ベータアクセス制限チェック
   if (!isBetaAllowed(sub)) {
-    return NextResponse.redirect(new URL("/?beta=denied", appBaseUrl));
+    const denied = NextResponse.redirect(new URL("/?beta=denied", appBaseUrl));
+    appendMcpHeaders(denied.headers, mcpHeaders);
+    return denied;
   }
 
   // プロフィールを R2 に保存
@@ -169,10 +204,30 @@ export async function GET(request: Request) {
   ]);
 
   // ?login=1 でクライアントにログイン直後であることを伝える（R2 整合性ラグ対策リトライ用）
-  const res = NextResponse.redirect(new URL("/?login=1", appBaseUrl));
-  res.cookies.delete("auth_state");
+  let returnUrl = new URL("/?login=1", appBaseUrl);
+  if (mcpResume) {
+    try {
+      if (!env.OAUTH_PROVIDER) throw new Error("MCP login unavailable");
+      const resumed = await mcpAuthorizationReturn(
+        mcpResume,
+        env.OAUTH_PROVIDER,
+        canonicalMcpOrigin(appBaseUrl),
+      );
+      returnUrl = resumed.url;
+      appendMcpHeaders(mcpHeaders, resumed.headers);
+    } catch {
+      return error(
+        "認証エラー: 連携ログインが期限切れです。連携を最初からやり直してください。",
+        400,
+      );
+    }
+  }
+  const res = NextResponse.redirect(returnUrl);
+  if (!mcpLogin) res.cookies.delete("auth_state");
   setAccessTokenCookies(res, tokens.access_token);
   setSessionCookie(res, sessionId);
+  // Append provider cookies after ResponseCookies has finished rebuilding first-party cookies.
+  appendMcpHeaders(res.headers, mcpHeaders);
   res.headers.set(
     "Secure-Session-Registration",
     buildSecureSessionRegistrationHeader(dbscChallenge),
