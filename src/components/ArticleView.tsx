@@ -321,13 +321,15 @@ function ArticleView({
           </div>
         </div>
 
-        <h1
-          ref={titleRef}
-          data-reader-arrival="title"
-          className="text-reader-title font-normal leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]"
-        >
-          {article.title}
-        </h1>
+        <div className="reader-typography">
+          <h1
+            ref={titleRef}
+            data-reader-arrival="title"
+            className="reader-title font-medium leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]"
+          >
+            {article.title}
+          </h1>
+        </div>
 
         <InlineArticleNav
           prevArticle={prevArticle}

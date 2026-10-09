@@ -1,5 +1,5 @@
 // Real production reader/list and virtualization. Local articles only; no account, AI or write API.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ArticleList from "../../src/components/ArticleList";
 import ArticleView from "../../src/components/ArticleView";
@@ -26,6 +26,7 @@ declare global {
   interface Window {
     readerMotionEvents: string[];
     retainedArticle?: Element;
+    setReaderTestTitle?: (title: string) => void;
   }
 }
 
@@ -100,6 +101,15 @@ function Reader() {
     setSelected(article);
     setPane("view");
   };
+  useEffect(() => {
+    window.setReaderTestTitle = (title) => {
+      setSelected((old) => ({ ...old, title }));
+      setPane("view");
+    };
+    return () => {
+      delete window.setReaderTestTitle;
+    };
+  }, []);
   const next = () => {
     setSelected((old) => articles[(Number(old.id) + 1) % articles.length]);
     setPane("view");

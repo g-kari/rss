@@ -99,6 +99,31 @@
   --color-hljs-deletion: #82071e;
 }
 
+/* Reader title scale follows its usable text width, including resized panes (#1384).
+ * Keep containment local to the title so sticky controls and article content are unaffected.
+ * rem values preserve browser text scaling; the existing three-line reserve/clamp stays intact. */
+.reader-typography {
+  container-type: inline-size;
+  container-name: reader-title;
+}
+
+.reader-title {
+  font-size: 1.5rem;
+  overflow-wrap: anywhere;
+}
+
+@container reader-title (min-width: 35rem) {
+  .reader-title {
+    font-size: 1.75rem;
+  }
+}
+
+@container reader-title (min-width: 40rem) {
+  .reader-title {
+    font-size: 2rem;
+  }
+}
+
 /* ダークテーマ (zinc/indigo パレット) */
 [data-theme="dark"] {
   --color-surface-base: #09090b; /* zinc-950 */

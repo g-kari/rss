@@ -95,7 +95,7 @@ Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）�
 | 用途                       | クラス                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------- |
 | UI フォント・記事本文      | `font-sans` (Reddit Sans + IBM Plex Sans JP)                                      |
-| 記事タイトル (ArticleView) | `text-reader-title font-normal text-text-strong tracking-[0.02em]` (24〜32px)     |
+| 記事タイトル (ArticleView) | `reader-title font-medium text-text-strong tracking-[0.02em]` (24 / 28 / 32px)    |
 | 未読記事タイトル           | `text-[13px] font-medium text-text-strong`                                        |
 | 既読記事タイトル           | `text-[13px] font-normal text-text-muted`                                         |
 | 記事本文                   | `text-[16px] leading-[1.9] tracking-[0.02em] text-text-soft` (`.article-content`) |
@@ -114,9 +114,11 @@ Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）�
 | `text-control`      | 12px     | ナビ / タブ / コントロールラベルの下限                    |
 | `text-ui`           | 13px     | サイドバー・一覧の標準文字                                |
 | `text-primary`      | 14px     | 主要コントロール                                          |
-| `text-reader-title` | 24〜32px | Reader の記事タイトル (`clamp` で viewport に追従)        |
+| `text-reader-title` | 24〜32px | Reader の記事タイトルの viewport 基準 fallback token      |
 
 Reader の記事タイトルと本文は管理 UI とは別の階層として扱う。
+
+Reader title は `.reader-title` の semantic role を使う。タイトルだけの `.reader-typography` を named inline-size container とし、利用できる文字幅が35rem未満なら1.5rem、35rem以上なら1.75rem、40rem以上なら2rem（既定24 / 28 / 32px）。viewport 基準の `text-reader-title` token は本文ペインのリサイズ幅と一致しないため、Reader の見出しでは container 幅で上書きする。`font-medium`、既存の3行clamp / em基準の予約高、`text-text-strong`を維持し、`overflow-wrap: anywhere`で長い英単語を収める。root remに従ってブラウザーの既定文字拡大も反映する。header / popup / bodyをcontainerへ含めない。
 
 ## Motion (#1387)
 
