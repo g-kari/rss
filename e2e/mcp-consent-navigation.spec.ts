@@ -285,14 +285,11 @@ for (const scenario of [
       );
       expect(binding).toMatchObject({ secure: true, httpOnly: true, path: "/", sameSite: "Lax" });
       await page.getByRole("button", { name: scenario.button, exact: true }).click();
-      await expect(page.getByRole("heading", { name: "RSS読み取り連携の続き" })).toBeVisible();
-      expect(diagnostics.externalReferers).toEqual([]);
-      await page
-        .getByRole("link", {
-          name: scenario.account ? "アプリへ戻る" : "ログインへ進む",
-          exact: true,
-        })
-        .click();
+      if (scenario.destination === "idp") {
+        await expect(page.getByRole("heading", { name: "RSS読み取り連携の続き" })).toBeVisible();
+        expect(diagnostics.externalReferers).toEqual([]);
+        await page.getByRole("link", { name: "ログインへ進む", exact: true }).click();
+      }
       const targetOrigin = scenario.destination === "client" ? CLIENT_ORIGIN : IDP_ORIGIN;
       await page.waitForURL((url) => url.origin === targetOrigin, { timeout: 5_000 });
       expect(new URL(page.url()).searchParams.get(scenario.parameter)).toBe(scenario.value);

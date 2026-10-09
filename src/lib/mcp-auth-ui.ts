@@ -29,8 +29,8 @@ const MCP_PAGE_STYLE =
   "@media(max-width:480px){.actions button{flex:1 1 100%}}";
 
 /** MCP の単独 HTML ページ共通の外枠。title / bodyHtml は呼び出し側で escape 済みの HTML。 */
-export function renderMcpPage(title: string, bodyHtml: string): string {
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${MCP_PAGE_STYLE}</style></head><body><main><h1>${title}</h1>${bodyHtml}</main></body></html>`;
+export function renderMcpPage(title: string, bodyHtml: string, headHtml = ""): string {
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">${headHtml}<meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${MCP_PAGE_STYLE}</style></head><body><main><h1>${title}</h1>${bodyHtml}</main></body></html>`;
 }
 
 export function secureMcpBrowserHeaders(headers: Headers): void {
@@ -70,9 +70,15 @@ export function renderMcpNavigation(
     verified.searchParams.delete(key);
   }
   if (target.href !== verified.href) throw new Error("MCP navigation target changed");
+  // Script is blocked by the CSP and a 303 to the client is blocked by form-action 'self',
+  // so a zero-delay meta refresh in a new document carries the browser to the client.
+  const href = escapeHtml(new URL(redirectTo).href);
+  const autoRedirect =
+    label === "アプリへ戻る" ? `<meta http-equiv="refresh" content="0;url=${href}">` : "";
   return renderMcpPage(
     "RSS読み取り連携の続き",
-    `<div class="card"><p>送信内容を受け付けました。下のリンクから続けてください。</p><p><a href="${escapeHtml(new URL(redirectTo).href)}" rel="noreferrer">${escapeHtml(label)}</a></p></div><nav><a href="/">RSSに戻る</a></nav>`,
+    `<div class="card"><p>送信内容を受け付けました。自動で移動しない場合は、下のリンクから続けてください。</p><p><a href="${href}" rel="noreferrer">${escapeHtml(label)}</a></p></div><nav><a href="/">RSSに戻る</a></nav>`,
+    autoRedirect,
   );
 }
 
