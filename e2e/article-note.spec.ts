@@ -95,16 +95,13 @@ async function noCancelWrites(page: Page, before: string | null) {
   expect(await stored(page)).toBe(before);
   expect(diagnostics.get(page)!.syncs).toEqual([]);
 }
-async function syncSavedNotes(page: Page, notes: Record<string, string>) {
-  await expect(page.getByLabel("保存済みメモ")).toHaveText(JSON.stringify(notes));
+// Blur persists locally at once. The POST is a 5s timer, and clock.runFor resolves
+// when that timer starts, before the route handler records the request.
+async function leaveAndSync(page: Page, expectedCount: number) {
+  await page.getByRole("button", { name: "外へ移動" }).click();
   await expect(page.getByLabel("同期状態")).toHaveText("同期待ち");
-  // Advancing the debounce does not await delivery of its asynchronous routed POST.
-  const synced = page.waitForResponse(
-    (response) =>
-      response.url() === `${origin}api/read-state` && response.request().method() === "POST",
-  );
   await page.clock.runFor(6000);
-  expect((await synced).status()).toBe(200);
+  await expect.poll(() => diagnostics.get(page)!.syncs.length).toBe(expectedCount);
   await expect(page.getByLabel("同期状態")).toHaveText("同期済み");
 }
 for (const width of [390, 1280]) {
@@ -137,9 +134,7 @@ for (const width of [390, 1280]) {
       await textarea(page).fill("New note");
       await textarea(page).press("b");
       await expect(page.getByLabel("ショートカット回数")).toHaveText("0");
-      await page.getByRole("button", { name: "外へ移動" }).click();
-      await syncSavedNotes(page, { ...initial.notes, "new-note": "New noteb" });
-      expect(diagnostics.get(page)!.syncs).toHaveLength(1);
+      await leaveAndSync(page, 1);
       expect(diagnostics.get(page)!.syncs[0].notes).toEqual({
         ...initial.notes,
         "new-note": "New noteb",
@@ -155,16 +150,13 @@ for (const width of [390, 1280]) {
       await textarea(page).pressSequentially("Second");
       await expect(textarea(page)).toBeFocused();
       expect(diagnostics.get(page)!.syncs).toEqual([]);
-      await page.getByRole("button", { name: "外へ移動" }).click();
-      await syncSavedNotes(page, { ...initial.notes, "synthetic-note": "First\nSecond" });
+      await leaveAndSync(page, 1);
       expect(diagnostics.get(page)!.syncs[0].notes).toEqual({
         unrelated: "Keep me",
         "synthetic-note": "First\nSecond",
       });
       await textarea(page).fill("   ");
-      await page.getByRole("button", { name: "外へ移動" }).click();
-      await syncSavedNotes(page, { unrelated: "Keep me" });
-      expect(diagnostics.get(page)!.syncs).toHaveLength(2);
+      await leaveAndSync(page, 2);
       const deletion = diagnostics.get(page)!.syncs[1];
       expect(deletion.notes).toEqual({ unrelated: "Keep me" });
       expect((deletion.removedIds as { notes: string[] }).notes).toContain("synthetic-note");

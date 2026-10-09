@@ -162,7 +162,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
                   d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"
                 />
               </svg>
-              <span className="text-[10px] text-text-strong drop-shadow-sm">取得失敗</span>
+              <span className="text-meta text-text-strong drop-shadow-sm">取得失敗</span>
               {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
             </div>
           </div>
@@ -183,7 +183,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
                 d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"
               />
             </svg>
-            <span className="text-[10px] text-text-muted">取得失敗</span>
+            <span className="text-meta text-text-muted">取得失敗</span>
             {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
           </div>
         );
@@ -214,7 +214,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
                 d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
               />
             </svg>
-            <span className="text-[10px] text-text-faint tracking-[0.1em] uppercase">No image</span>
+            <span className="text-meta text-text-faint tracking-[0.1em] uppercase">No image</span>
           </div>
         );
       case "gallery":
@@ -259,7 +259,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
                 d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
               />
             </svg>
-            <span className="text-[10px] text-text-faint tracking-[0.1em] uppercase">No image</span>
+            <span className="text-meta text-text-faint tracking-[0.1em] uppercase">No image</span>
             {onRetry && <GalleryExpandButton isExpanding={!!isExpanding} onClick={onRetry} />}
           </div>
         );
@@ -292,7 +292,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
       {renderImage()}
       <div className="p-2.5">
         {showFeedName && feedName && (
-          <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase block truncate">
+          <span className="text-meta text-text-faint tracking-[0.06em] uppercase block truncate">
             {feedName}
           </span>
         )}
@@ -308,7 +308,7 @@ export const GalleryArticleItem = memo(function GalleryArticleItem({
           <div className="flex items-center gap-1 min-w-0">
             <time
               dateTime={article.publishedAt ?? undefined}
-              className="text-[10px] text-text-faint flex-shrink-0"
+              className="text-meta text-text-faint flex-shrink-0"
             >
               {timeAgoText}
             </time>

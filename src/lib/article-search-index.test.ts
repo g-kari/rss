@@ -595,6 +595,7 @@ describe("D1 projection lifecycle and R2 isolation", () => {
     await rebuildFeedSearchIndex(db.binding, fixture.bucket, meta);
     expect(fixture.gets).toEqual([
       latestKey(),
+      "feeds/feed/articles/overflow-manifest.json",
       "feeds/feed/articles/p2.json",
       "feeds/feed/articles/p3.json",
     ]);

@@ -257,7 +257,7 @@ function ArticleView({
       >
         {/* #677: 下スクロールで隠す sticky ラッパー (上スクロール / 上端で表示) */}
         <div
-          className="sticky top-0 z-20 bg-surface-elevated transition-transform duration-200 ease-out"
+          className="sticky top-0 z-20 bg-surface-elevated transition-transform duration-200 ease-(--ease-interaction)"
           style={{
             transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
           }}
@@ -321,13 +321,15 @@ function ArticleView({
           </div>
         </div>
 
-        <h1
-          ref={titleRef}
-          data-reader-arrival="title"
-          className="text-[22px] font-light leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]"
-        >
-          {article.title}
-        </h1>
+        <div className="reader-typography">
+          <h1
+            ref={titleRef}
+            data-reader-arrival="title"
+            className="reader-title font-medium leading-snug text-text-strong tracking-[0.02em] mb-8 line-clamp-3 min-h-[calc(3*1.375em)]"
+          >
+            {article.title}
+          </h1>
+        </div>
 
         <InlineArticleNav
           prevArticle={prevArticle}

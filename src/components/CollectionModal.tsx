@@ -69,7 +69,7 @@ export default function CollectionModal({ mode, initialName = "", onSubmit, onCl
           <button
             type="submit"
             disabled={!name.trim() || submitting}
-            className="min-h-[44px] px-3 py-1.5 text-[13px] bg-ink hover:bg-ink-hover text-ink-text rounded-lg transition-all duration-200 disabled:opacity-50"
+            className="min-h-[44px] px-3 py-1.5 text-[13px] bg-accent hover:bg-accent-hover text-accent-contrast rounded-lg transition-all duration-200 disabled:opacity-50"
           >
             {mode === "create" ? "作成" : "変更"}
           </button>

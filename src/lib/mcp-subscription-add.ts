@@ -540,6 +540,8 @@ export function createMcpSubscriptionAdder(
             },
           },
           MCP_SUBSCRIPTION_ADD_LIMITS.fetchTimeoutMs,
+          undefined,
+          undefined,
           {
             validateUrl: (candidate) => {
               const normalized = normalizePublicFeedUrl(candidate);

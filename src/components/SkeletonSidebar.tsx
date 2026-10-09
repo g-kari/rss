@@ -7,7 +7,7 @@
 export default function SkeletonSidebar() {
   return (
     <div
-      className="flex flex-col h-full bg-surface-elevated border-r border-border-default"
+      className="flex flex-col h-full bg-surface-nav border-r border-border-default"
       role="status"
       aria-busy="true"
       aria-label="サイドバーを読み込み中"

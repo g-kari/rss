@@ -105,7 +105,7 @@ describe("safe redirects", () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
     await expect(
-      fetchFollowSafeRedirects("https://example.com/feed?token=secret", {}, 1000, {
+      fetchFollowSafeRedirects("https://example.com/feed?token=secret", {}, 1000, undefined, undefined, {
         validateUrl: () => false,
       }),
     ).rejects.toThrow("policy");
@@ -122,7 +122,7 @@ describe("safe redirects", () => {
     vi.stubGlobal("fetch", fetch);
     const policy = vi.fn((url: string) => !new URL(url).search);
     await expect(
-      fetchFollowSafeRedirects("https://example.com/feed", {}, 1000, {
+      fetchFollowSafeRedirects("https://example.com/feed", {}, 1000, undefined, undefined, {
         validateUrl: policy,
       }),
     ).rejects.toThrow("policy");
@@ -140,7 +140,7 @@ describe("safe redirects", () => {
       .mockResolvedValueOnce(new Response("feed"));
     vi.stubGlobal("fetch", fetch);
     const finalUrl = vi.fn();
-    await fetchFollowSafeRedirects("https://example.com/feed", {}, 1000, {
+    await fetchFollowSafeRedirects("https://example.com/feed", {}, 1000, undefined, undefined, {
       validateUrl: () => true,
       onResponseUrl: finalUrl,
     });

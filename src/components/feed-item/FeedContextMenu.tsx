@@ -48,7 +48,7 @@ export function ContextMenuPortal({
           }}
           disabled={action.disabled}
           aria-busy={action.disabled}
-          className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
+          className={`w-full flex items-center gap-2 px-3 py-2 text-control hover:bg-surface-subtle transition-colors text-left disabled:opacity-40 ${
             action.variant === "danger" ? "text-error" : "text-text-default"
           }`}
         >
@@ -96,7 +96,7 @@ export function MuteMenuPortal({
               const until = new Date(Date.now() + opt.durationMs).toISOString();
               void onMute(until);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left"
+            className="w-full flex items-center gap-2 px-3 py-2 text-control text-text-default hover:bg-surface-subtle transition-colors text-left"
           >
             <svg
               aria-hidden="true"
@@ -262,7 +262,7 @@ export function GroupMenuPortal({
             void onSetGroup(null);
           }}
           disabled={!feed.groupId}
-          className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-default hover:bg-surface-subtle transition-colors text-left disabled:opacity-40"
+          className="w-full flex items-center gap-2 px-3 py-2 text-control text-text-default hover:bg-surface-subtle transition-colors text-left disabled:opacity-40"
         >
           <svg
             aria-hidden="true"
@@ -280,7 +280,7 @@ export function GroupMenuPortal({
           グループなし
         </button>
         {groups.length === 0 ? (
-          <div className="px-3 py-2 text-[11px] text-text-faint">
+          <div className="px-3 py-2 text-meta text-text-faint">
             サイドバーで先にグループを作成してください
           </div>
         ) : (

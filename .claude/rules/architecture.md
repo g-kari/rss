@@ -152,7 +152,7 @@ src/
   components/
     feed-sidebar/            # サイドバー（index.tsx / FeedGroupsSection / FeedViewTabs / FooterIconButton / SpecialViewButton / SidebarHeader / SidebarFooter / CategorySection / TagsSection / CollectionsSection / FeedSearchBar）
     feed-item/               # フィードアイテム（index.tsx / FeedItemComponent / FeedContextMenu / ContextMenuShell / FeedTitleContent / feedActions.tsx / types.ts）
-    article-items/           # レイアウト別記事アイテム（index.tsx / shared.tsx / CompactItem / ListItem / CardItem / MagazineItem / GalleryItem）
+    article-items/           # レイアウト別記事アイテム（index.tsx / shared.tsx / CompactItem / ListItem / CardItem / MagazineItem / GalleryItem）— List/Card/Magazineは既存feed/YouTube候補を共通ArticleThumbnailへ渡して有限fallback
     FeedDetailModal.tsx      # フィード詳細モーダル
     FeedFilterModal.tsx      # キーワードフィルター設定モーダル
     FeedHealthModal.tsx      # フィードヘルス監視モーダル（エラー・レートリミット・オーバーサイズのフィードを一覧表示）
@@ -304,7 +304,7 @@ src/
     useRecommendations.ts    # フィード推薦 (/api/recommendations) fetch
     useRecommendationDismissals.ts # 記事推薦非表示（30日・200件、既定local、通知opt-in時だけ同期）
     useRecommendationPushSettings.ts # 日次おすすめ時刻・同意設定の保存とアカウント分離
-    useOgpCache.ts           # /api/ogp fetch (OGP 画像キャッシュ)
+    useOgpCache.ts           # /api/ogp fetch (表示URLの重複除去キュー・10件同時処理・150ms開始間隔・切替時取消と共通URL継続・画像キャッシュ)
     useImageDownload.ts      # 記事画像一括ダウンロード
     usePushNotifications.ts  # Web Push サブスクリプション管理
     useSearchHistory.ts      # 検索履歴管理 (localStorage)
@@ -410,7 +410,7 @@ src/
     html.ts                  # sanitizeHtml() / escapeHtml() / toPlainText()
     article-utils.ts         # readingTime() / timeAgo() / isLikelyJapanese() / createReadingTimeCache (#685 メモ化)
     image-extractor.ts       # bestSrcFromSrcset() / collectImageUrlsFromHtml() / collectImageUrls()
-    fetch.ts                 # RSS/HTML フェッチヘルパー (タイムアウト・リトライ)
+    fetch.ts                 # RSS/HTML フェッチヘルパー (既存timeout・安全redirect、OGP共有signalの伝播・部分bodyの取消/cleanup)
     fetch-article-content.ts # /api/content 内のコンテンツ取得ロジック
     feed-discovery.ts        # フィード URL 自動検出
     ai-cache.ts              # AI 結果 R2 キャッシュ
@@ -444,7 +444,7 @@ src/
     menu-class.ts            # 全 dropdown / context menu 共通の container class 定数 `BASE_MENU_CLASS`（背景・枠・角丸・影・overflow — PortalMenuShell / ContextMenuShell / ArticleContextMenu / GalleryContextMenu の 4 箇所重複を集約）
     context-menu-position.ts # コンテキストメニュー / ポップアップの viewport-aware ポジショニング純粋関数（computeContextMenuPosition — ArticleContextMenu / GalleryContextMenu / FeedItemComponent menuAnchor 分岐の inline IIFE 重複を集約、refactor 監査 finding）
     selection-popup-position.ts # テキスト選択ポップアップ (SelectionExcludePopup) の viewport-aware ポジショニング純粋関数（computeSelectionPopupLayout — popup 実測サイズを受けて viewport 左右端 / 上端のはみ出しを補正）
-    ogp.ts                   # OGP メタデータ取得ロジック
+    ogp.ts                   # OGP メタデータ取得（通常HTTPのheaders/body共有5秒予算、Twitter fallback全候補共有3秒予算）
     ogp-cache-ttl.ts         # OGP cache TTL 算出純粋関数（computeOgpCacheTtl — Twitter fallback 経路の TTL を 1 日に短縮して poisoning 影響範囲を限定）
     ogp-cache-schema.ts      # OGP cache schema 拡張 + lazy migration 純粋関数 (#808 Phase 1、v1 string → v2 object 変換 / title・description は次 fetch で追記する lazy migration / parseOgpCacheEntry / parseOgpCache / getOgpImage)
     ogp-cache-lru.ts         # OGP cache の true-LRU eviction 純粋関数（mergeWithLruEviction — 旧 FIFO eviction を LRU に修正、#1088 Finding 2）
@@ -554,7 +554,7 @@ src/
     piper-voices.ts          # piper-plus TTS engine で利用可能な voice 定義と配信方式 (R2 セルフホスト vs HuggingFace 直 fetch) のガイド
   cron/
     recommendations.ts       # 30分cronを再利用する日次おすすめoutboxと端末別配信
-    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env) — メタデータ確認20並列、fetch開始から本文解析・保存まで共有2並列
+    fetch.ts                 # fetchArticles(env, userId) / fetchAllFeeds(env) — メタデータ確認20並列、ヘッダー取得12並列、本文解析・保存3並列
 ```
 
 ## データフロー
@@ -574,7 +574,7 @@ src/
 1. Cloudflare Cron Trigger が 30 分毎に `scheduled` ハンドラーを起動
 2. `buildFeedUserMap(env)` が全ユーザーの `subscriptions.json` を走査して `feedHash → userId[]` マップを構築
 3. 各 feedHash に対して RSS を 1 度だけ fetch（共有フィード）
-4. RSS/XML と selector HTML は実測 10 MiB 上限。メタデータ処理は 20 並列、fetch 開始前に permit を取り、ネットワーク・本文読込・解析・保存のパイプライン全体は 2 並列。RSS/Atom/RDF/JSON は raw 全項目の日付から最新 1000 件を選んで本文を変換する（1000 件以下は発行者順、無指定の `parseFeed` は無制限）。XML 全体のパースと nested content 復元は省略しない。詳細は `docs/feed-item-selection.md`
+4. RSS/XML と selector HTML は実測 10 MiB 上限。メタデータ処理は 20 並列。ヘッダー取得は 12 並列、本文の読み込み・decode・parse・保存は 3 並列で、上限バイト数とは独立に制御する。解析枠が無い応答は読まずに破棄して取り直す。RSS/Atom/RDF/JSON は raw 全項目の日付から最新 1000 件を選んで本文を変換する（1000 件以下は発行者順、無指定の `parseFeed` は無制限）。XML 全体のパースと nested content 復元は省略しない。詳細は `docs/feed-item-selection.md`
 5. `mergeNewArticlesWithChanges` が immutable segment を先に保存し、最新 500 件と参照一覧を持つ v2 head を ETag CAS で commit（履歴カスケードなし）
 6. R2 成功後に `ARTICLE_SEARCH` の変更 object を同期。索引失敗は R2 を壊さず、200 記事単位の再開可能な rebuild で修復。D1 は実行全体で 800 query 上限（Paid 向け）
 7. `meta.json` を更新。記事配列や knownIds をバッチ結果に残さず、件数・タイトルだけで Web Push 通知を集計
@@ -1083,6 +1083,9 @@ const match = matchesKeywordFilter(article, compiledFilter);
 | `selection-popup-position.spec.ts`              | `src/lib/selection-popup-position.ts#computeSelectionPopupLayout` — テキスト選択ポップアップの viewport-aware ポジショニング純粋関数（popup 実測サイズを受けて左右端 / 上端のはみ出しを補正、#1089）                                                                                                                                                       |
 | `modal-popup-lock-coverage.spec.ts`             | `src/lib/popup-lock.ts` — ポップアップ多重防止                                                                                                                                                                                                                                                                                                             |
 | `obsidian.spec.ts`                              | `src/lib/obsidian.ts` — Obsidian URI 生成                                                                                                                                                                                                                                                                                                                  |
+| `ArticleItems.thumbnail-candidates.test.tsx`    | 実props hookからList/Card/Magazineへの既存画像候補伝達、有限試行・proxy重複除去・late cacheでも候補に残る表示済feed画像を維持（実通信なし）                                                                                                                                                                                                                |
+| `thumbnail-candidates.spec.ts`                  | 実cache/props/rendererの390・1280px Chromium fixture。壊れたcached画像からdecoded feed画像へ切替、DOM維持、proxyだけ2回・追加OGPなし                                                                                                                                                                                                                       |
+| `ogp.deadline.test.ts`                          | `fetchPageOgpMeta` / `fetchTwitterFallbackImage` の共有期限・停止body取消・候補境界・late/ignored abort・元error保持・safe redirect/byte上限（fake clock・実通信なし）                                                                                                                                                                                     |
 | `ogp-url-normalize.spec.ts`                     | `/api/ogp` URL 正規化                                                                                                                                                                                                                                                                                                                                      |
 | `ogp-cache-ttl.spec.ts`                         | `src/lib/ogp-cache-ttl.ts` — `computeOgpCacheTtl` 純粋関数（Twitter fallback 経路 1 日 / 通常成功 30 日 / 空応答 1 日 / 全 4 分岐網羅、#706 cache poisoning 防御）                                                                                                                                                                                         |
 | `ogp-cache-schema.spec.ts`                      | `src/lib/ogp-cache-schema.ts` — `parseOgpCacheEntry` / `parseOgpCache` / `getOgpImage` 純粋関数 (#808 Phase 1、v1 string → v2 object lazy migration / title・description は次 fetch で追記 / 不正値 safe fallback、20 ケース網羅)                                                                                                                          |

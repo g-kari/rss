@@ -140,7 +140,7 @@ export default function ImportExportTabPanel({
       hidden={hidden}
     >
       <div className="flex flex-col gap-5 px-5 py-4">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           フィードのインポート / エクスポート
         </span>
         <div
@@ -207,7 +207,7 @@ export default function ImportExportTabPanel({
           </button>
         </div>
 
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           保存済み検索条件
         </span>
         <div data-setting-id="saved-searches" tabIndex={-1} className="flex flex-col gap-2">

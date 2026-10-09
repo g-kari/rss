@@ -17,8 +17,28 @@ interface PushNotificationState {
   error: string | null;
   /** 購読/解除をトグルする */
   toggle: () => Promise<void>;
-  /** テスト通知を送信する */
+  /** テスト通知を送信する。失敗時は呼び出し元が表示できるエラーで reject する。 */
   sendTest: () => Promise<string>;
+}
+
+function isPushTestResult(
+  data: unknown,
+): data is { sent: number; expired: number; remaining: number } {
+  if (!data || typeof data !== "object") return false;
+  const { sent, expired, remaining } = data as Record<string, unknown>;
+  return (
+    typeof sent === "number" &&
+    Number.isSafeInteger(sent) &&
+    sent >= 0 &&
+    typeof expired === "number" &&
+    Number.isSafeInteger(expired) &&
+    expired >= 0 &&
+    expired <= sent &&
+    typeof remaining === "number" &&
+    Number.isSafeInteger(remaining) &&
+    remaining >= 0 &&
+    remaining === sent - expired
+  );
 }
 
 /**
@@ -126,18 +146,31 @@ export function usePushNotifications(user: UserProfile | null | undefined): Push
   }, [supported, loading]);
 
   const sendTest = useCallback(async (): Promise<string> => {
+    let res: Response;
     try {
-      const res = await apiFetch("/api/push/test", { method: "POST" });
-      if (res.status === 503) return "VAPID キーが未設定です (wrangler secret を確認してください)";
-      if (res.status === 404) return "サブスクリプションが見つかりません (再度購読してください)";
-      if (!res.ok) return `送信失敗 (${res.status})`;
-      const data = (await res.json()) as { sent: number; expired: number; remaining: number };
-      if (data.expired > 0) return `送信完了 (期限切れ ${data.expired} 件を削除しました)`;
-      return `テスト通知を ${data.sent} 件送信しました`;
+      // The menu owns this result, so do not also emit a global API error toast.
+      res = await apiFetch("/api/push/test", { method: "POST" }, { errorNotification: "caller" });
     } catch (err) {
       devError("[usePushNotifications] sendTest failed", err);
-      return "ネットワークエラーが発生しました";
+      throw new Error("ネットワークエラーが発生しました");
     }
+    if (res.status === 503) {
+      throw new Error("VAPID キーが未設定です (wrangler secret を確認してください)");
+    }
+    if (res.status === 404) {
+      throw new Error("サブスクリプションが見つかりません (再度購読してください)");
+    }
+    if (!res.ok) throw new Error(`送信失敗 (${res.status})`);
+
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error("通知の送信結果を確認できませんでした");
+    }
+    if (!isPushTestResult(data)) throw new Error("通知の送信結果を確認できませんでした");
+    if (data.expired > 0) return `送信完了 (期限切れ ${data.expired} 件を削除しました)`;
+    return `テスト通知を ${data.sent} 件送信しました`;
   }, []);
 
   return { supported, subscribed, loading, error, toggle, sendTest };

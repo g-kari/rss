@@ -43,7 +43,7 @@ export interface SharedFeedMeta {
   articleCount: number;
   /** Committed article-head revision. D1 is a derived index of this revision. */
   articleRevision?: string;
-  /** latest 以外の論理ページ数（legacy では p2, p3, ... のファイル数） */
+  /** latest 以外の論理ページ数。spill 導入前の legacy では p2 以降のファイル数 */
   pageCount: number;
   /** 全ページを通じて既知の記事 ID 一覧（重複チェック用、最大 10,000 件） */
   knownIds?: string[];
@@ -93,6 +93,11 @@ export interface FeedArticleSnapshot {
   etag?: string;
   exists: boolean;
   legacy: boolean;
+  /**
+   * Legacy archive is append-only: a pending page, sealed spill objects, then frozen pN pages.
+   * False for an unmigrated cascade layout and for v2 heads.
+   */
+  spill: boolean;
 }
 
 /** フィードごとのキーワードフィルター */

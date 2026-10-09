@@ -21,6 +21,20 @@ export default function KeyboardShortcutsModal({ onClose }: Props) {
         ))}
       </ul>
       <section className="border-t border-border-default px-4 py-3 text-xs leading-5 text-text-soft">
+        <h3 className="font-medium text-text-default">ショートカット操作と通常の操作</h3>
+        <ul className="mt-1 list-disc space-y-1 pl-4">
+          <li>
+            フィードをビュー（記事・画像・動画・SNS）へ移す: フィードのドラッグ&amp;ドロップのほか、
+            フィードのメニューの「表示: …」から選べます。
+          </li>
+          <li>
+            プッシュ通知のテスト送信:
+            通知をオンにすると、その他のメニューに「テスト通知を送信」が出ます。
+            通知項目の右クリックでも送信できます。
+          </li>
+        </ul>
+      </section>
+      <section className="border-t border-border-default px-4 py-3 text-xs leading-5 text-text-soft">
         <h3 className="font-medium text-text-default">表示モードの解除</h3>
         <p>
           NSFWモードが有効なときは、サイドバー上部の「NSFWモード解除」をタップ、または

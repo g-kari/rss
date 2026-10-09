@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useContext } from "react";
-import { timeAgo } from "../../lib/article-utils";
+import { timeAgo, resolveThumbnailSources } from "../../lib/article-utils";
 import { highlightText } from "../../lib/article-ui-helpers";
 import { SelectedArticleCtx } from "../../contexts/SelectedArticleContext";
 import { BulkSelectionCtx } from "../../contexts/BulkSelectionContext";
@@ -48,6 +48,7 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
     onContextMenu,
   );
   const timeAgoText = useMemo(() => timeAgo(article.publishedAt), [article.publishedAt]);
+  const thumbnailFallbacks = useMemo(() => resolveThumbnailSources(article, {}), [article]);
   return (
     <div
       role="article"
@@ -75,14 +76,13 @@ export const MagazineFeaturedArticleItem = memo(function MagazineFeaturedArticle
       {thumb && (
         <ArticleThumbnail
           thumb={thumb}
+          fallbacks={thumbnailFallbacks}
           className="w-full aspect-video object-contain bg-surface-subtle"
         />
       )}
       <div className="p-3">
         {showFeedName && feedName && (
-          <span className="text-[10px] text-text-faint tracking-[0.06em] uppercase">
-            {feedName}
-          </span>
+          <span className="text-meta text-text-faint tracking-[0.06em] uppercase">{feedName}</span>
         )}
         <h3
           id={`article-title-${article.id}`}

@@ -318,7 +318,7 @@ function ArticleList({
     displayItems: galleryDisplayItems,
     deletingIds: galleryDeletingIds,
     newIds: galleryNewIds,
-  } = useDelayedGalleryItems(galleryVisible, getArticleId, 250, readerMotionAllowed);
+  } = useDelayedGalleryItems(galleryVisible, getArticleId, 300, readerMotionAllowed);
 
   // Phase 1: 画像/動画 view のギャラリー layout のとき、1 記事 N 画像を N カードに分解する。
   // explode flag は galleryPrefetchEnabled と同じ条件 (prefetch 完了画像を使うため一致が必要)。
@@ -470,7 +470,7 @@ function ArticleList({
     displayItems: nonGalleryDisplayItems,
     deletingIds: nonGalleryDeletingIds,
     newIds: nonGalleryNewIds,
-  } = useDelayedGalleryItems(visible, getArticleId, 250, readerMotionAllowed);
+  } = useDelayedGalleryItems(visible, getArticleId, 300, readerMotionAllowed);
 
   // Only committed scope and genuinely appended IDs trigger decoration; selection/polling do not.
   const readerMotionScope = JSON.stringify([
