@@ -1,5 +1,5 @@
 // Real production reader/list and virtualization. Local articles only; no account, AI or write API.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ArticleList from "../../src/components/ArticleList";
 import ArticleView from "../../src/components/ArticleView";
@@ -26,6 +26,7 @@ declare global {
   interface Window {
     readerMotionEvents: string[];
     retainedArticle?: Element;
+    setReaderTestTitle?: (title: string) => void;
   }
 }
 
@@ -100,6 +101,15 @@ function Reader() {
     setSelected(article);
     setPane("view");
   };
+  useEffect(() => {
+    window.setReaderTestTitle = (title) => {
+      setSelected((old) => ({ ...old, title }));
+      setPane("view");
+    };
+    return () => {
+      delete window.setReaderTestTitle;
+    };
+  }, []);
   const next = () => {
     setSelected((old) => articles[(Number(old.id) + 1) % articles.length]);
     setPane("view");
@@ -122,25 +132,6 @@ function Reader() {
                   Change feed
                 </button>
                 <button onClick={next}>Next article</button>
-                <button
-                  onClick={() => {
-                    setSelected((old) => ({
-                      ...old,
-                      title: "日本語とEnglishの長い記事タイトル".repeat(12),
-                    }));
-                    setPane("view");
-                  }}
-                >
-                  Long Japanese title
-                </button>
-                <button
-                  onClick={() => {
-                    setSelected((old) => ({ ...old, title: "UnbrokenEnglishTitle".repeat(30) }));
-                    setPane("view");
-                  }}
-                >
-                  Long unbroken title
-                </button>
                 <button onClick={() => setPane("list")}>Show list</button>
                 <button onClick={() => setSettingsOpen(true)}>Open settings</button>
                 <button onClick={() => setWidth((old) => (old === 420 ? 460 : 420))}>

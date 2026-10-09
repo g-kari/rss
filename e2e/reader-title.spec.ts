@@ -55,6 +55,10 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(({ page }) => expect(errors.get(page)).toEqual([]));
 
+async function setTitle(page: Page, title: string) {
+  await page.evaluate((value) => window.setReaderTestTitle!(value), title);
+}
+
 async function open(page: Page, dark = false) {
   await page.goto(READER_MOTION_DOCUMENT_URL);
   if (dark) await page.getByRole("button", { name: "Theme", exact: true }).click();
@@ -106,8 +110,11 @@ for (const viewport of [
         expect(ordinary.clamp).toBe("3");
         expect(ordinary.height).toBeCloseTo(ordinary.lineHeight * 3, 0);
         expect(ordinary.color).toBe(dark ? "rgb(228, 228, 231)" : "rgb(41, 37, 36)");
-        for (const label of ["Long Japanese title", "Long unbroken title"]) {
-          await page.getByRole("button", { name: label, exact: true }).click();
+        for (const title of [
+          "日本語とEnglishの長い記事タイトル".repeat(12),
+          "UnbrokenEnglishTitle".repeat(30),
+        ]) {
+          await setTitle(page, title);
           const long = await metrics(heading);
           expect(long.scrollWidth).toBeLessThanOrEqual(long.clientWidth + 1);
           expect(long.height).toBeCloseTo(ordinary.height, 0);
@@ -154,7 +161,7 @@ test.describe("Resized desktop Reader", () => {
     const heading = await open(page);
     const before = await metrics(heading);
     const initialScroll = await heading.evaluate((element) => {
-      const scroller = element.closest("main")!;
+      const scroller = element.closest("article")!;
       scroller.scrollTop = 600;
       (window as Window & { retainedTitle?: Element }).retainedTitle = element;
       window.readerMotionEvents = [];
@@ -167,7 +174,7 @@ test.describe("Resized desktop Reader", () => {
     expect(after.fontSize).toBeCloseTo(after.expectedSize, 2);
     const state = await heading.evaluate((element) => ({
       same: (window as Window & { retainedTitle?: Element }).retainedTitle === element,
-      scroll: element.closest("main")!.scrollTop,
+      scroll: element.closest("article")!.scrollTop,
       events: window.readerMotionEvents,
     }));
     expect(state.same).toBe(true);
@@ -187,7 +194,7 @@ test.describe("Enlarged mobile text", () => {
     await page.evaluate(() => {
       document.documentElement.style.fontSize = "32px";
     });
-    await page.getByRole("button", { name: "Long unbroken title", exact: true }).click();
+    await setTitle(page, "UnbrokenEnglishTitle".repeat(30));
     const enlarged = await metrics(heading);
     expect(enlarged.fontSize).toBe(48);
     expect(enlarged.fontSize).toBeCloseTo(enlarged.expectedSize, 2);
