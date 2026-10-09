@@ -35,6 +35,10 @@ function fixture() {
   let active = 0;
   let peak = 0;
   const bucket = {
+    head: async (key: string) => {
+      if (!store.has(key)) return null;
+      return { etag: key };
+    },
     get: async (key: string) => {
       reads.push(key);
       active++;

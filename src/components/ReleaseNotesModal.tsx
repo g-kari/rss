@@ -53,7 +53,7 @@ function parseMarkdown(md: unknown): ReactNode[] {
       nodes.push(
         <h5
           key={key++}
-          className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted mt-3 mb-1"
+          className="text-meta font-medium tracking-[0.2em] uppercase text-text-muted mt-3 mb-1"
         >
           {line.slice(4)}
         </h5>,

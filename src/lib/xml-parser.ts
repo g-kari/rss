@@ -2,6 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import { unescapeHtml, stripHtml, stripHtmlWithBreaks } from "./html";
 import { applyCorePipeline } from "./html-post-processor";
 import { isAbsoluteHttpUrl } from "./url";
+import { compareByPublishedAtDesc } from "./article-utils";
 
 /** XML 属性を持つノード（fast-xml-parser の属性プレフィックス "@_" 付き） */
 interface XmlAttr {
@@ -99,6 +100,64 @@ export interface ParsedFeed {
   title: string;
   siteUrl: string;
   items: ParsedItem[];
+}
+
+export interface ParseFeedOptions {
+  /** Optional newest-item cap. The default remains unlimited and in publisher order. */
+  maxItems?: number;
+}
+
+/** Preserve the existing post-parse stable date selection without converting losing items. */
+function selectLatestItems<T>(
+  items: T[],
+  maxItems: number | undefined,
+  publishedAt: (item: T) => string | null,
+): T[] {
+  if (maxItems === undefined || items.length <= maxItems) return items;
+  return items
+    .map((item, sourceIndex) => ({ item, sourceIndex, publishedAt: publishedAt(item) }))
+    .sort(
+      (left, right) =>
+        compareByPublishedAtDesc(left, right) || left.sourceIndex - right.sourceIndex,
+    )
+    .slice(0, maxItems)
+    .map(({ item }) => item);
+}
+
+/** XML objects with shadowed coercion methods keep the legacy full conversion path. */
+function supportsXmlRawSelection(values: unknown[]): boolean {
+  const pending = [...values];
+  while (pending.length) {
+    const value = pending.pop();
+    if (value === null || typeof value !== "object") continue;
+    if (Object.hasOwn(value, "toString") || Object.hasOwn(value, "valueOf")) return false;
+    for (const child of Object.values(value)) pending.push(child);
+  }
+  return true;
+}
+
+function selectXmlItems(
+  items: FeedItem[],
+  maxItems: number | undefined,
+  publishedAt: (item: FeedItem) => string | null,
+  inheritedAuthor: unknown,
+): FeedItem[] {
+  if (maxItems === undefined || items.length <= maxItems) return items;
+  return supportsXmlRawSelection([items, inheritedAuthor])
+    ? selectLatestItems(items, maxItems, publishedAt)
+    : items;
+}
+
+function rssPublishedAt(item: FeedItem): string | null {
+  return parseDate(str(item.pubDate) || str(item["dc:date"]) || null);
+}
+
+function atomPublishedAt(item: FeedItem): string | null {
+  return parseDate(item.published ?? item.updated);
+}
+
+function rdfPublishedAt(item: FeedItem): string | null {
+  return parseDate(str(item["dc:date"]) || str(item.pubDate) || null);
 }
 
 /**
@@ -504,9 +563,62 @@ function joinJsonFeedAuthorNames(authors: JsonFeedAuthor[]): string {
   return names.join(", ");
 }
 
-function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
+function jsonPublishedAt(item: JsonFeedItem): string | null {
+  return parseDate(item.date_published) ?? parseDate(item.date_modified);
+}
+
+/** Nonstandard JSON types retain the old full conversion and its error behavior. */
+function jsonItemsSupportRawSelection(data: JsonFeedRoot, items: JsonFeedItem[]): boolean {
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+  const stringOrNull = (value: unknown) => value == null || typeof value === "string";
   const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
-  const items: ParsedItem[] = (data.items ?? []).map((item) => {
+  return (
+    Array.isArray(items) &&
+    items.every((item) => {
+      if (!isRecord(item)) return false;
+      if (
+        ![
+          item.content_html,
+          item.content_text,
+          item.summary,
+          item.url,
+          item.external_url,
+          item.image,
+          item.banner_image,
+          item.date_published,
+          item.date_modified,
+        ].every(stringOrNull)
+      )
+        return false;
+      const authors = item.authors ?? (item.author ? [item.author] : feedAuthors);
+      if (
+        !Array.isArray(authors) ||
+        !authors.every((author) => isRecord(author) && stringOrNull(author.name))
+      )
+        return false;
+      const attachments = item.attachments ?? [];
+      return (
+        Array.isArray(attachments) &&
+        attachments.every(
+          (attachment) =>
+            isRecord(attachment) && [attachment.url, attachment.mime_type].every(stringOrNull),
+        )
+      );
+    })
+  );
+}
+
+function parseJsonFeed(data: JsonFeedRoot, maxItems?: number): ParsedFeed {
+  const feedAuthors = data.authors ?? (data.author ? [data.author] : []);
+  const rawItems = data.items ?? [];
+  const selected =
+    maxItems !== undefined &&
+    rawItems.length > maxItems &&
+    jsonItemsSupportRawSelection(data, rawItems)
+      ? selectLatestItems(rawItems, maxItems, jsonPublishedAt)
+      : rawItems;
+  const items: ParsedItem[] = selected.map((item) => {
     const html = item.content_html || "";
     const isHtml = !!html;
     const raw = isHtml ? html : item.content_text || item.summary || "";
@@ -520,23 +632,36 @@ function parseJsonFeed(data: JsonFeedRoot): ParsedFeed {
     const language = getJsonFeedLanguage(item.language, data.language);
     return {
       guid: item.id ?? item.url ?? item.external_url ?? "",
-      title: item.title ?? "",
+      title: typeof item.title === "string" ? item.title : "",
       link,
       summary,
       content,
       ogImage: getJsonFeedImage(item),
       author,
-      publishedAt: parseDate(item.date_published) ?? parseDate(item.date_modified),
+      publishedAt: jsonPublishedAt(item),
       categories: item.tags ?? [],
       metadata: language ? [{ key: "language", value: language }] : [],
     };
   });
-  return { title: data.title ?? "", siteUrl: data.home_page_url ?? "", items };
+  return {
+    title: data.title ?? "",
+    siteUrl: data.home_page_url ?? "",
+    items,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function parseFeed(xml: string): ParsedFeed {
+export function parseFeed(xml: string, { maxItems }: ParseFeedOptions = {}): ParsedFeed {
+  // Options are internal policy, not feed data. Validate outside format fallbacks.
+  if (maxItems !== undefined && (!Number.isSafeInteger(maxItems) || maxItems < 0))
+    throw new RangeError("maxItems must be a non-negative safe integer");
+  const result = parseFeedItems(xml, maxItems);
+  result.items = selectLatestItems(result.items, maxItems, (item) => item.publishedAt);
+  return result;
+}
+
+function parseFeedItems(xml: string, maxItems: number | undefined): ParsedFeed {
   const cleaned = preprocessXml(xml);
 
   // JSON Feed の検出: 先頭が `{` ならまず JSON としてパースを試みる
@@ -547,7 +672,7 @@ export function parseFeed(xml: string): ParsedFeed {
       // `includes("jsonfeed.org")` だと任意 URL にホスト名を含ませてなりすまし可能なため
       // ホスト名を URL としてパースして完全一致で判定する。
       if (typeof data?.version === "string" && isJsonFeedVersion(data.version)) {
-        return parseJsonFeed(data);
+        return parseJsonFeed(data, maxItems);
       }
     } catch {
       // JSON パース失敗 → XML として継続
@@ -574,29 +699,31 @@ export function parseFeed(xml: string): ParsedFeed {
     return {
       title: stripHtml(str(ch.title)),
       siteUrl: str(ch.link),
-      items: toArray(ch.item).map((item) => {
-        const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
-        const link = getRssItemLink(item);
-        return {
-          guid: str(item.guid ?? item.link),
-          title: stripHtml(str(item.title)),
-          link,
-          summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
-          content: applyCorePipeline(raw, link),
-          ogImage: safeUrl(extractImage(item)),
-          // item に著者がないとき channel-level dc:creator に fallback (Atom feed.author /
-          // JSON feedAuthors と対称、単一著者ブログの channel dc:creator のみ提供パターン対応)。
-          author: stripHtml(
-            str(item["dc:creator"]) || authorStr(item.author) || str(ch["dc:creator"]),
-          ).trim(),
-          // RSS 2.0 native は pubDate。一部 feed は Dublin Core (dc:date) のみで日付を提供する
-          // ため fallback にする (dc:creator を既に読んでおり dc:date も RSS2_SKIP_KEYS 済 =
-          // date として消費する前提、RDF の dc:date || pubDate と対称)。
-          publishedAt: parseDate(str(item.pubDate) || str(item["dc:date"]) || null),
-          categories: parseCategories(item.category),
-          metadata: extractMetadata(item, RSS2_SKIP_KEYS),
-        };
-      }),
+      items: selectXmlItems(toArray(ch.item), maxItems, rssPublishedAt, ch["dc:creator"]).map(
+        (item) => {
+          const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
+          const link = getRssItemLink(item);
+          return {
+            guid: str(item.guid ?? item.link),
+            title: stripHtml(str(item.title)),
+            link,
+            summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
+            content: applyCorePipeline(raw, link),
+            ogImage: safeUrl(extractImage(item)),
+            // item に著者がないとき channel-level dc:creator に fallback (Atom feed.author /
+            // JSON feedAuthors と対称、単一著者ブログの channel dc:creator のみ提供パターン対応)。
+            author: stripHtml(
+              str(item["dc:creator"]) || authorStr(item.author) || str(ch["dc:creator"]),
+            ).trim(),
+            // RSS 2.0 native は pubDate。一部 feed は Dublin Core (dc:date) のみで日付を提供する
+            // ため fallback にする (dc:creator を既に読んでおり dc:date も RSS2_SKIP_KEYS 済 =
+            // date として消費する前提、RDF の dc:date || pubDate と対称)。
+            publishedAt: rssPublishedAt(item),
+            categories: parseCategories(item.category),
+            metadata: extractMetadata(item, RSS2_SKIP_KEYS),
+          };
+        },
+      ),
     };
   }
 
@@ -607,33 +734,35 @@ export function parseFeed(xml: string): ParsedFeed {
     return {
       title: stripHtml(str(feed.title)),
       siteUrl: getAtomAlternateHref(feedLinks),
-      items: toArray(feed.entry).map((entry) => {
-        // Atom の link は isArray 設定により常に XmlAttr[] になる
-        const entryLinks = toArray<XmlAttr>(entry.link as XmlAttr | XmlAttr[] | undefined);
-        const raw = unwrapCdata(str(entry.content ?? entry.summary ?? ""));
-        const link = safeUrl(getAtomAlternateHref(entryLinks));
-        return {
-          // <id> 欠落の Atom entry は link を fallback にする (RSS 2.0 `guid ?? link` /
-          // RDF `guid ?? rdf:about ?? link` と対称)。fallback がないと id-less entry が全て
-          // guid="" → 同一 article id に collapse して dedup で 1 件以外失われる。
-          guid: str(entry.id) || link,
-          title: stripHtml(str(entry.title)),
-          link,
-          summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
-          content: applyCorePipeline(raw, link),
-          ogImage: safeUrl(extractImage(entry)),
-          author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
-          publishedAt: parseDate(entry.published ?? entry.updated),
-          categories: toArray(entry.category)
-            .map((c) =>
-              typeof c === "object" && c !== null && "@_term" in c
-                ? String((c as { "@_term"?: unknown })["@_term"] ?? "")
-                : str(c),
-            )
-            .filter(Boolean),
-          metadata: extractMetadata(entry, ATOM_SKIP_KEYS),
-        };
-      }),
+      items: selectXmlItems(toArray(feed.entry), maxItems, atomPublishedAt, feed.author).map(
+        (entry) => {
+          // Atom の link は isArray 設定により常に XmlAttr[] になる
+          const entryLinks = toArray<XmlAttr>(entry.link as XmlAttr | XmlAttr[] | undefined);
+          const raw = unwrapCdata(str(entry.content ?? entry.summary ?? ""));
+          const link = safeUrl(getAtomAlternateHref(entryLinks));
+          return {
+            // <id> 欠落の Atom entry は link を fallback にする (RSS 2.0 `guid ?? link` /
+            // RDF `guid ?? rdf:about ?? link` と対称)。fallback がないと id-less entry が全て
+            // guid="" → 同一 article id に collapse して dedup で 1 件以外失われる。
+            guid: str(entry.id) || link,
+            title: stripHtml(str(entry.title)),
+            link,
+            summary: stripHtmlWithBreaks(raw).slice(0, MAX_SUMMARY_LENGTH),
+            content: applyCorePipeline(raw, link),
+            ogImage: safeUrl(extractImage(entry)),
+            author: stripHtml(authorStr(entry.author) || authorStr(feed.author)).trim(),
+            publishedAt: atomPublishedAt(entry),
+            categories: toArray(entry.category)
+              .map((c) =>
+                typeof c === "object" && c !== null && "@_term" in c
+                  ? String((c as { "@_term"?: unknown })["@_term"] ?? "")
+                  : str(c),
+              )
+              .filter(Boolean),
+            metadata: extractMetadata(entry, ATOM_SKIP_KEYS),
+          };
+        },
+      ),
     };
   }
 
@@ -644,7 +773,12 @@ export function parseFeed(xml: string): ParsedFeed {
     return {
       title: stripHtml(str(rdf.channel?.title)),
       siteUrl: str(rdf.channel?.link),
-      items: toArray(rdf.item).map((item) => {
+      items: selectXmlItems(
+        toArray(rdf.item),
+        maxItems,
+        rdfPublishedAt,
+        rdf.channel?.["dc:creator"],
+      ).map((item) => {
         const raw = unwrapCdata(str(item["content:encoded"] ?? item.description ?? ""));
         // RSS 1.0 は guid がなく rdf:about 属性が識別子を兼ねる
         const guid = str(item.guid ?? item["@_rdf:about"] ?? item.link);
@@ -661,7 +795,7 @@ export function parseFeed(xml: string): ParsedFeed {
             str(item["dc:creator"]) || authorStr(item.author) || str(rdf.channel?.["dc:creator"]),
           ).trim(),
           // RSS 1.0 は dc:date（ISO 8601）が主要。pubDate は一部サイト独自の拡張として存在しうるためフォールバックに使う
-          publishedAt: parseDate(str(item["dc:date"]) || str(item.pubDate) || null),
+          publishedAt: rdfPublishedAt(item),
           categories: parseCategories(item.category),
           metadata: extractMetadata(item, RDF_SKIP_KEYS),
         };

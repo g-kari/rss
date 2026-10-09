@@ -50,12 +50,12 @@ function CategorySectionImpl({
         >
           <path d="M5 7L1 3h8L5 7z" />
         </svg>
-        <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted group-hover:text-text-default transition-colors">
+        <span className="text-meta font-medium tracking-[0.2em] uppercase text-text-muted group-hover:text-text-default transition-colors">
           {cat}
         </span>
         {isCollapsed && (
           <span
-            className={`ml-auto text-[10px] tabular-nums ${catUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
+            className={`ml-auto text-badge tabular-nums ${catUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
           >
             {catUnread > 0 ? formatCount(catUnread) : catFeeds.length}
           </span>

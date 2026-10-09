@@ -89,7 +89,7 @@ export default function SidebarHeader({
           onContextMenu={(e) => {
             if (nsfwMode) e.preventDefault();
           }}
-          className={`text-[10px] font-medium tracking-[0.25em] uppercase transition-colors duration-200 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
+          className={`text-meta font-medium tracking-[0.25em] uppercase transition-colors duration-150 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
           title={nsfwMode ? "長押しでNSFWモード解除" : ""}
         >
           RSS
@@ -97,10 +97,10 @@ export default function SidebarHeader({
         <button
           onClick={onToggleInput}
           disabled={!isOnline}
-          className={`w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded transition-all duration-200 disabled:opacity-40 ${
+          className={`inline-flex items-center gap-1 px-2 max-md:min-h-[44px] lg:min-h-[28px] rounded text-control font-medium transition-colors duration-150 disabled:opacity-40 ${
             inputOpen
-              ? "text-text-default bg-surface-subtle"
-              : "text-text-faint hover:text-text-default hover:bg-surface-subtle"
+              ? "bg-accent-subtle text-accent"
+              : "bg-accent text-accent-contrast hover:bg-accent-hover"
           }`}
           title={!isOnline ? "オフラインです" : "フィードを追加"}
           aria-label={!isOnline ? "オフライン" : "フィードを追加"}
@@ -117,11 +117,12 @@ export default function SidebarHeader({
             <line x1="5.5" y1="1" x2="5.5" y2="10" />
             <line x1="1" y1="5.5" x2="10" y2="5.5" />
           </svg>
+          <span aria-hidden="true">追加</span>
         </button>
         <button
           onClick={onRefresh}
           disabled={refreshing || !isOnline}
-          className="w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all duration-200 disabled:opacity-40"
+          className="w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-colors duration-150 disabled:opacity-40"
           title={!isOnline ? "オフラインです" : "フィードを更新"}
           aria-label={!isOnline ? "オフライン" : refreshing ? "フィードを更新中" : "フィードを更新"}
         >
@@ -150,7 +151,7 @@ export default function SidebarHeader({
               // must not prevent this button's default click or scroll its reader.
               if (event.key === " ") event.stopPropagation();
             }}
-            className="w-full min-h-[44px] px-2 py-2 text-xs leading-4 font-medium rounded border border-border-default text-text-default hover:bg-surface-subtle transition-colors duration-200"
+            className="w-full min-h-[44px] px-2 py-2 text-xs leading-4 font-medium rounded border border-border-default text-text-default hover:bg-surface-hover transition-colors duration-200"
             title="NSFWモード解除（開いている記事は閉じません）"
           >
             NSFWモード解除

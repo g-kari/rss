@@ -32,7 +32,7 @@ export default function ArticleNotePanel({
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
         </svg>
-        <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">メモ</p>
+        <p className="text-meta tracking-[0.1em] uppercase text-text-faint">メモ</p>
       </div>
       <textarea
         data-article-note-editor
@@ -57,7 +57,7 @@ export default function ArticleNotePanel({
       />
       <div className="flex items-center justify-between mt-1">
         {noteText !== (note ?? "") ? (
-          <p className="text-[10px] text-text-faint">フォーカスを外すと自動保存</p>
+          <p className="text-meta text-text-faint">フォーカスを外すと自動保存</p>
         ) : (
           <span />
         )}

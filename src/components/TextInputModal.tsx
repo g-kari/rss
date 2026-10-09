@@ -147,7 +147,7 @@ export default function TextInputModal({
             </button>
             <button
               type="submit"
-              className="min-h-[44px] px-4 py-2 text-[12px] rounded-lg bg-ink hover:bg-ink-hover text-ink-text transition-colors"
+              className="min-h-[44px] px-4 py-2 text-[12px] rounded-lg bg-accent hover:bg-accent-hover text-accent-contrast transition-colors"
             >
               {submitLabel}
             </button>

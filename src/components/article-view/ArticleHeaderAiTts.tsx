@@ -98,7 +98,7 @@ export default function ArticleHeaderAiTts({
             }
             aria-label={aiResult ? "AI 要約を閉じる" : "AI 要約"}
             aria-pressed={!!aiResult}
-            className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+            className={`text-meta tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               aiResult
                 ? "border-ink bg-ink text-ink-text"
                 : aiError
@@ -119,7 +119,7 @@ export default function ArticleHeaderAiTts({
             }
             aria-label={translateResult ? "AI 翻訳を閉じる" : "AI 翻訳"}
             aria-pressed={!!translateResult}
-            className={`text-[10px] tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+            className={`text-meta tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               translateResult
                 ? "border-ink bg-ink text-ink-text"
                 : translateError
@@ -144,7 +144,7 @@ export default function ArticleHeaderAiTts({
           className="p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 disabled:opacity-50 flex items-center gap-1 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
         >
           {downloadingImages && imageDownloadProgress ? (
-            <span className="text-[10px] tabular-nums tracking-tight">
+            <span className="text-badge tabular-nums tracking-tight">
               {imageDownloadProgress.done}/{imageDownloadProgress.total}
             </span>
           ) : null}
@@ -249,7 +249,7 @@ export default function ArticleHeaderAiTts({
           onClick={ttsCycleRate}
           title={`読み上げ速度: ${ttsRate}x → 次: ${cycleValue(TTS_RATES, ttsRate)}x（クリック / Shift+R）`}
           aria-label={`読み上げ速度 ${ttsRate}倍`}
-          className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 text-[10px] font-medium tabular-nums leading-none ${
+          className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 text-badge font-medium tabular-nums leading-none ${
             ttsPlaying || ttsPaused
               ? "text-ink hover:text-text-muted"
               : "text-text-faint hover:text-text-muted"

@@ -11,10 +11,37 @@ import { OGP_STAGGER_MS } from "../lib/ogp-cache-ttl";
 import { extractBoothFallbackUrl } from "../lib/booth-fallback";
 import { parseOgpCache, type OgpCacheEntry } from "../lib/ogp-cache-schema";
 import { mergeWithLruEviction } from "../lib/ogp-cache-lru";
+import { isValidFeedUrl, isValidPublicUrl } from "../lib/url";
 import type { OgpCacheStore } from "../contexts/OgpCacheContext";
 
 const MAX_OGP_CACHE_SIZE = 2000;
 const SAVE_DEBOUNCE_MS = 500;
+const OGP_BATCH_SIZE = 10;
+
+class OgpHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+  }
+}
+
+/** Release a canceled slot even if an auth wait or body decoder does not observe fetch's signal. */
+async function awaitOgpResult<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  let cancel = () => {};
+  const aborted = new Promise<never>((_resolve, reject) => {
+    cancel = () => {
+      const error = new Error("OGP request canceled");
+      error.name = "AbortError";
+      reject(error);
+    };
+    signal.addEventListener("abort", cancel, { once: true });
+    if (signal.aborted) cancel();
+  });
+  try {
+    return await Promise.race([promise, aborted]);
+  } finally {
+    signal.removeEventListener("abort", cancel);
+  }
+}
 
 /**
  * #808 Phase 2: 内部 state を v2 schema (`Record<string, OgpCacheEntry>`) で保持。
@@ -58,146 +85,210 @@ export function useOgpCache(visible: Article[]): OgpCacheStore {
     return result;
   }, [ogpCacheV2]);
 
-  const fetchingRef = useRef<Set<string>>(new Set());
+  const fetchingRef = useRef<Map<string, AbortController>>(new Map());
+  const attemptedRef = useRef<Set<string>>(new Set());
   const noImageRef = useRef<Set<string>>(new Set());
   const ogpCacheRef = useSyncedRef(ogpCache);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // visible が切り替わる / hook が unmount する前に、まだ発火していない遅延 OGP fetch を止める。
-  const scheduledFetchTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-  const seenLinksRef = useRef<Set<string>>(new Set());
-
-  // count:last-id sentinel — O(1) で記事追加/削除を検知 (全 ID を join する O(n) GC 圧を回避)
-  // visible 配列参照を deps に入れると slice の度に useMemo が再実行されるため primitive 2 値で代替
-  const visibleLen = visible.length;
-  const visibleLastId = visible.at(-1)?.id ?? "";
-  const linksKey = useMemo(
-    () => (visibleLen > 0 ? `${visibleLen}:${visibleLastId}` : ""),
-    [visibleLen, visibleLastId],
+  const pendingRef = useRef<string[]>([]);
+  const wantedRef = useRef<Set<string>>(new Set());
+  const blockedRef = useRef(false);
+  const pausedUntilRef = useRef(0);
+  const pumpRef = useRef<() => void>(() => {});
+  const previousLinksRef = useRef<string[]>([]);
+  // Compare actual URLs, not count:last-id. Equivalent slices keep a stable identity.
+  const links = useMemo(() => {
+    const next = Array.from(
+      new Set(
+        visible.map((article) => article.link).filter((link) => !!link && isValidFeedUrl(link)),
+      ),
+    );
+    const previous = previousLinksRef.current;
+    if (next.length === previous.length && next.every((link, index) => link === previous[index])) {
+      return previous;
+    }
+    previousLinksRef.current = next;
+    return next;
+  }, [visible]);
+  const articleByLink = useMemo(
+    () => new Map(visible.map((article) => [article.link, article])),
+    [visible],
   );
+  const articleByLinkRef = useSyncedRef(articleByLink);
 
   useEffect(() => {
-    if (!linksKey) return;
-
-    // linksKey.split() の代わりに visible から直接リンクを取得し、新規リンクだけを収集
-    // (同一 render 内の重複は従来どおり保持し、seenLinks への登録タイミングも維持)
-    const newLinks: string[] = [];
-    for (const article of visible) {
-      const link = article.link;
-      if (link != null && !seenLinksRef.current.has(link)) newLinks.push(link);
-    }
-    if (newLinks.length === 0) return;
-
-    for (const link of newLinks) seenLinksRef.current.add(link);
-
-    const toFetch = newLinks.filter(
-      (link) =>
-        !ogpCacheRef.current[link] &&
-        !fetchingRef.current.has(link) &&
-        !noImageRef.current.has(link),
-    );
-
-    if (toFetch.length === 0) return;
-
-    // 一度に最大10件まで並列フェッチ（429防止）
-    const OGP_BATCH_SIZE = 10;
-    // OGP_STAGGER_MS は ogp-cache-ttl.ts の共有定数を使用
-    const batch = toFetch.slice(0, OGP_BATCH_SIZE);
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let nextStartAt = 0;
 
     const scheduleSave = (data: Record<string, OgpCacheEntry>) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
-        saveJson(STORAGE_KEYS.OGP_CACHE, data);
+        if (!disposed) saveJson(STORAGE_KEYS.OGP_CACHE, data);
       }, SAVE_DEBOUNCE_MS);
     };
 
     const cacheImage = (link: string, image: string) => {
+      if (disposed) return;
       setOgpCacheV2((prev) => {
-        // #808 Phase 2: v2 entry を保存。title / description は **未取得時 undefined** の
-        // まま (次 fetch で追記する lazy migration policy)。既存 entry があれば image だけ
-        // 更新して title / description を保持する。
+        if (disposed) return prev;
         const existing = prev[link];
         const nextEntry: OgpCacheEntry = existing ? { ...existing, image } : { image };
-        // #1088 Finding 2: true-LRU eviction (再アクセス entry を末尾移動して recency 反映)。
         const result = mergeWithLruEviction(prev, link, nextEntry, MAX_OGP_CACHE_SIZE);
         scheduleSave(result);
         return result;
       });
     };
 
-    // #765 / #750 Phase 2: x.com 系記事で primary OGP が空 or fetch error のとき、
-    // summary に含まれる booth.pm URL の OGP を取得して thumbnail として使う。
-    // booth fallback も失敗したら noImageRef に登録して以後 retry しない。
-    const tryBoothFallback = async (link: string, article: Article | undefined) => {
-      const boothUrl = article
-        ? extractBoothFallbackUrl({ link: article.link, summary: article.summary })
-        : null;
-      if (!boothUrl) {
-        noImageRef.current.add(link);
-        return;
+    const fetchImage = async (url: string, controller: AbortController): Promise<string> => {
+      const response = await awaitOgpResult(
+        apiFetch(
+          `/api/ogp?url=${encodeURIComponent(url)}`,
+          { signal: controller.signal },
+          { errorNotification: "caller" },
+        ),
+        controller.signal,
+      );
+      if (controller.signal.aborted || disposed) return "";
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) blockedRef.current = true;
+        if (response.status === 429) {
+          const seconds = Number(response.headers.get("Retry-After"));
+          const delay = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 60_000;
+          pausedUntilRef.current = Math.max(pausedUntilRef.current, Date.now() + delay);
+        }
+        throw new OgpHttpError(response.status);
       }
+      const { image } = (await awaitOgpResult(response.json(), controller.signal)) as OgpData;
+      if (controller.signal.aborted || disposed) return "";
+      return typeof image === "string" && isValidPublicUrl(image) ? image : "";
+    };
+
+    const resolveLink = async (link: string, controller: AbortController) => {
+      const obsolete = () => disposed || controller.signal.aborted || !wantedRef.current.has(link);
+      let primarySucceeded = false;
       try {
-        const r = await apiFetch(`/api/ogp?url=${encodeURIComponent(boothUrl)}`);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const { image: boothImage } = (await r.json()) as OgpData;
-        if (boothImage) {
-          cacheImage(link, boothImage);
-        } else {
-          noImageRef.current.add(link);
+        const image = await fetchImage(link, controller);
+        if (obsolete()) return;
+        primarySucceeded = true;
+        if (image) {
+          cacheImage(link, image);
+          return;
         }
       } catch (err) {
-        devError("[useOgpCache] booth fallback OGP fetch failed", link, err);
-        noImageRef.current.add(link);
+        if (obsolete() || isAbortError(err)) return;
+        devError("[useOgpCache] primary OGP fetch failed", link, err);
+        if (err instanceof OgpHttpError && [401, 403, 429].includes(err.status)) return;
+      }
+
+      // Keep the existing, single known BOOTH fallback. A failure is not a permanent miss.
+      if (obsolete()) return;
+      const article = articleByLinkRef.current.get(link);
+      const boothUrl = article ? extractBoothFallbackUrl(article) : null;
+      if (!boothUrl || !isValidFeedUrl(boothUrl)) {
+        if (primarySucceeded) noImageRef.current.add(link);
+        return;
+      }
+      if (blockedRef.current || pausedUntilRef.current > Date.now()) return;
+      try {
+        const image = ogpCacheRef.current[boothUrl] || (await fetchImage(boothUrl, controller));
+        if (obsolete()) return;
+        if (image) cacheImage(link, image);
+        else if (primarySucceeded) noImageRef.current.add(link);
+      } catch (err) {
+        if (!obsolete() && !isAbortError(err)) {
+          devError("[useOgpCache] booth fallback OGP fetch failed", link, err);
+        }
       }
     };
 
-    // batch loop の `visible.find()` を避けるため、link → Article の Map を 1 度だけ構築
-    // (visible 500 件 × batch 10 件で 5000 ops → 510 ops に削減)
-    const articleByLink = new Map<string, Article>();
-    for (const a of visible) {
-      if (a.link) articleByLink.set(a.link, a);
-    }
-    batch.forEach((link, i) => {
-      fetchingRef.current.add(link);
-      const article = articleByLink.get(link);
-      // リロード時の /api/ogp 一斉フェッチ burst を防ぐため、インデックスに応じて遅延する（#762）
-      const timerId = setTimeout(() => {
-        scheduledFetchTimersRef.current.delete(timerId);
-        apiFetch(`/api/ogp?url=${encodeURIComponent(link)}`)
-          .then((r) => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json() as Promise<OgpData>;
-          })
-          .then(({ image }) => {
-            if (image) {
-              cacheImage(link, image);
-            } else {
-              return tryBoothFallback(link, article);
-            }
-          })
-          .catch((err: unknown) => {
-            if (!isAbortError(err)) devError("[useOgpCache] primary OGP fetch failed", link, err);
-            return tryBoothFallback(link, article);
-          })
-          .finally(() => {
-            fetchingRef.current.delete(link);
-          });
-      }, i * OGP_STAGGER_MS);
-      scheduledFetchTimersRef.current.add(timerId);
-    });
-    return () => {
-      for (const timerId of scheduledFetchTimersRef.current) clearTimeout(timerId);
-      scheduledFetchTimersRef.current.clear();
+    const pump = () => {
+      if (
+        disposed ||
+        blockedRef.current ||
+        timer !== null ||
+        fetchingRef.current.size >= OGP_BATCH_SIZE
+      )
+        return;
+      if (pendingRef.current.length === 0) return;
+      const delay = Math.max(0, nextStartAt - Date.now(), pausedUntilRef.current - Date.now());
+      timer = setTimeout(() => {
+        timer = null;
+        if (disposed || blockedRef.current) return;
+        if (pausedUntilRef.current > Date.now()) {
+          pump();
+          return;
+        }
+        let link = pendingRef.current.shift();
+        while (
+          link &&
+          (!wantedRef.current.has(link) ||
+            ogpCacheRef.current[link] ||
+            noImageRef.current.has(link) ||
+            attemptedRef.current.has(link) ||
+            fetchingRef.current.has(link))
+        ) {
+          link = pendingRef.current.shift();
+        }
+        if (!link) return;
+        const controller = new AbortController();
+        const target = link;
+        attemptedRef.current.add(target);
+        fetchingRef.current.set(target, controller);
+        nextStartAt = Date.now() + OGP_STAGGER_MS;
+        void resolveLink(target, controller).finally(() => {
+          if (fetchingRef.current.get(target) === controller) fetchingRef.current.delete(target);
+          // An aborted target may already be visible again. Its old result stays discarded.
+          if (
+            !disposed &&
+            controller.signal.aborted &&
+            wantedRef.current.has(target) &&
+            !pendingRef.current.includes(target)
+          ) {
+            pendingRef.current.push(target);
+          }
+          pump();
+        });
+        pump();
+      }, delay);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linksKey]);
-
-  useEffect(() => {
+    pumpRef.current = pump;
     return () => {
-      for (const timerId of scheduledFetchTimersRef.current) clearTimeout(timerId);
-      scheduledFetchTimersRef.current.clear();
+      disposed = true;
+      if (timer !== null) clearTimeout(timer);
+      pendingRef.current = [];
+      wantedRef.current.clear();
+      for (const controller of fetchingRef.current.values()) controller.abort();
+      fetchingRef.current.clear();
+      pumpRef.current = () => {};
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
+    // Stable refs expose current targets/cache while this scheduler owns the mount lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    wantedRef.current = new Set(links);
+    // Pagination/reordering is not a retry intent for an already-visible failed URL.
+    // Never-started queued URLs remain eligible; leaving and returning permits one new attempt.
+    for (const link of attemptedRef.current) {
+      if (!wantedRef.current.has(link)) attemptedRef.current.delete(link);
+    }
+    pendingRef.current = links.filter(
+      (link) =>
+        !ogpCacheRef.current[link] &&
+        !noImageRef.current.has(link) &&
+        !attemptedRef.current.has(link) &&
+        !fetchingRef.current.has(link),
+    );
+    blockedRef.current = false;
+    for (const [link, controller] of fetchingRef.current) {
+      if (!wantedRef.current.has(link)) controller.abort();
+    }
+    pumpRef.current();
+    // Stable refs hold the latest cache; only an actual visible URL change rebuilds the queue.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [links]);
 
   // #808 Phase 3a: Context 経由参照のための v2 entry getter (caller は ArticleContentBody
   // の useContentLinkPreviews で title/description 取得 cache hit 判定に使う)。

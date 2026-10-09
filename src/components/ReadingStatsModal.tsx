@@ -257,7 +257,7 @@ export default function ReadingStatsModal({
             {/* 年間ヒートマップ */}
             {displayYearlyHeatmap && displayYearlyHeatmap.length > 0 && (
               <div className="flex flex-col gap-2">
-                <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <h3 className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
                   過去 1 年
                 </h3>
                 <HeatmapCalendar data={displayYearlyHeatmap} />
@@ -284,7 +284,7 @@ export default function ReadingStatsModal({
 
             {/* 直近 7 日バーグラフ */}
             <div className="flex flex-col gap-2">
-              <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+              <h3 className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
                 直近 7 日
               </h3>
               <div className="flex flex-col gap-1.5">
@@ -312,7 +312,7 @@ export default function ReadingStatsModal({
             {/* TOP フィード */}
             {stats.topFeeds.length > 0 && (
               <div className="flex flex-col gap-2">
-                <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <h3 className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
                   よく読むフィード
                 </h3>
                 <div className="flex flex-col gap-1.5">
@@ -354,7 +354,7 @@ export default function ReadingStatsModal({
             {/* フィード別未読消化率 */}
             {inboxStats.length > 0 && (
               <div className="flex flex-col gap-2">
-                <h3 className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+                <h3 className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
                   フィード別 未読消化率
                 </h3>
                 <div className="flex flex-col gap-1.5">

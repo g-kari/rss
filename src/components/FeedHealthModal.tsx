@@ -135,7 +135,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                           {feed.title}
                         </span>
                         {(feed.consecutiveErrors ?? 0) > 1 && (
-                          <span className="text-[10px] text-error flex-shrink-0">
+                          <span className="text-meta text-error flex-shrink-0">
                             {feed.consecutiveErrors}回連続
                           </span>
                         )}
@@ -185,7 +185,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                         <span className="text-[13px] font-medium text-text-strong truncate">
                           {feed.title}
                         </span>
-                        <span className="text-[10px] text-status-warning flex-shrink-0">
+                        <span className="text-meta text-status-warning flex-shrink-0">
                           {feed.rateLimitedUntil
                             ? untilLabel(feed.rateLimitedUntil, now.getTime())
                             : ""}
@@ -231,7 +231,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
                           {feed.title}
                         </span>
                         {feed.pageCount !== undefined && feed.pageCount > 0 && (
-                          <span className="text-[10px] text-text-muted flex-shrink-0">
+                          <span className="text-meta text-text-muted flex-shrink-0">
                             {feed.pageCount + 1}ページ
                           </span>
                         )}
@@ -262,7 +262,7 @@ export default function FeedHealthModal({ feeds, onClose }: Props) {
  * を集約する file-local helper (`react-component-split.md § 派生ケース「同形 JSX
  * ラッパーが 3 回以上重複」canonical`)。
  *
- * `<h3>` typography (`text-[10px] font-medium tracking-[0.25em] uppercase
+ * `<h3>` typography (`text-meta font-medium tracking-[0.25em] uppercase
  * text-text-muted`) は `design-system.md § タイポグラフィ` の canonical
  * セクションヘッダー、a11y 9th (`c1c3ef20`) で `<h3>` + `<section aria-labelledby>`
  * の canonical mirror として ReadingStatsModal / 他 modal に周知済。
@@ -280,7 +280,7 @@ function FeedHealthSection({
     <section className="px-4 pt-4 pb-2" aria-labelledby={id}>
       <h3
         id={id}
-        className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
+        className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted mb-2"
       >
         {title}
       </h3>

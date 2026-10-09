@@ -137,13 +137,13 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
         )}
       </span>
       {isSelected && !feed.fetchError && (
-        <span className="text-[10px] text-text-faint truncate block leading-tight mt-0.5">
+        <span className="text-meta text-text-faint truncate block leading-tight mt-0.5">
           {feed.url}
         </span>
       )}
       {isSelected && feed.cssSelector && (
         <span
-          className="text-[10px] text-text-faint truncate block leading-tight"
+          className="text-meta text-text-faint truncate block leading-tight"
           title={`CSS セレクタ: ${feed.cssSelector}`}
         >
           selector: {feed.cssSelector}
@@ -151,14 +151,14 @@ export default function FeedTitleContent({ feed, isSelected, isStale, isMuted, h
       )}
       {isSelected && feed.failedSelectors && feed.failedSelectors.length > 0 && (
         <span
-          className="text-[10px] text-text-faint truncate block leading-tight"
+          className="text-meta text-text-faint truncate block leading-tight"
           title={`失敗済み: ${feed.failedSelectors.join(", ")}`}
         >
           failed: {feed.failedSelectors.join(", ")}
         </span>
       )}
       {feed.fetchError && (
-        <span className="text-[10px] text-error truncate block leading-tight mt-0.5">
+        <span className="text-meta text-error truncate block leading-tight mt-0.5">
           {(feed.consecutiveErrors ?? 0) >= 5 ? "自動再試行待ち · " : ""}
           {feed.fetchError}
         </span>

@@ -64,7 +64,7 @@ export default function SessionExpiredModal() {
         <a
           ref={loginLinkRef}
           href="/api/auth/login"
-          className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-ink hover:bg-ink-hover text-ink-text text-[13px] font-medium rounded-lg transition-all duration-200"
+          className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-accent hover:bg-accent-hover text-accent-contrast text-[13px] font-medium rounded-lg transition-all duration-200"
         >
           ログイン
         </a>

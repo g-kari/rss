@@ -48,7 +48,7 @@ interface Props {
 
 /** 「もっと見る」ドロップダウン内 menuitem ボタンの共通クラス文字列 (#1057 で逐語的重複を集約)。 */
 const MENUITEM_CLASS =
-  "w-full min-h-[44px] flex items-center gap-2.5 px-3 py-2 text-left text-[12px] text-text-default hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
+  "w-full min-h-[44px] flex items-center gap-2.5 px-3 py-2 text-left text-control text-text-default hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
 
 export default function SidebarFooter({
   user,
@@ -163,12 +163,12 @@ export default function SidebarFooter({
         <div className="w-5 h-5 rounded-full bg-surface-subtle flex-shrink-0" />
       )}
       <div className="min-w-0 flex-1 px-1">
-        <p className="text-[11px] text-text-default truncate" title={user.name}>
+        <p className="text-meta text-text-default truncate" title={user.name}>
           {user.name}
         </p>
         {readTodayCount !== undefined && (
           <p
-            className="text-[10px] text-text-muted tabular-nums"
+            className="text-meta text-text-muted tabular-nums"
             title={weeklyGoal ? `週間目標 ${weeklyGoal}件` : "今日の読了数"}
           >
             今日 {readTodayCount}件
@@ -219,7 +219,7 @@ export default function SidebarFooter({
             >
               <div role="group" aria-label="表示と通知">
                 <p
-                  className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-text-muted"
+                  className="px-3 pt-2 pb-1 text-meta font-medium tracking-wide text-text-muted"
                   aria-hidden="true"
                 >
                   表示と通知
@@ -313,12 +313,12 @@ export default function SidebarFooter({
                         />
                       </svg>
                       <span className="flex-1">プッシュ通知</span>
-                      <span className="text-[10px] text-text-muted" aria-hidden="true">
+                      <span className="text-meta text-text-muted" aria-hidden="true">
                         {push.loading ? "変更中…" : push.subscribed ? "オン" : "オフ"}
                       </span>
                     </button>
                     {push.error && (
-                      <p role="status" className="px-3 py-1 text-[11px] text-error">
+                      <p role="status" className="px-3 py-1 text-meta text-error">
                         {push.error}
                       </p>
                     )}
@@ -362,7 +362,7 @@ export default function SidebarFooter({
               </div>
               <div role="separator" className="border-t border-border-subtle my-1" />
               <p
-                className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-text-muted"
+                className="px-3 pt-2 pb-1 text-meta font-medium tracking-wide text-text-muted"
                 aria-hidden="true"
               >
                 データ管理
@@ -668,7 +668,7 @@ export default function SidebarFooter({
 
               <div role="separator" className="border-t border-border-subtle my-1" />
               <p
-                className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-text-muted"
+                className="px-3 pt-2 pb-1 text-meta font-medium tracking-wide text-text-muted"
                 aria-hidden="true"
               >
                 アプリとアカウント
