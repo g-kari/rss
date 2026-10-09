@@ -615,7 +615,7 @@ export async function mergeNewArticlesWithChanges(
   meta: SharedFeedMeta,
   fetchedArticles: Article[],
   _existingLatest: Article[],
-  options: { allowLegacyMigration?: boolean } = {},
+  options: { allowLegacyMigration?: boolean; maintainSearchIndex?: boolean } = {},
 ): Promise<{ newArticles: Article[]; commit?: FeedArticleCommit }> {
   if (fetchedArticles.length === 0) return { newArticles: [] };
   for (let attempt = 0; attempt < COMMIT_ATTEMPTS; attempt++) {
@@ -624,7 +624,8 @@ export async function mergeNewArticlesWithChanges(
     // Existing v2 heads always stay on the v2 path, even when new migrations are disabled.
     if (options.allowLegacyMigration === false && snapshot.legacy) {
       const attemptMeta = { ...meta, knownIds: meta.knownIds?.slice() };
-      const newArticles = await mergeLegacyArticles(
+      let nextRevision = snapshot.revision;
+      const legacy = await mergeLegacyArticles(
         bucket,
         attemptMeta,
         fetchedArticles,
@@ -640,12 +641,16 @@ export async function mergeNewArticlesWithChanges(
             httpMetadata: { contentType: "application/json" },
           });
           if (result === null) throw new LegacyArticleWriteConflictError(meta.feedHash);
+          if (result.etag) nextRevision = `legacy:${result.etag}`;
         },
       );
       delete attemptMeta.articleRevision;
       Object.assign(meta, attemptMeta);
       delete meta.articleRevision;
-      return { newArticles };
+      if (options.maintainSearchIndex) {
+        await syncR2SearchIndex(bucket, meta, snapshot.revision, nextRevision, legacy.indexUpserts);
+      }
+      return { newArticles: legacy.newArticles };
     }
     const prepared = await prepareCommit(bucket, meta.feedHash, snapshot, fetchedArticles);
     if (!prepared) {
@@ -653,7 +658,18 @@ export async function mergeNewArticlesWithChanges(
       return { newArticles: [] };
     }
     const commit = await publishPreparedCommit(bucket, meta, snapshot, prepared);
-    if (commit) return { newArticles: prepared.brandNew, commit };
+    if (commit) {
+      if (options.maintainSearchIndex) {
+        await syncR2SearchIndex(
+          bucket,
+          meta,
+          snapshot.revision,
+          commit.revision,
+          commit.changedObjects.flatMap((batch) => batch.articles),
+        );
+      }
+      return { newArticles: prepared.brandNew, commit };
+    }
   }
   throw new Error(`Article head changed concurrently for ${meta.feedHash}; retry the fetch`);
 }
@@ -760,6 +776,29 @@ export async function migrateFeedArticleStorage(
     if (commit) return { migrated: true, commit };
   }
   throw new Error(`Article head changed concurrently for ${meta.feedHash}; retry the migration`);
+}
+
+/** Index maintenance never rolls back a committed article head. */
+async function syncR2SearchIndex(
+  bucket: R2Bucket,
+  meta: SharedFeedMeta,
+  previousRevision: string,
+  nextRevision: string,
+  upserts: Article[],
+): Promise<void> {
+  try {
+    const { syncFeedR2SearchIndex } = await import("./article-search-r2");
+    await syncFeedR2SearchIndex(
+      bucket,
+      meta.feedHash,
+      previousRevision,
+      nextRevision,
+      upserts,
+      meta,
+    );
+  } catch (error) {
+    console.error("R2 article search index update failed", { feedHash: meta.feedHash, error });
+  }
 }
 
 /** Backward-compatible caller API, with an optional post-commit derived-index callback. */

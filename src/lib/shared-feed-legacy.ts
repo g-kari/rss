@@ -293,10 +293,16 @@ function isLegacyArticleMutated(ex: Article, incoming: Article): boolean {
   return false;
 }
 
+export interface LegacyArticleMergeResult {
+  newArticles: Article[];
+  /** Ids touched by this commit. Empty when nothing was written. */
+  indexUpserts: Article[];
+}
+
 /**
  * 新着記事を共有フィードストレージにマージして書き込む。
  * meta の articleCount / pageCount を更新する（呼び出し元が writeFeedMeta する）。
- * 戻り値: 真に新規だった Article の配列。
+ * 戻り値: 真に新規だった Article と、検索インデックスへ反映する記事。
  */
 export async function mergeLegacyArticles(
   bucket: R2Bucket,
@@ -304,8 +310,8 @@ export async function mergeLegacyArticles(
   fetchedArticles: Article[],
   existingLatest: Article[],
   writeLatest: (articles: Article[]) => Promise<void>,
-): Promise<Article[]> {
-  if (fetchedArticles.length === 0) return [];
+): Promise<LegacyArticleMergeResult> {
+  if (fetchedArticles.length === 0) return { newArticles: [], indexUpserts: [] };
 
   const latest = deduplicateById(existingLatest);
   const duplicateLatestCount = existingLatest.length - latest.length;
@@ -332,10 +338,12 @@ export async function mergeLegacyArticles(
       }
     }
     if (changed) {
-      await writeLatest(sortByDate([...existingMap.values()]));
+      const written = sortByDate([...existingMap.values()]);
+      await writeLatest(written);
       meta.articleCount = Math.max(0, (meta.articleCount ?? 0) - duplicateLatestCount);
+      return { newArticles: [], indexUpserts: written };
     }
-    return [];
+    return { newArticles: [], indexUpserts: [] };
   }
 
   // latest + 新規記事をマージしてソート
@@ -372,5 +380,5 @@ export async function mergeLegacyArticles(
 
   meta.articleCount =
     Math.max(0, (meta.articleCount ?? 0) - duplicateLatestCount) + brandNew.length;
-  return brandNew;
+  return { newArticles: brandNew, indexUpserts: merged };
 }

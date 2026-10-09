@@ -414,6 +414,18 @@ export async function fetchAndUpdateSharedFeed(
       });
     }
   };
+  // Quiet feeds never enter the article merge. Backfill their R2 search index here.
+  const repairR2SearchIndex = async (): Promise<void> => {
+    try {
+      const { ensureFeedR2SearchIndex } = await import("../lib/article-search-r2");
+      await ensureFeedR2SearchIndex(env.RSS_DATA, feedHash, meta);
+    } catch (error) {
+      console.error("R2 article search index update failed", {
+        feedHash,
+        error: serializeError(error),
+      });
+    }
+  };
 
   const stages: FeedStageLimits =
     limitFeed && isFeedStageLimits(limitFeed)
@@ -425,16 +437,23 @@ export async function fetchAndUpdateSharedFeed(
   // Separate network/parse limits must not be nested inside that same gate.
   const separateStages = !limitFeed || isFeedStageLimits(limitFeed);
 
+  // Quiet feeds never enter the article merge. Hold one parse slot for both derived indexes.
+  const repairQuietIndexes = () =>
+    stages.parse(async () => {
+      if (env.ARTICLE_SEARCH) await repairSearchIndex();
+      await repairR2SearchIndex();
+    });
+
   if (!forceRetry) {
     if (meta.rateLimitedUntil && new Date(meta.rateLimitedUntil).getTime() > Date.now()) {
-      if (env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
+      await repairQuietIndexes();
       await repairFeedArticleMetadata(env.RSS_DATA, meta);
       return { newArticles: [], meta };
     }
     if ((meta.consecutiveErrors ?? 0) >= CONSECUTIVE_ERROR_SKIP_THRESHOLD) {
       const lastErrorMs = meta.lastErrorAt ? new Date(meta.lastErrorAt).getTime() : 0;
       if (Date.now() - lastErrorMs < FEED_ERROR_RETRY_INTERVAL_MS) {
-        if (env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
+        await repairQuietIndexes();
         await repairFeedArticleMetadata(env.RSS_DATA, meta);
         return { newArticles: [], meta };
       }
@@ -442,7 +461,7 @@ export async function fetchAndUpdateSharedFeed(
     // Cache-Control: max-age で示されたキャッシュ寿命内なら cron 取得をスキップし
     // 配信元サーバーへの不要なアクセスを抑制する（手動 refresh は forceRetry=true で通す）
     if (meta.nextFetchEarliestAt && new Date(meta.nextFetchEarliestAt).getTime() > Date.now()) {
-      if (env.ARTICLE_SEARCH) await stages.parse(() => repairSearchIndex());
+      await repairQuietIndexes();
       await repairFeedArticleMetadata(env.RSS_DATA, meta);
       return { newArticles: [], meta };
     }
@@ -474,7 +493,10 @@ export async function fetchAndUpdateSharedFeed(
       meta,
       fetched,
       existingLatest ?? [],
-      { allowLegacyMigration: isArticleStorageV2Enabled(env) },
+      {
+        allowLegacyMigration: isArticleStorageV2Enabled(env),
+        maintainSearchIndex: true,
+      },
     );
     // Keep the parse permit while writing the index: full article arrays must
     // not queue behind D1 outside the memory gate.
