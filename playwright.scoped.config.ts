@@ -27,6 +27,7 @@ export default defineConfig({
     "article-actions-keyboard.spec.ts",
     "ogp-queue.spec.ts",
     "thumbnail-candidates.spec.ts",
+    "push-test-feedback.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
