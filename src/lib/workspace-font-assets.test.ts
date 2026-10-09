@@ -18,13 +18,14 @@ async function fixture(css: string) {
 }
 it("extracts only font faces/variables and serves exact public build bytes", async () => {
   const root = await fixture(
-    '@font-face{font-family:"Reddit Sans";src:url(../media/reddit.woff2)}.font{--loaded-reddit-sans:"Reddit Sans";--loaded-ibm-plex-sans-jp:"IBM Plex Sans JP"}.danger{color:red}',
+    '@font-face{font-family:"Reddit Sans";src:url(../media/reddit.woff2)}@font-face{font-family:KaTeX_AMS;src:url(../media/math.woff)}.font{--loaded-reddit-sans:"Reddit Sans";--loaded-ibm-plex-sans-jp:"IBM Plex Sans JP"}.danger{color:red}',
   );
   await writeFile(join(root, "media", "reddit.woff2"), "synthetic font bytes");
   const result = await workspaceFonts(root);
   expect(result.css).toContain('url("/_next/static/media/reddit.woff2")');
   expect(result.css).toContain('--loaded-ibm-plex-sans-jp:"IBM Plex Sans JP"');
   expect(result.css).not.toContain(".danger");
+  expect(result.css).not.toContain("KaTeX");
   expect(result.files.get("/_next/static/media/reddit.woff2")?.toString()).toBe(
     "synthetic font bytes",
   );

@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
-import postcss from "postcss";
+import postcss, { type AtRule } from "postcss";
 
 /** Read only public CSS/woff2 from the already-required production build. */
 export async function workspaceFonts(assetRoot?: string) {
@@ -12,16 +12,28 @@ export async function workspaceFonts(assetRoot?: string) {
       provenance: "Explicit system fallback (local fixture only)",
     };
   }
-  const faces = new Set<string>();
+  const candidates: AtRule[] = [];
   const variables = new Map<string, string>();
   for (const name of await readdir(join(assetRoot, "chunks"))) {
     if (!name.endsWith(".css")) continue;
     const tree = postcss.parse(await readFile(join(assetRoot, "chunks", name), "utf8"));
     tree.walkAtRules("font-face", (rule) => {
-      faces.add(rule.toString());
+      candidates.push(rule);
     });
     tree.walkDecls(/^--loaded-(reddit-sans|ibm-plex-sans-jp)$/, (decl) => {
       variables.set(decl.prop, decl.value);
+    });
+  }
+  // KaTeX also emits font-face rules (including woff/ttf); comparison text uses only Next fonts.
+  const families = new Set(
+    [...variables.values()].flatMap((value) =>
+      value.split(",").map((family) => family.trim().replace(/^["']|["']$/g, "")),
+    ),
+  );
+  const faces = new Set<string>();
+  for (const rule of candidates) {
+    rule.walkDecls("font-family", (decl) => {
+      if (families.has(decl.value.trim().replace(/^["']|["']$/g, ""))) faces.add(rule.toString());
     });
   }
   if (variables.size !== 2 || faces.size === 0)
