@@ -13,7 +13,7 @@
 export function MenuSectionHeader({ title }: { title: string }) {
   return (
     <div className="px-3 pt-2 pb-1">
-      <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">{title}</p>
+      <p className="text-meta font-medium tracking-[0.15em] uppercase text-text-muted">{title}</p>
     </div>
   );
 }

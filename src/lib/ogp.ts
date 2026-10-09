@@ -5,10 +5,91 @@ import { isValidFeedUrl, isValidPublicUrl, isAbsoluteHttpUrl } from "./url";
 import { X_COM_HOSTS } from "./x-com-fallback";
 import { sanitizeLogUrl } from "./log-sanitize";
 
-/** OGP フェッチのデフォルトタイムアウト（ミリ秒） */
+/** 通常 OGP の headers/redirect/body を合わせた取得予算（ミリ秒） */
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
 /** OGP タグは先頭 512KB 以内にあると想定し、部分取得の上限バイト数として使用する */
 const MAX_BYTES = 512 * 1024;
+
+interface OgpDeadline {
+  signal: AbortSignal;
+  check: () => void;
+  run: <T>(start: () => Promise<T>) => Promise<T>;
+}
+
+/** One caller-owned budget, shared through redirects, headers, body and linked candidates. */
+async function withOgpDeadline<T>(
+  timeoutMs: number,
+  task: (deadline: OgpDeadline) => Promise<T>,
+): Promise<T> {
+  const duration = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : 0;
+  const expiresAt = Date.now() + duration;
+  const controller = new AbortController();
+  const abort = () => controller.abort(new DOMException("OGP deadline exceeded", "AbortError"));
+  const timer = setTimeout(abort, duration);
+  const check = () => {
+    if (!controller.signal.aborted && Date.now() >= expiresAt) abort();
+    controller.signal.throwIfAborted();
+  };
+  const run = async <V>(start: () => Promise<V>): Promise<V> => {
+    check();
+    let cancel = () => {};
+    const aborted = new Promise<never>((_resolve, reject) => {
+      cancel = () => reject(controller.signal.reason);
+      controller.signal.addEventListener("abort", cancel, { once: true });
+    });
+    try {
+      const value = await Promise.race([
+        Promise.resolve().then(() => {
+          check();
+          return start();
+        }),
+        aborted,
+      ]);
+      check();
+      return value;
+    } finally {
+      controller.signal.removeEventListener("abort", cancel);
+    }
+  };
+  try {
+    return await task({ signal: controller.signal, check, run });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function cancelUnreadBody(response: Response | undefined): void {
+  if (!response?.body || response.body.locked) return;
+  try {
+    void response.body.cancel().catch(() => {});
+  } catch {
+    // Retain the original fetch/read error; cancel is best effort.
+  }
+}
+
+/** Retain Response ownership if the post-resolution deadline check rejects it. */
+async function fetchOgpResponseWithinDeadline(
+  url: string,
+  headers: Record<string, string>,
+  deadline: OgpDeadline,
+): Promise<Response> {
+  let response: Response | undefined;
+  try {
+    return await deadline.run(async () => {
+      response = await fetchFollowSafeRedirects(
+        url,
+        { headers },
+        0,
+        deadline.signal,
+        deadline.check,
+      );
+      return response;
+    });
+  } catch (err) {
+    cancelUnreadBody(response);
+    throw err;
+  }
+}
 
 /** OGP フェッチ時に送信するリクエストヘッダー */
 const FETCH_HEADERS: Record<string, string> = {
@@ -181,14 +262,24 @@ export async function fetchPageOgpMeta(
   url: string,
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<OgpMetaWithError> {
+  return withOgpDeadline(timeoutMs, (deadline) => fetchPageOgpMetaWithinDeadline(url, deadline));
+}
+
+/** Linked-page fallback reuses its parent's deadline instead of starting a fresh timeout. */
+async function fetchPageOgpMetaWithinDeadline(
+  url: string,
+  deadline: OgpDeadline,
+): Promise<OgpMetaWithError> {
   const logUrl = sanitizeLogUrl(url);
   const empty = { title: "", description: "", image: "" } as const;
+  let res: Response | undefined;
   try {
     const fetchUrl = normalizeOgpFetchUrl(url);
     const logFetchUrl = sanitizeLogUrl(fetchUrl);
     const headers = buildFetchHeaders(fetchUrl);
-    const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
+    res = await fetchOgpResponseWithinDeadline(fetchUrl, headers, deadline);
     if (!res.ok) {
+      cancelUnreadBody(res);
       console.error(
         `[ogp] upstream not ok: url=${logUrl} fetchUrl=${logFetchUrl} status=${res.status} content-type="${res.headers.get("content-type") ?? ""}"`,
       );
@@ -199,7 +290,8 @@ export async function fetchPageOgpMeta(
       return { ...empty, errorReason: "no_body", upstreamStatus: res.status };
     }
 
-    const bytes = await readBodyBytesPartial(res.body, MAX_BYTES);
+    const body = res.body;
+    const bytes = await deadline.run(() => readBodyBytesPartial(body, MAX_BYTES, deadline.signal));
     const contentType = res.headers.get("content-type") ?? "";
     const charset = detectCharset(contentType, bytes);
     const html = decodeBytesToString(bytes, charset);
@@ -213,6 +305,7 @@ export async function fetchPageOgpMeta(
 
     const rawImage = extractOgMeta(html, "image");
     const image = isValidPublicUrl(rawImage) ? rawImage : "";
+    deadline.check();
 
     // 200 OK + body 取得済だが title / image / description すべて空 = HTML 構造に
     // og: tags が含まれていない or bot 検出で challenge page が返された可能性
@@ -225,6 +318,7 @@ export async function fetchPageOgpMeta(
 
     return { title, description, image, errorReason: null, upstreamStatus: res.status };
   } catch (err) {
+    cancelUnreadBody(res);
     console.error(
       `[ogp] fetch threw: url=${logUrl} err=${err instanceof Error ? err.name + ": " + err.message : String(err)}`,
     );
@@ -305,7 +399,7 @@ const FALLBACK_TOTAL_TIMEOUT_MS = 3_000;
  * vxtwitter.com のページ HTML からリンクを抽出し、各リンク先の OGP 画像を試行する。
  *
  * @param originalUrl - 元の X/Twitter URL
- * @param timeoutMs - 個別フェッチのタイムアウト
+ * @param timeoutMs - chain 全体の予算（既存 3 秒上限と小さい方、非正値/非有限値では取得しない）
  * @returns 見つかった OGP 画像 URL。なければ空文字
  */
 export async function fetchTwitterFallbackImage(
@@ -313,37 +407,56 @@ export async function fetchTwitterFallbackImage(
   timeoutMs: number = FALLBACK_TOTAL_TIMEOUT_MS,
 ): Promise<string> {
   try {
-    // vxtwitter のページ HTML を取得してリンクを抽出
-    const fetchUrl = normalizeOgpFetchUrl(originalUrl);
-    const headers = buildFetchHeaders(fetchUrl);
-    const res = await fetchFollowSafeRedirects(fetchUrl, { headers }, timeoutMs);
-    if (!res.ok || !res.body) return "";
-
-    const bytes = await readBodyBytesPartial(res.body, FALLBACK_MAX_BYTES);
-    const contentType = res.headers.get("content-type") ?? "";
-    const charset = detectCharset(contentType, bytes);
-    const html = decodeBytesToString(bytes, charset);
-
-    const urls = extractExternalUrls(html);
-    if (urls.length === 0) return "";
-
-    // 各リンク先の OGP を試行（最大 MAX_FALLBACK_ATTEMPTS 個、全体タイムアウト付き）
-    const perUrlTimeout = Math.min(timeoutMs, FALLBACK_TOTAL_TIMEOUT_MS);
-    for (const candidateUrl of urls.slice(0, MAX_FALLBACK_ATTEMPTS)) {
-      // 再帰防止: Twitter 系 URL はスキップ
-      if (isTwitterLikeUrl(candidateUrl)) continue;
-
-      try {
-        const meta = await fetchPageOgpMeta(candidateUrl, perUrlTimeout);
-        if (meta.image && isValidPublicUrl(meta.image)) {
-          return meta.image;
+    return await withOgpDeadline(
+      Number.isFinite(timeoutMs) ? Math.min(timeoutMs, FALLBACK_TOTAL_TIMEOUT_MS) : 0,
+      async (deadline) => {
+        // vxtwitter のページ HTML を取得してリンクを抽出
+        const fetchUrl = normalizeOgpFetchUrl(originalUrl);
+        const headers = buildFetchHeaders(fetchUrl);
+        const res = await fetchOgpResponseWithinDeadline(fetchUrl, headers, deadline);
+        if (!res.ok || !res.body) {
+          cancelUnreadBody(res);
+          return "";
         }
-      } catch {
-        // 個別の失敗は無視して次を試行
-      }
-    }
 
-    return "";
+        const body = res.body;
+        let bytes: Uint8Array;
+        try {
+          bytes = await deadline.run(() =>
+            readBodyBytesPartial(body, FALLBACK_MAX_BYTES, deadline.signal),
+          );
+        } catch (err) {
+          cancelUnreadBody(res);
+          throw err;
+        }
+        const contentType = res.headers.get("content-type") ?? "";
+        const charset = detectCharset(contentType, bytes);
+        const html = decodeBytesToString(bytes, charset);
+
+        const urls = extractExternalUrls(html);
+        deadline.check();
+        if (urls.length === 0) return "";
+
+        // 各リンク先の OGP を試行（最大 MAX_FALLBACK_ATTEMPTS 個、全体タイムアウト付き）
+        for (const candidateUrl of urls.slice(0, MAX_FALLBACK_ATTEMPTS)) {
+          deadline.check();
+          // 再帰防止: Twitter 系 URL はスキップ
+          if (isTwitterLikeUrl(candidateUrl)) continue;
+
+          try {
+            const meta = await fetchPageOgpMetaWithinDeadline(candidateUrl, deadline);
+            if (meta.image && isValidPublicUrl(meta.image)) {
+              deadline.check();
+              return meta.image;
+            }
+          } catch {
+            // 個別の失敗は無視して次を試行
+          }
+        }
+
+        return "";
+      },
+    );
   } catch {
     return "";
   }

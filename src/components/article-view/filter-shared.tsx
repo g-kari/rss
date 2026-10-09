@@ -81,7 +81,7 @@ export function ExcludeOptionsSection({
   if (options.length === 0) return null;
   return (
     <div className="border-t border-border-subtle">
-      <p className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+      <p className="px-3 pt-2 pb-1 text-meta font-medium tracking-[0.15em] uppercase text-text-muted">
         {label}
       </p>
       {options.map((opt) => (

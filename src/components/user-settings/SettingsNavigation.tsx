@@ -44,7 +44,7 @@ export default function SettingsNavigation({
       className="sticky top-0 z-10 border-b border-border-default bg-surface-elevated"
     >
       <div className="px-4 pt-3 pb-2">
-        <label htmlFor={searchId} className="text-[12px] font-medium text-text-default">
+        <label htmlFor={searchId} className="text-control font-medium text-text-default">
           設定を検索
         </label>
         <div className="mt-1 flex gap-2">
@@ -68,13 +68,13 @@ export default function SettingsNavigation({
                 setQuery("");
                 inputRef.current?.focus();
               }}
-              className="min-h-[44px] rounded-lg px-3 text-[12px] text-text-default hover:bg-surface-hover"
+              className="min-h-[44px] rounded-lg px-3 text-control text-text-default hover:bg-surface-hover"
             >
               クリア
             </button>
           )}
         </div>
-        <p id={`${searchId}-help`} className="mt-1 text-[12px] text-text-muted">
+        <p id={`${searchId}-help`} className="mt-1 text-control text-text-muted">
           項目名・説明・別名をこの画面内で検索します
         </p>
       </div>
@@ -105,7 +105,7 @@ export default function SettingsNavigation({
         hidden={!searching}
         className="max-h-[28dvh] overflow-y-auto border-t border-border-subtle px-4 py-2"
       >
-        <p role="status" className="pb-2 text-[12px] text-text-muted">
+        <p role="status" className="pb-2 text-control text-text-muted">
           {results.length
             ? `${results.length}件の設定`
             : "一致する設定がありません。短い言葉や別名で検索してください。"}
@@ -125,7 +125,7 @@ export default function SettingsNavigation({
               >
                 <span className="block text-[13px] font-medium text-text-default">
                   {setting.label}{" "}
-                  <span className="ml-2 text-[12px] font-normal text-text-muted">
+                  <span className="ml-2 text-control font-normal text-text-muted">
                     {
                       SETTINGS_CATEGORIES.find((category) => category.id === setting.category)!
                         .label
@@ -134,7 +134,7 @@ export default function SettingsNavigation({
                 </span>
                 <span
                   id={`${searchId}-${setting.id}-description`}
-                  className="mt-0.5 block text-[12px] text-text-muted"
+                  className="mt-0.5 block text-control text-text-muted"
                 >
                   {setting.description}
                 </span>

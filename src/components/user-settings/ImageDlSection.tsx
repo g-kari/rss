@@ -85,7 +85,7 @@ export default function ImageDlSection({
       </div>
 
       <div className="border-t border-border-subtle pt-4 flex flex-col gap-3">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           シェア設定
         </span>
         <div

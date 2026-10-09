@@ -7,6 +7,14 @@ D1 index population and deployment require separate operator approval.
 
 Normal ingestion remains on the legacy writer until `RSS_ARTICLE_STORAGE_V2=true` is explicitly configured. Missing/false/invalid values do not convert old heads. Already-v2 heads continue using the v2 writer regardless of the flag, so disabling it cannot downgrade a migrated feed. The explicit maintenance conversion API is unaffected by this runtime rollout gate. Complete the backup/pause/drain procedure before enabling conversion; an ETag guard is not a replacement for stopping old writers.
 
+The default writer no longer cascades `p2.json`…`pN.json`. `latest.json` stays an `Article[]`. The first overflow after this code reads only the current tail page (`p{pageCount+1}`) to record its length, then writes:
+
+- `feeds/{feedHash}/articles/overflow-pending.json` — newest incomplete archive page
+- `feeds/{feedHash}/articles/segments/spill-{n}.json` — immutable 500-article pages, newest first
+- `feeds/{feedHash}/articles/overflow-manifest.json` — the archive commit record
+
+Later inserts do not read middle legacy pages. A full pending page is sealed into a new spill object; older `pN` bytes stay untouched. `meta.pageCount` becomes the logical archive page count. The manifest is the reader source of truth, including for a later explicit v2 migration, so spilled articles are not dropped. Articles past the 250,000 logical-page cap stay on the last page and set `oversizeAlert`. A crash after the latest CAS and before the manifest write can hide the displaced archive page until a later spill adopts an uncommitted pending object; counts can lag across that window, as they could when a cascade failed. Rolling back to a worker that ignores the manifest hides spilled articles until this reader returns. It does not delete `pN` objects. Do not enable `RSS_ARTICLE_STORAGE_V2` as part of this path.
+
 - `feeds/{feedHash}/articles/latest.json` is the atomic commit record. Legacy values are an
   `Article[]`; v2 values contain `version: 2`, a UUID `revision`, newest `articles`, immutable
   `segments`, `nextSegmentId`, bounded `knownIds`, and `articleLocations`.
@@ -18,7 +26,7 @@ Normal ingestion remains on the legacy writer until `RSS_ARTICLE_STORAGE_V2=true
   `feeds/{feedHash}/articles/segments/{revision}-{sequence}.json`, at most 500 articles.
   Objects are immutable. A partial segment is replaced by a new object, never overwritten.
 - Existing `p2.json` through `p{pageCount+1}.json` are read by the compatibility reader.
-  The first content-changing update (or refresh that inspects an archived item) scans legacy pages once, records their boundaries, removes
+  When v2 migration is enabled, the first content-changing update (or refresh that inspects an archived item) scans legacy pages once, records their boundaries, removes
   pre-existing duplicate IDs, and splits an oversized last legacy page if needed. Unchanged legacy
   objects can be referenced directly. Missing referenced objects abort migration instead of
   silently dropping their contents.
