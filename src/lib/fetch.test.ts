@@ -105,9 +105,16 @@ describe("safe redirects", () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
     await expect(
-      fetchFollowSafeRedirects("https://example.com/feed?token=secret", {}, 1000, undefined, undefined, {
-        validateUrl: () => false,
-      }),
+      fetchFollowSafeRedirects(
+        "https://example.com/feed?token=secret",
+        {},
+        1000,
+        undefined,
+        undefined,
+        {
+          validateUrl: () => false,
+        },
+      ),
     ).rejects.toThrow("policy");
     expect(fetch).not.toHaveBeenCalled();
   });

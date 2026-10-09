@@ -308,9 +308,6 @@ export function fetchFollowSafeRedirects(
         if (policy.validateUrl && !policy.validateUrl(nextUrl)) {
           throw new Error("Redirect URL rejected by fetch policy");
         }
-        if (policy.validateUrl && !policy.validateUrl(nextUrl)) {
-          throw new Error("Redirect URL rejected by fetch policy");
-        }
         if (visitedUrls.has(nextUrl)) {
           throw new Error(`Redirect loop detected: ${nextUrl}`);
         }
@@ -320,7 +317,6 @@ export function fetchFollowSafeRedirects(
         continue;
       }
 
-      policy.onResponseUrl?.(currentUrl);
       policy.onResponseUrl?.(currentUrl);
       return res;
     }
