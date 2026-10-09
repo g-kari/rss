@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "retrieved_at": "2026-10-09T18:58:00Z",
+  "scope": "instruction-only adaptations; no upstream runners, hooks, binaries, or tool permissions imported",
+  "sources": [
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "LICENSE",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "bb3f6d23b1f8025514a62a12b51b47d73e3c9aa9",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/LICENSE",
+      "sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+      "bytes": 10766
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "NOTICE.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "0468271c904ae334cfaf27da6f8df3d5f419a1f0",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/NOTICE.md",
+      "sha256": "c60a093c2845fd9fb82f9c6f742ece31f379f8190b535309d32d66c45ccffdcb",
+      "bytes": 503
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": ".agents/skills/impeccable/SKILL.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "b9d82965dd59a45596c5b63a1cf4207168a272a7",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/.agents/skills/impeccable/SKILL.md",
+      "sha256": "58c0252bca04521de87007aeb495f7ec99dc4c7341bc890fe82b6d577573af91",
+      "bytes": 12263
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "skill/reference/mode-operate.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "833775ba85f03bf65a4c1b23e39192f7653414e6",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/skill/reference/mode-operate.md",
+      "sha256": "7a52dd7a94ee75f6ae89542c86a1b6e1d306812b16e0d9dbf12d4acad44d148b",
+      "bytes": 4716
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "skill/reference/mode-read.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "b30c4c9139e3094bd35c60738decb6109326153f",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/skill/reference/mode-read.md",
+      "sha256": "a569989e6a3d6453b4c45e9474e162a15cc54e11732ac6baa7990a6e7cccc0b5",
+      "bytes": 4396
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "skill/reference/layout.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "4b9eadcb10bbcf3e4d8de84ebd0d86d90e804d4b",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/skill/reference/layout.md",
+      "sha256": "14ba132b6168bf0a7498f8c3fbbb41b73ff704da5dc3688fd842807446e54a05",
+      "bytes": 5161
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "skill/reference/typeset.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "a315599ca7ec821ba513b3181ad1bf9043b9218e",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/skill/reference/typeset.md",
+      "sha256": "bf0259f5b8363d09591885ca6b27ac97bbdf754c130fb2799b949d783a97186b",
+      "bytes": 5256
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "path": "skill/reference/polish.md",
+      "pin": "d631a8827f99414d2b6daba4ef08b7f8701751d7",
+      "blob_sha": "f2146990505863574e3c8298613a37d4c31ee73c",
+      "url": "https://github.com/pbakaus/impeccable/blob/d631a8827f99414d2b6daba4ef08b7f8701751d7/skill/reference/polish.md",
+      "sha256": "c504e12ea076fd1a57b8c9ece79fbb532c54226b2b6298c5c62fa889ae1dd34d",
+      "bytes": 6612
+    },
+    {
+      "repo": "vercel-labs/web-interface-guidelines",
+      "path": "LICENSE",
+      "pin": "434b7f91364665f2f733b310ec54809bf8f37937",
+      "blob_sha": "b3575a3c1358eac4b9ee36a4c851872d81417760",
+      "url": "https://github.com/vercel-labs/web-interface-guidelines/blob/434b7f91364665f2f733b310ec54809bf8f37937/LICENSE",
+      "sha256": "6cd1609c9c12233507cdd2ce0d32e9a721e3c27494951be06b90090deeeb7af2",
+      "bytes": 1068
+    },
+    {
+      "repo": "vercel-labs/web-interface-guidelines",
+      "path": "command.md",
+      "pin": "434b7f91364665f2f733b310ec54809bf8f37937",
+      "blob_sha": "3eb3a212b7b89493922ea418489d4c6f67ae8bd5",
+      "url": "https://github.com/vercel-labs/web-interface-guidelines/blob/434b7f91364665f2f733b310ec54809bf8f37937/command.md",
+      "sha256": "d246b026f4f29b5823a9cc857f9edf3d2507002e055e32040cadeaf3b38e0234",
+      "bytes": 8055
+    },
+    {
+      "repo": "addyosmani/web-quality-skills",
+      "path": "LICENSE",
+      "pin": "afa8da942115f2961fdbfa80807ea0b232ff6c00",
+      "blob_sha": "90715bb429f374dcc4e05c35535b049d3c077313",
+      "url": "https://github.com/addyosmani/web-quality-skills/blob/afa8da942115f2961fdbfa80807ea0b232ff6c00/LICENSE",
+      "sha256": "c122223ac43e86421958e18623979942c21b642951e2e3736dcb63eff13587c3",
+      "bytes": 1068
+    },
+    {
+      "repo": "addyosmani/web-quality-skills",
+      "path": "skills/accessibility/SKILL.md",
+      "pin": "afa8da942115f2961fdbfa80807ea0b232ff6c00",
+      "blob_sha": "22a244430f890fe44cbd7a50590d5cbf8528c77b",
+      "url": "https://github.com/addyosmani/web-quality-skills/blob/afa8da942115f2961fdbfa80807ea0b232ff6c00/skills/accessibility/SKILL.md",
+      "sha256": "267fb2a0707d6142f2871f22688203a42ba21291a2aa200fb740936e41362b5d",
+      "bytes": 14358
+    }
+  ]
+}

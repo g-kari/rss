@@ -16,6 +16,12 @@ src/lib/release-notes-data.ts
 .agents/skills/*
 !.agents/skills/issue-handling/
 !.agents/skills/issue-handling/**
+!.agents/skills/rss-design-review/
+!.agents/skills/rss-design-review/**
+!.agents/skills/rss-web-interface-review/
+!.agents/skills/rss-web-interface-review/**
+!.agents/skills/rss-accessibility-review/
+!.agents/skills/rss-accessibility-review/**
 .claude/skills/*
 !.claude/skills/issue-handling/
 !.claude/skills/issue-handling/**
