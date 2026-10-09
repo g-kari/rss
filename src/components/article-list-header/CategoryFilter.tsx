@@ -36,7 +36,7 @@ export default function CategoryFilter({
         onClick={() => setCategoryFilter(null)}
         title={`カテゴリ「${categoryFilter}」フィルターを解除`}
         aria-label={`カテゴリ「${categoryFilter}」フィルターを解除`}
-        className="flex items-center gap-1 px-2 py-0.5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-meta font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
+        className="flex items-center gap-1 px-2 py-0.5 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-meta font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
       >
         <span className="truncate">{categoryFilter}</span>
         <svg
@@ -64,7 +64,7 @@ export default function CategoryFilter({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        className={`flex items-center gap-1 px-2 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-[11px] transition-all duration-200 ${
+        className={`flex items-center gap-1 px-2 h-6 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-meta transition-all duration-200 ${
           open
             ? "text-text-strong bg-surface-subtle"
             : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"

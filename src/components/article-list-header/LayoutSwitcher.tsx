@@ -24,7 +24,7 @@ export default function LayoutSwitcher({
         <button
           key={l}
           onClick={() => onChangeLayout(l)}
-          className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-200 ${
+          className={`p-2.5 min-w-[44px] min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:p-1.5 flex items-center justify-center rounded-full transition-all duration-200 ${
             layout === l
               ? "text-text-strong bg-surface-subtle"
               : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -39,7 +39,7 @@ export default function LayoutSwitcher({
       {/* 記事一覧フォーカスモード切替 */}
       <button
         onClick={onToggleListFocusMode}
-        className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-200 ${
+        className={`p-2.5 min-w-[44px] min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:p-1.5 flex items-center justify-center rounded-full transition-all duration-200 ${
           listFocusMode
             ? "text-text-strong bg-surface-subtle"
             : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"

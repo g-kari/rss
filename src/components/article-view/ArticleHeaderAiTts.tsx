@@ -9,6 +9,8 @@ import { DownloadIcon } from "./icons";
 
 interface Props {
   article: Article;
+  /** primary = 要約・翻訳・読み上げ、secondary = 画像保存・オートモード・速度・音量 (「その他」内) */
+  section?: "primary" | "secondary" | "all";
   hasContent: boolean;
   hasImages: boolean;
   fetching: boolean;
@@ -53,6 +55,7 @@ interface Props {
  */
 export default function ArticleHeaderAiTts({
   article,
+  section = "all",
   hasContent,
   hasImages,
   fetching,
@@ -79,9 +82,11 @@ export default function ArticleHeaderAiTts({
   downloadingImages,
   imageDownloadProgress,
 }: Props) {
+  const primary = section !== "secondary";
+  const secondary = section !== "primary";
   return (
     <>
-      {hasContent && (
+      {primary && hasContent && (
         <div className="flex items-center gap-1 mr-1">
           <button
             onClick={() => {
@@ -132,7 +137,7 @@ export default function ArticleHeaderAiTts({
         </div>
       )}
 
-      {hasImages && (
+      {secondary && hasImages && (
         <button
           onClick={() => {
             void downloadAllImages();
@@ -152,7 +157,7 @@ export default function ArticleHeaderAiTts({
         </button>
       )}
 
-      {ttsSupported && hasContent && (
+      {primary && ttsSupported && hasContent && (
         <button
           onClick={onTtsToggle}
           title={ttsPlaying || ttsPaused ? "読み上げを停止" : "読み上げ (P)"}
@@ -209,7 +214,7 @@ export default function ArticleHeaderAiTts({
         </button>
       )}
 
-      {hasContent && (
+      {secondary && hasContent && (
         <button
           onClick={onToggleAutoMode}
           title={
@@ -244,7 +249,7 @@ export default function ArticleHeaderAiTts({
         </button>
       )}
 
-      {ttsSupported && hasContent && (
+      {secondary && ttsSupported && hasContent && (
         <button
           onClick={ttsCycleRate}
           title={`読み上げ速度: ${ttsRate}x → 次: ${cycleValue(TTS_RATES, ttsRate)}x（クリック / Shift+R）`}
@@ -258,7 +263,7 @@ export default function ArticleHeaderAiTts({
           {`${ttsRate}x`}
         </button>
       )}
-      {(ttsPlaying || ttsPaused) && (
+      {secondary && (ttsPlaying || ttsPaused) && (
         <button
           onClick={ttsCycleVolume}
           title={`音量: ${Math.round(ttsVolume * 100)}% → クリックで切替（フル / 半 / ミュート）`}

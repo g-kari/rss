@@ -30,7 +30,7 @@ export default function ArticleListHeader({
   return (
     <>
       <div className="flex flex-col border-b border-border-default bg-surface-elevated">
-        <div className="flex items-center gap-2 px-4 py-3 min-w-0 overflow-x-auto [&>*]:shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1 min-w-0 overflow-x-auto [&>*]:shrink-0">
           <div className="flex items-center gap-1 shrink-0">
             {onMobileBack && (
               <button
@@ -53,7 +53,7 @@ export default function ArticleListHeader({
                 </svg>
               </button>
             )}
-            <span className="text-[11px] tracking-[0.12em] uppercase text-text-muted">
+            <span className="text-meta tracking-[0.12em] uppercase text-text-muted">
               記事
               {filteredCount > 0 && <span className="ml-1 text-text-faint">({filteredCount})</span>}
             </span>
@@ -64,6 +64,8 @@ export default function ArticleListHeader({
             listFocusMode={listFocusMode}
             onToggleListFocusMode={onToggleListFocusMode}
           />
+        </div>
+        <div className="px-4 pb-2 min-w-0">
           <FilterPills
             selectedFeedId={selectedFeedId}
             feeds={feeds}

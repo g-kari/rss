@@ -183,7 +183,7 @@ export function PreviewArea({
         <span className="text-meta text-text-faint">幅 {CONTENT_WIDTH_LABELS[contentWidth]}</span>
       </div>
       <div
-        className={`mx-auto ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} text-text-soft tracking-[0.02em]`}
+        className={`mx-auto max-md:max-h-28 max-md:overflow-hidden ${FONT_SIZE_CLASSES[fontSize]} ${FONT_FAMILY_CLASSES[fontFamily]} text-text-soft tracking-[0.02em]`}
         style={{
           ...getLineHeightStyle(lineHeight),
           width: `${CONTENT_WIDTH_PREVIEW_PCT[contentWidth]}%`,

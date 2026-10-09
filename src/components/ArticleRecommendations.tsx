@@ -190,8 +190,8 @@ function RecommendationContent({
         aria-labelledby={headingId}
         className="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border-default bg-surface-elevated"
       >
-        <div className="flex items-center justify-between gap-2 px-4 pt-2">
-          <h2 id={headingId} className="text-[12px] font-medium text-text-strong">
+        <div className="flex items-center justify-between gap-2 px-4 pt-1">
+          <h2 id={headingId} className="text-control font-medium text-text-strong">
             いま読むおすすめ
           </h2>
           <button
@@ -200,7 +200,7 @@ function RecommendationContent({
             disabled={status !== "ready"}
             aria-haspopup="dialog"
             aria-describedby={recommendations.length === 0 ? stateId : undefined}
-            className="min-h-11 rounded-lg border border-border-default px-2 text-[11px] text-text-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
+            className="min-h-11 rounded-lg border border-border-default px-2 text-control text-text-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 [@media(pointer:fine)]:min-h-8"
           >
             ドパガキモード
           </button>
@@ -211,7 +211,7 @@ function RecommendationContent({
             aria-expanded={expanded}
             aria-controls={contentId}
             aria-label={expanded ? "おすすめを折りたたむ" : "おすすめを表示"}
-            className="min-h-11 px-2 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="min-h-11 px-2 text-control text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2 [@media(pointer:fine)]:min-h-8"
           >
             {expanded ? "折りたたむ" : `${recommendations.length}件を表示`}
           </button>
@@ -222,9 +222,6 @@ function RecommendationContent({
           </p>
         )}
         <div id={contentId} hidden={!expanded}>
-          <p className="px-4 pb-1 text-[11px] leading-relaxed text-text-muted">
-            現在のフィルター内の未読から最大3件。新着と、読んだ・保存した記事のテーマから
-          </p>
           <ul className="px-2">
             {recommendations.map((recommendation) => {
               const { article, feedTitle, reasons } = recommendation;
@@ -249,17 +246,8 @@ function RecommendationContent({
                       </span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    aria-label={`${article.title}をおすすめした理由`}
-                    aria-haspopup="dialog"
-                    onClick={() => setReasonArticle(recommendation)}
-                    className="min-h-11 text-left text-[12px] text-text-default underline hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    おすすめした理由・話題を調整
-                  </button>
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 pt-1 text-[11px] leading-relaxed text-text-muted">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="min-w-0 flex-1 truncate text-meta text-text-muted">
                       {reasons.map((reason, index) => (
                         <span key={reason}>
                           {index > 0 && " · "}
@@ -269,13 +257,23 @@ function RecommendationContent({
                     </p>
                     <button
                       type="button"
+                      aria-label={`${article.title}をおすすめした理由`}
+                      aria-haspopup="dialog"
+                      title="おすすめした理由・話題を調整"
+                      onClick={() => setReasonArticle(recommendation)}
+                      className="min-h-11 flex-shrink-0 px-1.5 text-control text-text-default hover:text-text-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 [@media(pointer:fine)]:min-h-8"
+                    >
+                      理由
+                    </button>
+                    <button
+                      type="button"
                       aria-label={`${article.title}に興味なし`}
                       title="この記事だけをおすすめから30日間非表示"
                       onClick={() => {
                         dismiss(article.id);
                         setLastDismissed(article.id);
                       }}
-                      className="min-h-11 flex-shrink-0 px-1 text-[11px] text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:outline-offset-2"
+                      className="min-h-11 flex-shrink-0 px-1.5 text-control text-text-muted hover:text-text-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 [@media(pointer:fine)]:min-h-8"
                     >
                       興味なし
                     </button>

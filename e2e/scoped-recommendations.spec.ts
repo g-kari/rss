@@ -161,6 +161,7 @@ for (const viewport of [
       await expect(recommendations.getByText(/現在のフィルターに合う未読/)).toBeVisible();
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("feed");
       await expect(picks).toHaveCount(2);
+      await page.getByRole("button", { name: "詳細フィルター" }).click();
       await page.getByRole("button", { name: /^日付フィルター切替:.*\(d\)$/ }).click();
       await expect(picks).toHaveCount(1);
       await expect(picks).toHaveAttribute("aria-label", "条件に合う記事を読む");
