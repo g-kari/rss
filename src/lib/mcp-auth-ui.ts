@@ -39,7 +39,12 @@ export function renderMcpNavigation(
     verified.searchParams.delete(key);
   }
   if (target.href !== verified.href) throw new Error("MCP navigation target changed");
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RSS読み取り連携の続き</title></head><body style="font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem;line-height:1.6"><main><h1>RSS読み取り連携の続き</h1><p>送信内容を受け付けました。下のリンクから続けてください。</p><p><a href="${escapeHtml(new URL(redirectTo).href)}" rel="noreferrer">${escapeHtml(label)}</a></p><p><a href="/">RSSに戻る</a></p></main></body></html>`;
+  // Script is blocked by the CSP and a 303 to the client is blocked by form-action 'self',
+  // so a zero-delay meta refresh in a new document carries the browser to the client.
+  const href = escapeHtml(new URL(redirectTo).href);
+  const autoRedirect =
+    label === "アプリへ戻る" ? `<meta http-equiv="refresh" content="0;url=${href}">` : "";
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">${autoRedirect}<meta name="viewport" content="width=device-width,initial-scale=1"><title>RSS読み取り連携の続き</title></head><body style="font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem;line-height:1.6"><main><h1>RSS読み取り連携の続き</h1><p>送信内容を受け付けました。自動で移動しない場合は、下のリンクから続けてください。</p><p><a href="${escapeHtml(new URL(redirectTo).href)}" rel="noreferrer">${escapeHtml(label)}</a></p><p><a href="/">RSSに戻る</a></p></main></body></html>`;
 }
 
 export function renderMcpScopeDescriptions(scopes: readonly string[]): string {

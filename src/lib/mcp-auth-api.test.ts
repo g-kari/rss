@@ -111,7 +111,8 @@ async function continuationTarget(response: Response): Promise<URL> {
   const href = html.match(/<a href="([^"]+)" rel="noreferrer">/)?.[1];
   expect(href).toBeDefined();
   expect(html).not.toContain("<script");
-  expect(html).not.toContain('http-equiv="refresh"');
+  const refresh = html.match(/<meta http-equiv="refresh" content="0;url=([^"]+)">/)?.[1];
+  if (refresh !== undefined) expect(refresh).toBe(href);
   return new URL(href!.replaceAll("&amp;", "&"));
 }
 
