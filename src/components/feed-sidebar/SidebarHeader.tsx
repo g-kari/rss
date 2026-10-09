@@ -43,14 +43,6 @@ export default function SidebarHeader({
     };
   }, [nsfwMode]);
 
-  const exitNsfw = () => {
-    cancelLongPress();
-    // The action disappears after exit. Keep focus on a stable, non-activating group
-    // so a held/repeated Enter cannot accidentally start the logo activation flow.
-    headerRef.current?.focus({ preventScroll: true });
-    onDeactivateNsfw();
-  };
-
   return (
     <div
       ref={headerRef}
@@ -65,7 +57,7 @@ export default function SidebarHeader({
       }}
       className="border-b border-border-default"
     >
-      <div className="px-3 py-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="px-4 py-3.5 flex items-center justify-between gap-2 overflow-x-auto [&>*]:shrink-0">
         <button
           onClick={(event) => {
             const suppressPointerClick = suppressLogoClickRef.current && event.detail > 0;
@@ -89,15 +81,15 @@ export default function SidebarHeader({
           onContextMenu={(e) => {
             if (nsfwMode) e.preventDefault();
           }}
-          className={`min-h-[44px] min-w-[44px] text-meta font-medium tracking-[0.25em] uppercase transition-colors duration-150 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
-          title={nsfwMode ? "長押しでNSFWモード解除" : ""}
+          className={`text-meta font-medium tracking-[0.25em] uppercase transition-colors duration-150 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
+          title={nsfwMode ? "NSFW表示中・長押しで解除、またはユーザー設定" : ""}
         >
           RSS
         </button>
         <button
           onClick={onToggleInput}
           disabled={!isOnline}
-          className={`inline-flex items-center gap-1 px-2 min-h-[44px] min-w-[44px] rounded text-control font-medium transition-colors duration-150 disabled:opacity-40 ${
+          className={`inline-flex items-center gap-1 px-2 max-md:min-h-[44px] lg:min-h-[28px] rounded text-control font-medium transition-colors duration-150 disabled:opacity-40 ${
             inputOpen
               ? "bg-accent-subtle text-accent"
               : "bg-accent text-accent-contrast hover:bg-accent-hover"
@@ -122,7 +114,7 @@ export default function SidebarHeader({
         <button
           onClick={onRefresh}
           disabled={refreshing || !isOnline}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-colors duration-150 disabled:opacity-40"
+          className="w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-colors duration-150 disabled:opacity-40"
           title={!isOnline ? "オフラインです" : "フィードを更新"}
           aria-label={!isOnline ? "オフライン" : refreshing ? "フィードを更新中" : "フィードを更新"}
         >
@@ -141,23 +133,6 @@ export default function SidebarHeader({
           </svg>
         </button>
       </div>
-      {nsfwMode && (
-        <div className="px-4 pb-3.5">
-          <button
-            type="button"
-            onClick={exitNsfw}
-            onKeyDown={(event) => {
-              // Keep native Space activation; the document-level article shortcut
-              // must not prevent this button's default click or scroll its reader.
-              if (event.key === " ") event.stopPropagation();
-            }}
-            className="w-full min-h-[44px] px-2 py-2 text-xs leading-4 font-medium rounded border border-border-default text-text-default hover:bg-surface-hover transition-colors duration-200"
-            title="NSFWモード解除（開いている記事は閉じません）"
-          >
-            NSFWモード解除
-          </button>
-        </div>
-      )}
     </div>
   );
 }

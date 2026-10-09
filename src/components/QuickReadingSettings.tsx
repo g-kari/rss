@@ -195,7 +195,7 @@ export default function QuickReadingSettings() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        className="min-h-11 flex-shrink-0 rounded border border-border-default px-3 text-[14px] text-text-strong hover:bg-surface-hover"
+        className="min-h-11 [@media(pointer:fine)]:min-h-8 flex-shrink-0 rounded border border-border-default px-2 text-control text-text-strong hover:bg-surface-hover"
         onClick={() => {
           const rect = trigger.current?.getBoundingClientRect();
           if (rect)

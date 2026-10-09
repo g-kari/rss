@@ -14,6 +14,7 @@ import {
   readMcpBrowserForm,
   secureMcpBrowserHeaders,
   renderMcpScopeDescriptions,
+  renderMcpPage,
   renderMcpPermissionDetails,
 } from "@/lib/mcp-auth-ui";
 
@@ -28,7 +29,10 @@ function page(
   disconnected = false,
   scopes: string[] = [MCP_SCOPE],
 ): NextResponse {
-  const body = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RSS連携の設定</title></head><body style="font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem;line-height:1.6"><main><h1>RSS連携の設定</h1>${disconnected ? '<p role="status">このRSSアカウントの連携を解除しました。</p>' : ""}<dl><dt>RSSアカウント</dt><dd>${escapeHtml(userId)}</dd><dt>連携状態</dt><dd>${active ? "有効" : "無効"}</dd><dt>更新日時</dt><dd>${escapeHtml(updatedAt ?? "未接続")}</dd><dt>許可範囲</dt><dd>${renderMcpScopeDescriptions(scopes)}</dd></dl>${renderMcpPermissionDetails(scopes)}<p>アクセストークンは15分。30日間更新されない接続は失効します。更新されている接続は継続します。</p><p>RSS側の接続解除後は新しい処理とトークン更新を拒否します。すでに開始した読み取りや購読追加は取り消せない場合があります。ChatGPT側だけの接続解除では即時のRSS側失効を保証しません。</p><form method="post" action="/api/mcp/settings"><input type="hidden" name="account" value="${escapeHtml(userId)}"><button type="submit">このRSSアカウントの${scopes.includes(MCP_ADD_SCOPE) ? "すべての連携" : "すべての読み取り連携"}を解除</button></form><p>再接続には新しい明示的な許可が必要です。</p><p><a href="/">RSSに戻る</a></p></main></body></html>`;
+  const body = renderMcpPage(
+    "RSS連携の設定",
+    `${disconnected ? '<p role="status">このRSSアカウントの連携を解除しました。</p>' : ""}<div class="card"><dl><dt>RSSアカウント</dt><dd>${escapeHtml(userId)}</dd><dt>連携状態</dt><dd>${active ? "有効" : "無効"}</dd><dt>更新日時</dt><dd>${escapeHtml(updatedAt ?? "未接続")}</dd><dt>許可範囲</dt><dd>${renderMcpScopeDescriptions(scopes)}</dd></dl></div>${renderMcpPermissionDetails(scopes)}<form method="post" action="/api/mcp/settings"><input type="hidden" name="account" value="${escapeHtml(userId)}"><div class="actions"><button class="danger" type="submit">このRSSアカウントの${scopes.includes(MCP_ADD_SCOPE) ? "すべての連携" : "すべての読み取り連携"}を解除</button></div></form><div class="note"><p>再接続には新しい明示的な許可が必要です。</p><p>アクセストークンは15分。30日間更新されない接続は失効します。更新されている接続は継続します。</p><p>RSS側の接続解除後は新しい処理とトークン更新を拒否します。すでに開始した読み取りや購読追加は取り消せない場合があります。ChatGPT側だけの接続解除では即時のRSS側失効を保証しません。</p></div><nav><a href="/">RSSに戻る</a></nav>`,
+  );
   return new NextResponse(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 export async function GET(request: Request): Promise<NextResponse> {

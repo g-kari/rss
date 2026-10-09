@@ -9,12 +9,12 @@ export const LAYOUT_ARIA_LABELS: Record<Layout, string> = {
 };
 
 export const PILL_BASE_CLASS =
-  "flex items-center justify-center text-control tracking-[0.04em] px-2.5 py-0.5 rounded-full border transition-all duration-200 min-h-[44px] min-w-[44px]";
+  "flex items-center justify-center text-control tracking-[0.04em] px-2.5 py-0.5 rounded border transition-all duration-200 min-h-[44px] min-w-10 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8";
 export const PILL_INACTIVE_CLASS =
   "border-border-default text-text-muted hover:border-text-muted hover:text-text-default";
 export const PILL_ACTIVE_CLASSES = {
   default: "border-ink bg-ink text-ink-text",
-  bookmark: "border-bookmark bg-bookmark text-saved-contrast",
-  like: "border-like bg-like text-saved-contrast",
-  note: "border-memo bg-memo text-saved-contrast",
+  bookmark: "border-bookmark bg-bookmark text-ink-text",
+  like: "border-rose-400 bg-rose-400 text-ink-text",
+  note: "border-amber-400 bg-amber-400 text-ink-text",
 } as const;

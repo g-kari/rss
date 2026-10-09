@@ -31,32 +31,29 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
       onClick={handleClick}
       aria-label={confirmMarkAll ? "全記事を既読にする（確認）" : "全て既読にする"}
       title={confirmMarkAll ? "もう一度押すと全て既読にします" : `${SHORTCUT_MAP["m"]} (m)`}
-      className={`relative overflow-hidden flex items-center justify-center rounded-full transition-all duration-200 ${
+      className={`relative overflow-hidden flex items-center justify-center rounded transition-all duration-200 ${
         confirmMarkAll
-          ? "px-3 min-h-[44px] min-w-[44px] text-meta font-medium text-error border border-rose-400 hover:bg-rose-400/10"
-          : "px-3 min-h-[44px] min-w-[44px] border border-border-default text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+          ? "px-2 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 text-control font-medium text-error border border-rose-400 hover:bg-rose-400/10"
+          : "w-6 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 text-text-faint hover:text-text-muted hover:bg-surface-subtle"
       }`}
     >
       {confirmMarkAll ? (
         "全既読?"
       ) : (
-        <span className="flex items-center gap-2 text-control">
-          全て既読
-          <svg
-            aria-hidden={true}
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="6" cy="6" r="4.5" />
-            <path d="M3.5 6l1.8 1.8L8.5 4" />
-          </svg>
-        </span>
+        <svg
+          aria-hidden={true}
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="6" cy="6" r="4.5" />
+          <path d="M3.5 6l1.8 1.8L8.5 4" />
+        </svg>
       )}
       {confirmMarkAll && (
         // 確認状態のカウントダウン進捗バー: 3 秒で 100% → 0% に縮む細線。

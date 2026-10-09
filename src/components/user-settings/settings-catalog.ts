@@ -22,11 +22,21 @@ export interface SettingDestination {
   aliases: string;
   /** Non-row settings provide a scoped selector instead of a data-setting-id row. */
   selector?: string;
+  /** An informational destination remains available without an editable control. */
+  informational?: boolean;
 }
 // Placement rule: one destination per existing setting/group of related actions.
 // Keep daily typography in reading; advanced voice, AI, notification, storage and backup
 // controls belong to their purpose category. Add static aliases + an inventory test with UI changes.
 export const SETTINGS_CATALOG: readonly SettingDestination[] = [
+  {
+    id: "nsfw-mode",
+    informational: true,
+    category: "reading",
+    label: "NSFW表示",
+    description: "現在の表示状態を確認・NSFWモード解除",
+    aliases: "成人向け 通常表示 モード 解除",
+  },
   {
     id: "presets",
     category: "reading",

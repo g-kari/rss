@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { useNativeControlSpace } from "../../hooks/useNativeControlSpace";
+import { useId, useState } from "react";
 import type { Article, Collection, EngagementAction, Feed } from "../../types";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import { useToast } from "../../contexts/ToastContext";
@@ -164,8 +163,6 @@ export default function ArticleHeader({
   onRemoveFromCollection,
   onCreateCollection,
 }: Props) {
-  const actionsRef = useRef<HTMLDivElement>(null);
-  useNativeControlSpace(actionsRef);
   const toast = useToast();
   const { focusMode, toggleFocusMode: onToggleFocusMode } = useReaderSettings();
   const {
@@ -182,6 +179,69 @@ export default function ArticleHeader({
   };
 
   const feed = feeds?.find((candidate) => candidate.id === article.feedHash);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreId = useId();
+  const moreActive = autoMode || focusMode || ttsPlaying || ttsPaused;
+
+  const aiTtsProps = {
+    article,
+    hasContent,
+    hasImages,
+    fetching,
+    aiResult,
+    aiLoading,
+    aiError,
+    resetAi,
+    doRunAi,
+    handleTranslate,
+    translateResult,
+    translateLoading,
+    translateError,
+    ttsSupported,
+    ttsPlaying,
+    ttsPaused,
+    ttsRate,
+    ttsCycleRate,
+    ttsVolume,
+    ttsCycleVolume,
+    onTtsToggle,
+    autoMode,
+    onToggleAutoMode,
+    downloadAllImages,
+    downloadingImages,
+    imageDownloadProgress,
+  };
+  const shareProps = {
+    article,
+    feed,
+    storedContent,
+    onShareError: (msg: string) => toast.error(msg),
+    onSaveFilter,
+    globalFilter,
+    onSaveGlobalFilter,
+  };
+  const engagementProps = {
+    article,
+    isBookmarked,
+    onToggleBookmark,
+    isInReadingList,
+    onToggleReadingList,
+    isLiked,
+    onToggleLike,
+    onReadingListToast: (msg: string) => toast.info(msg),
+    note,
+    noteExpanded,
+    setNoteExpanded,
+    onSetNote,
+    collections,
+    onAddToCollection,
+    onAddBulkToCollection,
+    bookmarkIds,
+    onRemoveFromCollection,
+    onCreateCollection,
+    focusMode,
+    onToggleFocusMode,
+  };
 
   return (
     <div className="mb-5 text-[11px] text-text-muted flex flex-col gap-y-2">
@@ -199,88 +259,53 @@ export default function ArticleHeader({
         feedName={feed?.title}
       />
 
-      <div ref={actionsRef} data-print="hide" className="space-y-2">
-        <div role="group" aria-label="読書補助" className="flex flex-wrap items-center gap-2">
+      <div data-print="hide" className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap">
           <QuickReadingSettings key={article.id} />
-          <details className="min-w-0">
-            <summary className="min-h-[44px] px-3 py-2 inline-flex items-center gap-2 rounded-lg border border-border-default text-control text-text-muted cursor-pointer">
-              要約・翻訳・音声
-              {(ttsPlaying || ttsPaused || autoMode) && (
-                <span className="text-selection-accent">動作中</span>
-              )}
-            </summary>
-            <div className="py-2 flex flex-wrap items-center gap-2 reader-aid-actions">
-              <ArticleHeaderAiTts
-                article={article}
-                hasContent={hasContent}
-                hasImages={hasImages}
-                fetching={fetching}
-                aiResult={aiResult}
-                aiLoading={aiLoading}
-                aiError={aiError}
-                resetAi={resetAi}
-                doRunAi={doRunAi}
-                handleTranslate={handleTranslate}
-                translateResult={translateResult}
-                translateLoading={translateLoading}
-                translateError={translateError}
-                ttsSupported={ttsSupported}
-                ttsPlaying={ttsPlaying}
-                ttsPaused={ttsPaused}
-                ttsRate={ttsRate}
-                ttsCycleRate={ttsCycleRate}
-                ttsVolume={ttsVolume}
-                ttsCycleVolume={ttsCycleVolume}
-                onTtsToggle={onTtsToggle}
-                autoMode={autoMode}
-                onToggleAutoMode={onToggleAutoMode}
-                downloadAllImages={downloadAllImages}
-                downloadingImages={downloadingImages}
-                imageDownloadProgress={imageDownloadProgress}
+          <ArticleHeaderAiTts section="primary" {...aiTtsProps} />
+          <ArticleHeaderShare section="primary" {...shareProps} />
+          <ArticleHeaderEngagement section="primary" {...engagementProps} />
+          <button
+            type="button"
+            onClick={() => setMoreOpen((open) => !open)}
+            aria-expanded={moreOpen}
+            aria-controls={moreOpen ? moreId : undefined}
+            aria-label="その他の操作"
+            title="その他の操作（画像保存・読み上げ速度・フィルター・印刷など）"
+            className={`relative p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center transition-colors duration-200 ${
+              moreOpen ? "text-text-strong" : "text-text-faint hover:text-text-muted"
+            }`}
+          >
+            <svg
+              className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="12" r="1.75" />
+              <circle cx="12" cy="12" r="1.75" />
+              <circle cx="19" cy="12" r="1.75" />
+            </svg>
+            {moreActive && !moreOpen && (
+              <span
+                aria-hidden="true"
+                className="absolute top-1 right-1 lg:-top-0.5 lg:-right-0.5 w-1.5 h-1.5 rounded-full bg-accent"
               />
-            </div>
-          </details>
+            )}
+          </button>
         </div>
-        <div role="group" aria-label="保存・整理" className="flex flex-wrap items-center gap-2">
-          <ArticleHeaderEngagement
-            article={article}
-            isBookmarked={isBookmarked}
-            onToggleBookmark={onToggleBookmark}
-            isInReadingList={isInReadingList}
-            onToggleReadingList={onToggleReadingList}
-            isLiked={isLiked}
-            onToggleLike={onToggleLike}
-            onReadingListToast={(msg) => toast.info(msg)}
-            note={note}
-            noteExpanded={noteExpanded}
-            setNoteExpanded={setNoteExpanded}
-            onSetNote={onSetNote}
-            collections={collections}
-            onAddToCollection={onAddToCollection}
-            onAddBulkToCollection={onAddBulkToCollection}
-            bookmarkIds={bookmarkIds}
-            onRemoveFromCollection={onRemoveFromCollection}
-            onCreateCollection={onCreateCollection}
-            focusMode={focusMode}
-            onToggleFocusMode={onToggleFocusMode}
-          />
-          <details className="min-w-0">
-            <summary className="min-h-[44px] px-3 py-2 inline-flex items-center rounded-lg border border-border-default text-control text-text-muted cursor-pointer">
-              共有・管理
-            </summary>
-            <div className="py-2 flex flex-wrap items-center gap-2 reader-aid-actions">
-              <ArticleHeaderShare
-                article={article}
-                feed={feed}
-                storedContent={storedContent}
-                onShareError={(msg) => toast.error(msg)}
-                onSaveFilter={onSaveFilter}
-                globalFilter={globalFilter}
-                onSaveGlobalFilter={onSaveGlobalFilter}
-              />
-            </div>
-          </details>
-        </div>
+        {moreOpen && (
+          <div
+            id={moreId}
+            role="group"
+            aria-label="追加の操作"
+            className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 pt-1 border-t border-border-subtle"
+          >
+            <ArticleHeaderAiTts section="secondary" {...aiTtsProps} />
+            <ArticleHeaderShare section="secondary" {...shareProps} />
+            <ArticleHeaderEngagement section="secondary" {...engagementProps} />
+          </div>
+        )}
       </div>
     </div>
   );

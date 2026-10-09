@@ -1,5 +1,6 @@
 "use client";
 
+import { articleListScopeTitle } from "../lib/article-list-scope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FullContentIntent } from "../lib/full-content-intent";
 import { useSearchParams } from "next/navigation";
@@ -922,6 +923,8 @@ export default function AppShell({
                 showHelp,
                 onHelpClose: () => setShowHelp(false),
                 showSettings,
+                nsfwMode,
+                onDeactivateNsfw: deactivateNSFW,
                 onSettingsClose: () => setShowSettings(false),
                 showFeedSwitcher,
                 feeds,
@@ -1029,14 +1032,15 @@ export default function AppShell({
                 readingListIds,
                 selectedArticleId: selectedArticle?.id ?? null,
                 selectedFeedId,
-                scopeTitle: selectedGroupId
-                  ? feedGroups.find((group) => group.id === selectedGroupId)?.name
-                  : selectedTag
-                    ? `タグ: ${selectedTag}`
-                    : selectedCollectionId
-                      ? collections.find((collection) => collection.id === selectedCollectionId)
-                          ?.name
-                      : undefined,
+                scopeTitle: articleListScopeTitle({
+                  feedId: selectedFeedId,
+                  feedTitle: feeds.find((feed) => feed.id === selectedFeedId)?.title,
+                  groupTitle: feedGroups.find((group) => group.id === selectedGroupId)?.name,
+                  tag: selectedTag,
+                  collectionTitle: collections.find(
+                    (collection) => collection.id === selectedCollectionId,
+                  )?.name,
+                }),
                 layout,
                 loading: loadingArticles,
                 fetchError,

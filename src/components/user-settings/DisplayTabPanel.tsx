@@ -22,7 +22,7 @@ import ImageDlSection from "./ImageDlSection";
 import { useThemePresets } from "../../hooks/useThemePresets";
 import { THEME_PRESET_NAME_MAX_LENGTH, THEME_PRESET_NAME_MIN_LENGTH } from "../../lib/theme-preset";
 import type { Theme } from "../../hooks/useThemePreference";
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, type ReactNode, useRef, useState } from "react";
 import { useTextInputModal } from "../../hooks/useTextInputModal";
 import TextInputModal from "../TextInputModal";
 import { useToast } from "../../contexts/ToastContext";
@@ -32,6 +32,7 @@ import { devError } from "../../lib/dev-log";
 
 interface DisplayTabPanelProps {
   activeCategory: SettingsCategoryId;
+  readingModeControls?: ReactNode;
   // Theme (for preset 適用、UI で theme 単体変更はしない)
   theme: Theme;
   setTheme: (v: Theme) => void;
@@ -85,6 +86,7 @@ interface DisplayTabPanelProps {
 
 export default function DisplayTabPanel({
   activeCategory,
+  readingModeControls,
   theme,
   setTheme,
   fontSize,
@@ -317,6 +319,7 @@ export default function DisplayTabPanel({
         <p className="text-[11px] text-text-muted">
           変更は即座にプレビューに反映され、自動的に保存されますわ。
         </p>
+        {readingModeControls}
       </SettingsCategoryPanel>
       <SettingsCategoryPanel id="gallery" hidden={activeCategory !== "gallery"}>
         <GallerySection

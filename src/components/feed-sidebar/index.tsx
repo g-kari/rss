@@ -33,7 +33,6 @@ import CategorySection from "./CategorySection";
 import TagsSection from "./TagsSection";
 import CollectionsSection from "./CollectionsSection";
 import FeedSearchBar from "./FeedSearchBar";
-import { useNativeControlSpace } from "../../hooks/useNativeControlSpace";
 
 const ReadingStatsModal = dynamic(() => import("../ReadingStatsModal"), { ssr: false });
 const FeedAddModal = dynamic(() => import("../FeedAddModal"), { ssr: false });
@@ -137,8 +136,6 @@ function FeedSidebar({
   openFeedAddTrigger,
   openReadingStatsTrigger,
 }: Props) {
-  const navRef = useRef<HTMLElement>(null);
-  useNativeControlSpace(navRef);
   const {
     onSelectFeed,
     onSelectGroup,
@@ -400,7 +397,6 @@ function FeedSidebar({
   // navigation landmark を意図しているので semantic HTML 側を <nav> に揃える。
   return (
     <nav
-      ref={navRef}
       aria-label="フィード一覧"
       className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-nav"
     >
@@ -452,7 +448,7 @@ function FeedSidebar({
         onDropFeedOnView={handleDropFeedOnView}
       />
 
-      {/* Keep subscription search reachable when tags/collections fill the scroll panel. */}
+      {/* フィード検索（インライン常時表示） */}
       {feeds.length > 0 && <FeedSearchBar value={feedSearch} onChange={setFeedSearch} />}
 
       {/* フィードリスト (FeedViewTabs の tabpanel) */}
@@ -464,7 +460,6 @@ function FeedSidebar({
         aria-labelledby={`feed-view-tab-${activeFeedView}`}
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2"
       >
-        <h2 className="px-4 pt-1 pb-2 text-meta font-medium text-text-muted">読む</h2>
         {/* #1222: 「すべて」button 内に「全て既読」button を nest すると HTML5 content model
             違反 (interactive content の入れ子) になるため、外枠を div にして 2 button を
             sibling として並置する (canonical: FeedGroupsSection / SpecialViewButton)。 */}
@@ -517,18 +512,12 @@ function FeedSidebar({
           </span>
         </div>
 
-        <SpecialViewButton
-          id={SPECIAL_FEED_IDS.DIGEST}
-          label="ダイジェスト"
-          selectedFeedId={selectedFeedId}
-          onSelectFeed={onSelectFeed}
-        />
-        <h2 className="px-4 pt-5 pb-2 text-meta font-medium text-text-muted">ライブラリ</h2>
         {[
-          { id: SPECIAL_FEED_IDS.READING_LIST, label: "後で読む", count: readingListCount },
-          { id: SPECIAL_FEED_IDS.BOOKMARKS, label: "ブックマーク", count: bookmarkCount },
-          { id: SPECIAL_FEED_IDS.LIKES, label: "いいね", count: likeCount },
+          { id: SPECIAL_FEED_IDS.DIGEST, label: "ダイジェスト", count: undefined },
           { id: SPECIAL_FEED_IDS.HISTORY, label: "履歴", count: historyCount },
+          { id: SPECIAL_FEED_IDS.BOOKMARKS, label: "ブックマーク", count: bookmarkCount },
+          { id: SPECIAL_FEED_IDS.READING_LIST, label: "後で読む", count: readingListCount },
+          { id: SPECIAL_FEED_IDS.LIKES, label: "いいね", count: likeCount },
         ].map(({ id, label, count }) => (
           <SpecialViewButton
             key={id}
@@ -559,11 +548,18 @@ function FeedSidebar({
           />
         )}
 
+        {/* 統計 */}
+        <div className="px-4 py-2 flex items-center gap-4 border-t border-border-subtle mt-1">
+          <StatItem value={readTodayCount} label="今日" />
+          <StatItem value={totalUnread} label="未読" />
+          <StatItem value={feeds.length} label="フィード" />
+        </div>
+
         {/* URL から記事を保存 (Issue #115: モーダル化) */}
         <div className="px-4 py-1">
           <button
             onClick={saveDialog.open}
-            className="flex items-center gap-1.5 min-h-[44px] text-control text-text-muted hover:text-text-muted transition-colors duration-200"
+            className="flex items-center gap-1.5 text-meta text-text-faint hover:text-text-muted transition-colors duration-200"
             title="URL から記事を保存"
           >
             <svg
@@ -592,7 +588,25 @@ function FeedSidebar({
           />
         )}
 
-        <h2 className="px-4 pt-5 pb-2 text-meta font-medium text-text-muted">購読フィード</h2>
+        {recommendations && onDismissRecommendation && onRefreshRecommendations && (
+          <RecommendationSection
+            recommendations={recommendations}
+            topics={recommendationTopics ?? []}
+            loading={recommendationsLoading ?? false}
+            error={recommendationsError ?? null}
+            refreshing={recommendationsRefreshing ?? false}
+            onDismiss={onDismissRecommendation}
+            onRefresh={onRefreshRecommendations}
+            onAddFeed={(url) =>
+              new Promise<void>((resolve) => {
+                addFeed(url, () => resolve());
+                // addFeed はエラー時に内部で error state を更新するのみ
+                // 短いタイムアウトで resolve して UI をブロックしない
+                setTimeout(resolve, 5000);
+              })
+            }
+          />
+        )}
 
         {loadingFeeds && feeds.length === 0 && (
           <div className="px-2 py-1 space-y-1">
@@ -719,37 +733,6 @@ function FeedSidebar({
           onToggleCollapseCategory={onToggleCollapseCategory}
           renderFeed={renderFeed}
         />
-        <details className="mt-4 border-t border-border-subtle">
-          <summary className="min-h-[44px] px-4 py-3 text-control text-text-muted cursor-pointer">
-            統計・フィードを探す
-          </summary>
-          {/* 統計 */}
-          <div className="px-4 py-2 flex items-center gap-4 border-t border-border-subtle mt-1">
-            <StatItem value={readTodayCount} label="今日" />
-            <StatItem value={totalUnread} label="未読" />
-            <StatItem value={feeds.length} label="フィード" />
-          </div>
-
-          {recommendations && onDismissRecommendation && onRefreshRecommendations && (
-            <RecommendationSection
-              recommendations={recommendations}
-              topics={recommendationTopics ?? []}
-              loading={recommendationsLoading ?? false}
-              error={recommendationsError ?? null}
-              refreshing={recommendationsRefreshing ?? false}
-              onDismiss={onDismissRecommendation}
-              onRefresh={onRefreshRecommendations}
-              onAddFeed={(url) =>
-                new Promise<void>((resolve) => {
-                  addFeed(url, () => resolve());
-                  // addFeed はエラー時に内部で error state を更新するのみ
-                  // 短いタイムアウトで resolve して UI をブロックしない
-                  setTimeout(resolve, 5000);
-                })
-              }
-            />
-          )}
-        </details>
       </div>
 
       {/* ユーザー情報 */}

@@ -30,7 +30,6 @@ function mount() {
 describe("FeedViewTabs navigation", () => {
   it("uses the shared minimum navigation size without changing tab semantics or hit area", () => {
     const { list } = mount();
-    expect(list).toHaveClass("flex-wrap");
     const tabs = within(list).getAllByRole("tab");
     expect(tabs).toHaveLength(4);
     for (const [index, tab] of tabs.entries()) {
@@ -38,7 +37,7 @@ describe("FeedViewTabs navigation", () => {
       expect(tab).toHaveAttribute("aria-controls", "feed-view-panel");
       expect(tab).toHaveAttribute("aria-selected", String(index === 0));
       expect(tab).toHaveAttribute("tabindex", index === 0 ? "0" : "-1");
-      expect(tab).toHaveClass("min-h-[44px]", "min-w-[44px]", "flex-col");
+      expect(tab).toHaveClass("min-h-[44px]", "min-w-0", "flex-col");
       expect(tab.querySelector("span")).toHaveClass("text-xs", "leading-4", "whitespace-nowrap");
     }
     expect(tabs[0]).toHaveClass("selection-tab-current", "text-selection-accent");

@@ -308,3 +308,14 @@ describe("purpose-based settings navigation", () => {
     ).toBe(true);
   });
 });
+
+it("NSFW状態の検索は読書tabpanel内へ移動し、通常表示を利用不能と誤表示しない", async () => {
+  await open();
+  selectSetting("nsfw-mode");
+  const group = screen.getByRole("group", { name: "NSFW表示設定" });
+  expect(group).toHaveFocus();
+  expect(group.closest('[role="tabpanel"]')).toHaveAttribute("id", "panel-reading");
+  expect(group).toHaveTextContent("通常表示中");
+  expect(screen.queryByText(/現在の設定やこのブラウザの対応状況によって利用できません/)).toBeNull();
+  expect(screen.queryByRole("button", { name: "NSFWモード解除" })).toBeNull();
+});

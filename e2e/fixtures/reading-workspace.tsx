@@ -21,6 +21,7 @@ Object.defineProperty(window, "sessionStorage", { value: storage });
 storage.setItem(STORAGE_KEYS.THEME, params.get("theme") ?? "light");
 storage.setItem(STORAGE_KEYS.SIDEBAR_WIDTH, params.get("sidebar") ?? "240");
 storage.setItem(STORAGE_KEYS.LIST_WIDTH, params.get("list") ?? "360");
+if (params.get("nsfw") === "1") storage.setItem(STORAGE_KEYS.NSFW_MODE, "1");
 installDemoFetch();
 const demoFetch = window.fetch;
 const tags =
@@ -35,6 +36,11 @@ const collections = Array.from({ length: params.get("stress") === "1" ? 20 : 1 }
 window.fetch = async (input, init) => {
   const path = String(input);
   const method = init?.method ?? "GET";
+  if (params.get("nsfw") === "1" && path === "/api/feeds" && method === "GET") {
+    const feeds: unknown = await (await demoFetch(input, init)).json();
+    if (!Array.isArray(feeds)) throw new Error("Synthetic feed list must be an array");
+    return Response.json(feeds.map((feed) => ({ ...feed, nsfw: true })));
+  }
   if (path.includes("/api/collections") && method === "GET") return Response.json(collections);
   if (path.includes("/api/read-state") && method === "GET") {
     const state: unknown = await (await demoFetch(input, init)).json();

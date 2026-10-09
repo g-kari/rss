@@ -94,8 +94,7 @@ jobs:
 
       - name: 比較対象の immutable UI tree を取得
         run: |
-          git fetch --no-tags --depth=1 origin 66d75a22a8a6b44542cbdbaaabc0b27b19053b7e
-          git fetch --no-tags --depth=1 origin 0ec554009806d9d7ad263a7f1ac41240b59b1148
+          git fetch --no-tags --depth=1 origin de2d9747a2981339bbf06443a93078e00c1371c3
 
       - name: スコープ・再生・本文・キューのユニットテスト
         run: >-
@@ -132,13 +131,12 @@ jobs:
 
       - name: 全画面の同条件比較を先に描画
         env:
-          RSS_UI_BASELINE_SHA: ${{ github.event.pull_request.base.sha || (github.ref_name == 'codex/redesign-reading-workspace' && '0ec554009806d9d7ad263a7f1ac41240b59b1148') || '' }}
+          RSS_UI_BASELINE_SHA: ${{ github.event.pull_request.base.sha || (github.ref_name == 'codex/redesign-reading-workspace' && 'de2d9747a2981339bbf06443a93078e00c1371c3') || '' }}
           RSS_UI_FONT_ASSET_ROOT: .ci/reading-workspace-fonts
-          RSS_UI_ALTERNATIVE_SHA: 66d75a22a8a6b44542cbdbaaabc0b27b19053b7e
           PLAYWRIGHT_HTML_OUTPUT_DIR: .ci/reading-workspace-report
         run: >-
           pnpm run test:e2e:scoped
-          --grep 'full workspace|complete workspace controls|stress sidebar'
+          --grep 'full workspace|complete workspace controls|NSFW settings relocation|minimum list'
           --output=.ci/reading-workspace-results
 
       - name: 合成全画面の比較を先に保存
@@ -156,7 +154,7 @@ jobs:
       - name: 既存のレスポンシブ production component fixture を確認
         run: >-
           pnpm run test:e2e:scoped
-          --grep-invert 'full workspace|complete workspace controls|stress sidebar'
+          --grep-invert 'full workspace|complete workspace controls|NSFW settings relocation|minimum list'
 
       - name: 合成データのレポートとスクリーンショットを保存
         if: ${{ !cancelled() }}

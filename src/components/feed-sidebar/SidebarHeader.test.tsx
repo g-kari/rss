@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import SidebarHeader from "./SidebarHeader";
+import NsfwModeSettings from "../user-settings/NsfwModeSettings";
 import { useNSFWMode } from "../../hooks/useNSFWMode";
 import { useKeyboardNav } from "../../hooks/useKeyboardNav";
 import { STORAGE_KEYS } from "../../lib/storage";
@@ -20,11 +21,20 @@ function makeProps(): ComponentProps<typeof SidebarHeader> {
   };
 }
 
+function HeaderWithSettings(props: ComponentProps<typeof SidebarHeader>) {
+  return (
+    <>
+      <SidebarHeader {...props} />
+      <NsfwModeSettings enabled={props.nsfwMode} onDeactivate={props.onDeactivateNsfw} />
+    </>
+  );
+}
+
 function ModeFixture() {
   const mode = useNSFWMode();
   return (
     <>
-      <SidebarHeader
+      <HeaderWithSettings
         {...makeProps()}
         nsfwMode={mode.nsfwMode}
         onActivateNsfw={mode.activateNSFW}
@@ -52,7 +62,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("SidebarHeader の通常モード解除", () => {
+describe("設定へ移動した通常モード解除と SidebarHeader", () => {
   it("選択記事のグローバルSpaceショートカットから解除ボタンのnative activationを守る", () => {
     localStorage.setItem(STORAGE_KEYS.NSFW_MODE, "1");
     render(<KeyboardFixture />);
@@ -72,7 +82,7 @@ describe("SidebarHeader の通常モード解除", () => {
     expect(scroll).not.toHaveBeenCalled();
     // happy-dom does not synthesize the browser's native keyup click.
     fireEvent.click(exit);
-    const group = screen.getByRole("group", { name: "サイドバー操作" });
+    const group = screen.getByRole("group", { name: "NSFW表示設定" });
     fireEvent.keyDown(group, { key: " ", code: "Space" });
     expect(scroll).not.toHaveBeenCalled();
     expect(screen.getByLabelText("モード")).toHaveTextContent("false");
@@ -81,13 +91,13 @@ describe("SidebarHeader の通常モード解除", () => {
   });
   it("有効なときだけ名前付き解除ボタンを表示し、一度のクリックで既存 callback を呼ぶ", () => {
     const props = makeProps();
-    const { rerender } = render(<SidebarHeader {...props} />);
+    const { rerender } = render(<HeaderWithSettings {...props} />);
     const exit = screen.getByRole("button", { name: "NSFWモード解除" });
     expect(exit).toHaveTextContent("NSFWモード解除");
     fireEvent.click(exit);
     expect(props.onDeactivateNsfw).toHaveBeenCalledOnce();
     expect(props.onActivateNsfw).not.toHaveBeenCalled();
-    rerender(<SidebarHeader {...props} nsfwMode={false} />);
+    rerender(<HeaderWithSettings {...props} nsfwMode={false} />);
     expect(screen.queryByRole("button", { name: "NSFWモード解除" })).toBeNull();
   });
 
@@ -100,7 +110,7 @@ describe("SidebarHeader の通常モード解除", () => {
     expect(screen.getByLabelText("モード")).toHaveTextContent("false");
     expect(screen.getByLabelText("有効化演出")).toHaveTextContent("false");
     expect(localStorage.getItem(STORAGE_KEYS.NSFW_MODE)).toBe("0");
-    expect(screen.getByRole("group", { name: "サイドバー操作" })).toHaveFocus();
+    expect(screen.getByRole("group", { name: "NSFW表示設定" })).toHaveFocus();
     unmount();
     render(<ModeFixture />);
     expect(screen.queryByRole("button", { name: "NSFWモード解除" })).toBeNull();
@@ -108,12 +118,12 @@ describe("SidebarHeader の通常モード解除", () => {
 
   it("オフラインでも解除でき、いつもの追加・更新操作は変えない", () => {
     const props = makeProps();
-    const { rerender } = render(<SidebarHeader {...props} />);
+    const { rerender } = render(<HeaderWithSettings {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "フィードを追加" }));
     fireEvent.click(screen.getByRole("button", { name: "フィードを更新" }));
     expect(props.onToggleInput).toHaveBeenCalledOnce();
     expect(props.onRefresh).toHaveBeenCalledOnce();
-    rerender(<SidebarHeader {...props} isOnline={false} />);
+    rerender(<HeaderWithSettings {...props} isOnline={false} />);
     expect(screen.getByRole("button", { name: "NSFWモード解除" })).toBeEnabled();
     expect(screen.getAllByRole("button", { name: "オフライン" })).toHaveLength(2);
   });
@@ -123,7 +133,7 @@ describe("SidebarHeader の通常モード解除", () => {
     (event) => {
       vi.useFakeTimers();
       const props = makeProps();
-      render(<SidebarHeader {...props} />);
+      render(<HeaderWithSettings {...props} />);
       const logo = screen.getByRole("button", { name: /^RSS$/ });
       fireEvent.pointerDown(logo, { button: 0 });
       act(() => vi.advanceTimersByTime(300));
@@ -136,7 +146,7 @@ describe("SidebarHeader の通常モード解除", () => {
   it("長押しを維持し、解除後の release click は有効化へ送らない", () => {
     vi.useFakeTimers();
     const props = makeProps();
-    render(<SidebarHeader {...props} />);
+    render(<HeaderWithSettings {...props} />);
     const logo = screen.getByRole("button", { name: /^RSS$/ });
     fireEvent.pointerDown(logo, { button: 0 });
     act(() => vi.advanceTimersByTime(600));
@@ -151,7 +161,7 @@ describe("SidebarHeader の通常モード解除", () => {
   it("待機中の長押しは unmount で破棄する", () => {
     vi.useFakeTimers();
     const props = makeProps();
-    const { unmount } = render(<SidebarHeader {...props} />);
+    const { unmount } = render(<HeaderWithSettings {...props} />);
     fireEvent.pointerDown(screen.getByRole("button", { name: /^RSS$/ }), { button: 0 });
     unmount();
     act(() => vi.advanceTimersByTime(600));
@@ -161,7 +171,7 @@ describe("SidebarHeader の通常モード解除", () => {
   it("長押し後にpointer cancelされた場合も次のkeyboard activationは妨げない", () => {
     vi.useFakeTimers();
     const props = makeProps();
-    render(<SidebarHeader {...props} />);
+    render(<HeaderWithSettings {...props} />);
     const logo = screen.getByRole("button", { name: /^RSS$/ });
     fireEvent.pointerDown(logo, { button: 0 });
     act(() => vi.advanceTimersByTime(600));
@@ -181,11 +191,20 @@ describe("SidebarHeader の通常モード解除", () => {
   });
   it("フィード追加は常に見えるラベル付きの主操作として表示し、accessible name を維持する", () => {
     const props = makeProps();
-    render(<SidebarHeader {...props} nsfwMode={false} />);
+    render(<HeaderWithSettings {...props} nsfwMode={false} />);
     const add = screen.getByRole("button", { name: "フィードを追加" });
     expect(add).toHaveTextContent("追加");
     expect(add).toHaveClass("bg-accent", "text-accent-contrast");
     fireEvent.click(add);
     expect(props.onToggleInput).toHaveBeenCalledOnce();
   });
+});
+
+it("常用サイドバーには大きい解除操作を置かず、現在の状態と長押し案内を残す", () => {
+  render(<SidebarHeader {...makeProps()} />);
+  expect(screen.queryByRole("button", { name: "NSFWモード解除" })).toBeNull();
+  expect(screen.getByRole("button", { name: "RSS" })).toHaveAttribute(
+    "title",
+    "NSFW表示中・長押しで解除、またはユーザー設定",
+  );
 });

@@ -11,6 +11,8 @@ const SessionExpiredModal = dynamic(() => import("./SessionExpiredModal"), { ssr
 
 interface Props {
   userId: string;
+  nsfwMode?: boolean;
+  onDeactivateNsfw?: () => void;
   sessionExpired: boolean;
   snoozeTargetId: string | null;
   snoozeArticleTitle: string;
@@ -40,6 +42,8 @@ interface Props {
 
 export default function AppModals({
   userId,
+  nsfwMode = false,
+  onDeactivateNsfw,
   sessionExpired,
   snoozeTargetId,
   snoozeArticleTitle,
@@ -81,6 +85,8 @@ export default function AppModals({
         <UserSettingsModal
           key={userId}
           userId={userId}
+          nsfwMode={nsfwMode}
+          onDeactivateNsfw={onDeactivateNsfw}
           feeds={feeds}
           articles={articles}
           notes={notes}

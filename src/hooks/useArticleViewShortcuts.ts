@@ -5,12 +5,16 @@ import type { Article } from "../types";
 import type { AiOperationResult, AiRunOptions } from "./useArticleAi";
 import { useSyncedRef } from "./useSyncedRef";
 import { useEventListener } from "./useEventListener";
-import { isEditableShortcutTarget } from "../lib/keyboard-target";
+import { isEditableShortcutTarget, isSpaceActivationTarget } from "../lib/keyboard-target";
 import { isStoredContentJapanese } from "../lib/article-utils";
 import { shouldSkipAutoAi } from "../lib/auto-ai-fallback";
 
 // Register only trusted overlay refs; publisher HTML may retain data attributes.
 const readerFocusOverlays = new Set<HTMLElement>();
+
+export function hasReaderFocusOverlay(): boolean {
+  return [...readerFocusOverlays].some((element) => element.isConnected);
+}
 
 export function registerReaderFocusOverlay(element: HTMLElement): () => void {
   readerFocusOverlays.add(element);
@@ -95,7 +99,12 @@ export function useArticleViewShortcuts(deps: ArticleViewShortcutsDeps): void {
   useEventListener(
     "keydown",
     (e) => {
-      if (isEditableShortcutTarget(e.target)) return;
+      if (
+        e.defaultPrevented ||
+        isEditableShortcutTarget(e.target) ||
+        (e.key === " " && isSpaceActivationTarget(e.target))
+      )
+        return;
       const reader = mainRef.current;
       if (!reader?.isConnected) return;
       // The pane reader stays mounted behind focus mode. The latest connected

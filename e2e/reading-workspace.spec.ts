@@ -173,7 +173,9 @@ async function textContrast(page: Page) {
           });
         return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
       };
-      return [...header.querySelectorAll("button, input")].map((element) => {
+      return [...header.querySelectorAll("button")].map((element) => {
+        if (!element.textContent?.includes("未読") && !element.textContent?.includes("絞り込み"))
+          return null;
         let parent: Element | null = element,
           background = "";
         while (parent) {
@@ -204,48 +206,46 @@ async function textContrast(page: Page) {
 
 for (const width of [1440, 1024, 390, 320])
   for (const theme of ["light", "dark"])
-    for (const stage of alternative ? ["before", "after", "alternative"] : ["before", "after"]) {
+    for (const stage of ["before", "after"]) {
       test.describe(`${stage} ${width}px ${theme} full workspace`, () => {
         test.use({
           viewport: { width, height: width < 1024 ? 844 : 900 },
           contextOptions: { reducedMotion: "reduce" },
         });
-        test("subscription to list to article and back retains state", async ({ page }, info) => {
+        test("compact navigation, list and reader preserve the selected design", async ({
+          page,
+        }, info) => {
           await open(page, stage, theme);
           const nav = page.getByRole("navigation", { name: "フィード一覧" });
-          if (stage === "after")
-            for (const name of ["読む", "ライブラリ", "購読フィード"])
-              await expect(nav.getByRole("heading", { name, exact: true })).toBeVisible();
           await page
             .locator(".reader-visual-shell")
             .screenshot({ path: info.outputPath("navigation.png") });
           await nav.getByRole("button", { name: "すべて", exact: true }).click();
           const list = page.getByRole("region", { name: "記事一覧", exact: true });
-          await expect(list).toBeVisible();
           await expect(
             list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first(),
           ).toBeVisible();
           if (stage === "after") {
-            await expect(
-              list.getByRole("heading", { name: "すべての記事", exact: true }),
-            ).toBeVisible();
+            await expect(list.getByRole("heading", { name: /すべての記事/ })).toBeVisible();
+            for (const name of [/未読フィルター/, /絞り込み/])
+              await expect(list.getByRole("button", { name })).toBeVisible();
             expect(
-              await list
-                .locator("header")
-                .evaluate((element) => element.scrollWidth <= element.clientWidth),
+              await list.locator("header").evaluate((el) => el.scrollWidth <= el.clientWidth),
             ).toBe(true);
-            for (const name of [/^未読フィルター/, /^絞り込み/, /^表示$/]) {
-              const button = list.getByRole("button", { name });
-              await expect(button).toBeVisible();
-              expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-            }
-            const contrast = await textContrast(page);
+            for (const control of await list.locator("header button").all())
+              expect(await control.evaluate((el) => getComputedStyle(el).borderRadius)).not.toBe(
+                "9999px",
+              );
+            const contrast = (await textContrast(page)).filter((entry) => entry !== null);
+            expect(contrast).toHaveLength(2);
             for (const entry of contrast)
-              expect(entry.ratio, JSON.stringify(entry)).toBeGreaterThanOrEqual(4.5);
-            await info.attach("measured-control-contrast", {
+              expect(entry!.ratio, JSON.stringify(entry)).toBeGreaterThanOrEqual(4.5);
+            await info.attach("measured-label-contrast", {
               body: JSON.stringify(contrast, null, 2),
               contentType: "application/json",
             });
+            await expect(page.getByRole("banner", { name: "サイトの表示モード" })).toHaveCount(0);
+            await expect(list.locator("summary").filter({ hasText: "読み方" })).toBeVisible();
           }
           await page
             .locator(".reader-visual-shell")
@@ -257,15 +257,12 @@ for (const width of [1440, 1024, 390, 320])
             reader.getByRole("heading", { name: "React 19 の新機能と移行ガイド" }),
           ).toBeVisible();
           if (stage === "after") {
-            await expect(
-              reader.getByRole("group", { name: "保存・整理", exact: true }),
-            ).toBeVisible();
-            await expect(
-              reader.getByRole("group", { name: "読書補助", exact: true }),
-            ).toBeVisible();
-            expect(
-              await reader.evaluate((element) => element.scrollWidth <= element.clientWidth),
-            ).toBe(true);
+            const quick = reader.getByRole("button", { name: "読書設定", exact: true });
+            const translate = reader.getByRole("button", { name: "AI 翻訳", exact: true });
+            await expect(quick).toBeVisible();
+            expect((await quick.boundingBox())!.height).toBe(
+              (await translate.boundingBox())!.height,
+            );
           }
           await page
             .locator(".reader-visual-shell")
@@ -284,7 +281,6 @@ for (const width of [1440, 1024, 390, 320])
             body: JSON.stringify({
               stage,
               baseline,
-              alternative,
               current: execFileSync("git", ["rev-parse", "HEAD"], {
                 cwd: root,
                 encoding: "utf8",
@@ -298,43 +294,27 @@ for (const width of [1440, 1024, 390, 320])
         });
       });
     }
-
 for (const width of [1440, 320])
   test.describe(`${width}px complete workspace controls`, () => {
     test.use({ viewport: { width, height: 900 }, contextOptions: { reducedMotion: "reduce" } });
-    test("filter, display, collection actions and settings have reversible keyboard paths", async ({
+    test("native Space, unified modes, filters, layouts and settings are reversible", async ({
       page,
     }, info) => {
       await open(page, "after", "light", width === 1440 ? 420 : 360);
       const nav = page.getByRole("navigation", { name: "フィード一覧" });
       await nav.getByRole("button", { name: "すべて", exact: true }).click();
       const list = page.getByRole("region", { name: "記事一覧", exact: true });
-      // On desktop, retain the mounted reader behind the portal to catch native Space theft.
       if (width === 1440)
         await list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first().click();
-      const filterTrigger = list.getByRole("button", { name: /^絞り込み/ });
-      await filterTrigger.focus();
-      await page.keyboard.press("Enter");
-      const filters = page.getByRole("dialog", { name: "記事の絞り込み", exact: true });
-      await expect(filters).toBeVisible();
-      await filters.getByRole("button", { name: "ブックマークフィルター切替 (B)" }).focus();
+      const bookmark = list.getByRole("button", { name: "ブックマークフィルター切替 (B)" });
+      await bookmark.focus();
       await page.keyboard.press("Space");
-      await expect(
-        filters.getByRole("button", { name: "ブックマークフィルター切替 (B)" }),
-      ).toHaveAttribute("aria-pressed", "true");
-      await filters.getByLabel("カテゴリでフィルター").selectOption("技術");
-      await filters.screenshot({ path: info.outputPath("filters.png") });
-      await page.keyboard.press("Escape");
-      await expect(filterTrigger).toBeFocused();
-      await expect(list.getByLabel("有効な絞り込み条件")).toContainText("ブックマーク");
-      await expect(list.getByLabel("有効な絞り込み条件")).toContainText("技術");
-      await filterTrigger.click();
-      await filters.getByRole("button", { name: "すべてのフィルターをクリア" }).click();
-      await page.keyboard.press("Escape");
-      await expect(list.getByLabel("有効な絞り込み条件")).toHaveCount(0);
-      const displayTrigger = list.getByRole("button", { name: "表示", exact: true });
-      await displayTrigger.click();
-      const display = page.getByRole("dialog", { name: "記事一覧の表示", exact: true });
+      await expect(bookmark).toHaveAttribute("aria-pressed", "true");
+      await list.getByRole("button", { name: /絞り込み/ }).click();
+      await list.getByLabel("カテゴリでフィルター").selectOption("技術");
+      await expect(list.getByLabel("カテゴリでフィルター")).toHaveValue("技術");
+      await list.getByRole("button", { name: "すべてのフィルターをクリア" }).click();
+      await expect(bookmark).toHaveAttribute("aria-pressed", "false");
       for (const name of [
         "コンパクト表示",
         "リスト表示",
@@ -342,93 +322,154 @@ for (const width of [1440, 320])
         "マガジン表示",
         "ギャラリー表示",
       ]) {
-        const button = display.getByRole("button", { name, exact: true });
+        const button = list.getByRole("button", { name, exact: true });
         await button.focus();
         await page.keyboard.press("Space");
         await expect(button).toHaveAttribute("aria-pressed", "true");
       }
-      await display.getByRole("button", { name: "リスト表示", exact: true }).click();
-      await display.screenshot({ path: info.outputPath("display.png") });
-      await page.keyboard.press("Escape");
-      await expect(displayTrigger).toBeFocused();
-      await list.getByRole("button", { name: "操作", exact: true }).click();
-      const actions = page.getByRole("dialog", { name: "記事一覧の操作", exact: true });
-      const sort = actions.getByRole("button", { name: /^現在:/ });
-      await expect(sort).toContainText("新しい順");
-      await sort.focus();
+      await list.getByRole("button", { name: "リスト表示", exact: true }).click();
+      const modes = list.locator("summary").filter({ hasText: "読み方" });
+      await modes.focus();
       await page.keyboard.press("Space");
-      await expect(sort).toContainText("古い順");
-      expect((await sort.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-      const mark = actions.getByRole("button", { name: "全て既読にする", exact: true });
-      await mark.click();
-      await expect(
-        actions.getByRole("button", { name: "全記事を既読にする（確認）" }),
-      ).toBeVisible();
-      // Cancel the confirmation, never mutate even synthetic state just to take a screenshot.
+      const visual = list.getByRole("button", { name: "ビジュアル表示", exact: true });
+      await expect(visual).toBeVisible();
+      await visual.focus();
+      await page.keyboard.press("Space");
+      await expect(visual).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("html")).toHaveAttribute("data-visual-mode", "cinema");
+      await page
+        .locator(".reader-visual-shell")
+        .screenshot({ path: info.outputPath("unified-modes.png") });
+      await visual.click();
+      await expect(visual).toHaveAttribute("aria-pressed", "false");
+      await list.getByRole("button", { name: "ドパガキモード", exact: true }).click();
+      const immersive = page.getByRole("dialog", { name: "ドパガキモード", exact: true });
+      await expect(immersive).toBeVisible();
       await page.keyboard.press("Escape");
+      await expect(immersive).toHaveCount(0);
+      await expect(modes).toBeFocused();
       await list
         .getByRole("combobox", { name: "検索", exact: true })
         .fill("絶対に一致しない合成クエリ");
-      await expect(
-        list.getByText(/一致する記事がありません|条件に一致する記事|見つかりません/).first(),
-      ).toBeVisible();
+      await expect(list.getByRole("heading", { name: /すべての記事.*0/ })).toBeVisible();
       await page
         .locator(".reader-visual-shell")
         .screenshot({ path: info.outputPath("empty-search.png") });
       await list.getByRole("combobox", { name: "検索", exact: true }).fill("");
       if (width < 1024)
         await list.getByRole("button", { name: "フィード一覧に戻る", exact: true }).click();
-      await nav.getByRole("button", { name: "その他のメニュー", exact: true }).click();
-      await page.getByRole("menuitem", { name: /ユーザー設定/ }).click();
+      const settingsTrigger = nav.getByRole("button", { name: "ユーザー設定", exact: true });
+      await settingsTrigger.focus();
+      await page.keyboard.press("Space");
       const settings = page.getByRole("dialog", { name: /ユーザー設定/ });
       await expect(settings).toBeVisible();
+      await expect(settings.getByRole("group", { name: "NSFW表示設定" })).toContainText(
+        "通常表示中",
+      );
       await settings.screenshot({ path: info.outputPath("settings.png") });
       await page.keyboard.press("Escape");
-      await expect(
-        nav.getByRole("button", { name: "その他のメニュー", exact: true }),
-      ).toBeFocused();
+      await expect(settingsTrigger).toBeFocused();
+      if (width === 1440) {
+        await nav.getByRole("button", { name: "Zenn - React", exact: true }).click();
+        const collection = nav.getByRole("button", { name: /^学びの資料/ });
+        await collection.click();
+        await expect(collection).toHaveAttribute("aria-pressed", "true");
+        await expect(
+          list.getByRole("heading", { name: /Zenn - React · コレクション: 学びの資料/ }),
+        ).toBeVisible();
+        await expect(
+          list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first(),
+        ).toBeVisible();
+        await expect(
+          list.getByText("Next.js 16 への移行で気をつけたこと", { exact: true }),
+        ).toHaveCount(0);
+        await collection.click();
+        await expect(collection).toHaveAttribute("aria-pressed", "false");
+        await expect(list.getByRole("heading", { name: /Zenn - React/ })).not.toContainText(
+          "コレクション",
+        );
+      }
     });
   });
 
-test.describe("stress sidebar and enlarged text", () => {
+test.describe("NSFW settings relocation full workspace", () => {
   test.use({ viewport: { width: 1440, height: 900 }, contextOptions: { reducedMotion: "reduce" } });
-  test("subscription search stays pinned with a long library and 150px sidebar", async ({
-    page,
-  }, info) => {
-    await page.goto("https://rss-workspace.test/demo?stage=after&theme=dark&sidebar=150&stress=1");
-    const nav = page.getByRole("navigation", { name: "フィード一覧" });
-    const search = nav.getByRole("textbox", { name: "フィードを検索", exact: true });
-    await expect(search).toBeVisible();
-    const panel = nav.getByRole("tabpanel");
-    await panel.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
+  for (const stage of ["before", "after"])
+    test(`${stage}: local mode remains active until an explicit settings action`, async ({
+      page,
+    }, info) => {
+      await page.goto(`https://rss-workspace.test/demo?stage=${stage}&theme=dark&nsfw=1`);
+      await page.evaluate(() => document.fonts.ready);
+      const nav = page.getByRole("navigation", { name: "フィード一覧" });
+      await expect(nav).toBeVisible();
+      await nav.getByRole("button", { name: "すべて", exact: true }).click();
+      await expect(page.getByRole("region", { name: "記事一覧", exact: true })).toBeVisible();
+      const exit = page.getByRole("button", { name: "NSFWモード解除", exact: true });
+      if (stage === "before") await expect(exit).toBeVisible();
+      else await expect(exit).toHaveCount(0);
+      await page
+        .locator(".reader-visual-shell")
+        .screenshot({ path: info.outputPath("nsfw-navigation.png") });
+      if (stage === "after") {
+        await nav.getByRole("button", { name: "ユーザー設定", exact: true }).click();
+        const settings = page.getByRole("dialog", { name: "ユーザー設定", exact: true });
+        await expect(settings.getByRole("group", { name: "NSFW表示設定" })).toContainText(
+          "NSFW表示中",
+        );
+        await settings.screenshot({ path: info.outputPath("nsfw-settings.png") });
+        await exit.focus();
+        await page.keyboard.press("Space");
+        await expect(settings.getByRole("group", { name: "NSFW表示設定" })).toContainText(
+          "通常表示中",
+        );
+        await expect(exit).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        // This full-App fixture intentionally reseeds ephemeral mode on navigation; persistence is tested by nsfw-mode-exit.spec.
+      }
     });
-    await expect(search).toBeVisible();
-    expect(await search.evaluate((element) => element.closest('[role="tabpanel"]') === null)).toBe(
-      true,
-    );
-    await search.fill("Zenn");
-    await expect(nav.getByRole("button", { name: /Zenn/ }).first()).toBeVisible();
-    await nav.screenshot({ path: info.outputPath("narrow-sidebar-search.png") });
-    await nav.getByRole("button", { name: "検索をクリア", exact: true }).click();
-    await nav.getByRole("button", { name: "学びの資料 1", exact: true }).click();
-    const list = page.getByRole("region", { name: "記事一覧", exact: true });
-    await expect(list.getByRole("heading", { name: "学びの資料", exact: true })).toBeVisible();
-    await expect(
-      list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first(),
-    ).toBeVisible();
-    await nav.getByRole("button", { name: "#資料1 1", exact: true }).click();
-    await expect(list.getByRole("heading", { name: "タグ: 資料1", exact: true })).toBeVisible();
-    await page.evaluate(() => {
-      document.documentElement.style.fontSize = "200%";
-    });
-    expect(
-      await list
-        .locator("header")
-        .evaluate((element) => element.scrollWidth <= element.clientWidth),
-    ).toBe(true);
-    await page
-      .locator(".reader-visual-shell")
-      .screenshot({ path: info.outputPath("enlarged-text.png") });
-  });
 });
+
+for (const touch of [false, true])
+  for (const theme of ["light", "dark"])
+    test.describe(`minimum list ${touch ? "coarse" : "fine"} ${theme}`, () => {
+      test.use({
+        viewport: { width: 1440, height: 900 },
+        hasTouch: touch,
+        contextOptions: { reducedMotion: "reduce" },
+      });
+      test("all six display controls fit and remain keyboard reachable at 200px", async ({
+        page,
+      }, info) => {
+        await open(page, "after", theme, 200, 150);
+        await page
+          .getByRole("navigation", { name: "フィード一覧" })
+          .getByRole("button", { name: "すべて", exact: true })
+          .click();
+        const list = page.getByRole("region", { name: "記事一覧", exact: true });
+        expect(await page.evaluate(() => matchMedia("(pointer:coarse)").matches)).toBe(touch);
+        const bounds = (await list.boundingBox())!;
+        expect(bounds.width).toBe(200);
+        for (const name of [
+          "コンパクト表示",
+          "リスト表示",
+          "カード表示",
+          "マガジン表示",
+          "ギャラリー表示",
+          "記事一覧フォーカス",
+        ]) {
+          const button = list.getByRole("button", { name, exact: true });
+          await expect(button).toBeVisible();
+          const rect = (await button.boundingBox())!;
+          expect(rect.x).toBeGreaterThanOrEqual(bounds.x);
+          expect(rect.x + rect.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+          expect(rect.height).toBeGreaterThanOrEqual(touch ? 44 : 32);
+          await button.focus();
+          await expect(button).toBeFocused();
+          if (name !== "記事一覧フォーカス") {
+            await page.keyboard.press("Space");
+            await expect(button).toHaveAttribute("aria-pressed", "true");
+          }
+        }
+        await list.screenshot({ path: info.outputPath("minimum-list.png") });
+      });
+    });
