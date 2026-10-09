@@ -102,7 +102,7 @@ export default function ArticleHeaderEngagement({
           onClick={() => onToggleBookmark(article.id)}
           title={isBookmarked ? "ブックマーク解除 (b)" : "ブックマーク (b)"}
           ariaLabel={isBookmarked ? "ブックマーク解除" : "ブックマーク"}
-          activeClass="bg-bookmark text-ink-text"
+          activeClass="bg-bookmark text-saved-contrast"
           inactiveHoverClass="hover:text-bookmark"
         >
           <svg
@@ -126,7 +126,7 @@ export default function ArticleHeaderEngagement({
           onClick={() => onToggleLike(article.id)}
           title={isLiked ? "いいね解除 (I)" : "いいね (I)"}
           ariaLabel={isLiked ? "いいね解除" : "いいね"}
-          activeClass="bg-like text-white"
+          activeClass="bg-like text-saved-contrast"
           inactiveHoverClass="hover:text-error"
         >
           <svg

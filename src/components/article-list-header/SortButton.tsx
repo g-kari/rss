@@ -20,7 +20,7 @@ export default function SortButton({ sortOrder, onToggle }: SortButtonProps) {
       onClick={onToggle}
       aria-label={`現在: ${SORT_ORDER_LABELS[sortOrder]} — ${NEXT_LABEL[sortOrder]}`}
       title={NEXT_LABEL[sortOrder]}
-      className="min-w-[44px] min-h-[44px] px-3 flex items-center justify-center gap-2 rounded-lg border border-border-default text-text-faint hover:text-text-muted hover:bg-surface-subtle transition-all duration-200 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px]"
+      className="min-w-[44px] min-h-[44px] px-3 flex items-center justify-center gap-2 rounded-lg border border-border-default text-text-muted hover:text-text-default hover:bg-surface-subtle transition-all duration-200"
     >
       <span className="text-control text-text-default">{SORT_ORDER_LABELS[sortOrder]}</span>
       {sortOrder === "newest" ? (

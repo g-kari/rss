@@ -151,7 +151,7 @@ export default function FeedViewTabs({
       role="tablist"
       aria-label="フィードビュー"
       onKeyDown={handleTabKeyDown}
-      className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border-subtle"
+      className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border-subtle"
     >
       {FEED_VIEW_TABS.map((t) => {
         const isActive = activeView === t.id;
@@ -169,7 +169,7 @@ export default function FeedViewTabs({
             onDragEnter={(e) => handleDragEnter(e, t.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, t.id)}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 min-h-[44px] rounded transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+            className={`flex-1 min-w-[44px] flex flex-col items-center justify-center gap-0.5 px-1 min-h-[44px] rounded transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
               isActive
                 ? "selection-tab-current text-selection-accent"
                 : "text-text-faint hover:text-text-default hover:bg-surface-hover"

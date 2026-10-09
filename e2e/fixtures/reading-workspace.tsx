@@ -23,10 +23,25 @@ storage.setItem(STORAGE_KEYS.SIDEBAR_WIDTH, params.get("sidebar") ?? "240");
 storage.setItem(STORAGE_KEYS.LIST_WIDTH, params.get("list") ?? "360");
 installDemoFetch();
 const demoFetch = window.fetch;
+const tags =
+  params.get("stress") === "1" ? Array.from({ length: 20 }, (_, i) => `資料${i + 1}`) : ["設計"];
+const collections = Array.from({ length: params.get("stress") === "1" ? 20 : 1 }, (_, i) => ({
+  id: `collection-${i + 1}`,
+  name: i === 0 ? "学びの資料" : `資料集${i + 1}`,
+  articleIds: ["art-1"],
+  createdAt: "2026-10-09T00:00:00.000Z",
+  order: i,
+}));
 window.fetch = async (input, init) => {
   const path = String(input);
   const method = init?.method ?? "GET";
-  if (path.includes("/api/collections") && method === "GET") return Response.json([]);
+  if (path.includes("/api/collections") && method === "GET") return Response.json(collections);
+  if (path.includes("/api/read-state") && method === "GET") {
+    const state: unknown = await (await demoFetch(input, init)).json();
+    if (typeof state !== "object" || state === null || Array.isArray(state))
+      throw new Error("Synthetic read state must be an object");
+    return Response.json({ ...state, tagIds: { "art-1": tags } });
+  }
   if (path.includes("/api/ogp")) return Response.json({});
   if (path.includes("/api/push/config")) return Response.json({ recommendationEnabled: false });
   return demoFetch(input, init);

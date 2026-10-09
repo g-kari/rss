@@ -452,6 +452,9 @@ function FeedSidebar({
         onDropFeedOnView={handleDropFeedOnView}
       />
 
+      {/* Keep subscription search reachable when tags/collections fill the scroll panel. */}
+      {feeds.length > 0 && <FeedSearchBar value={feedSearch} onChange={setFeedSearch} />}
+
       {/* フィードリスト (FeedViewTabs の tabpanel) */}
       {/* #1207: tabpanel は landmark ではないため <nav> の implicit navigation role を
           上書きする形になっていた。role 側を活かして semantic HTML を中立な <div> にする。 */}
@@ -590,7 +593,6 @@ function FeedSidebar({
         )}
 
         <h2 className="px-4 pt-5 pb-2 text-meta font-medium text-text-muted">購読フィード</h2>
-        {feeds.length > 0 && <FeedSearchBar value={feedSearch} onChange={setFeedSearch} />}
 
         {loadingFeeds && feeds.length === 0 && (
           <div className="px-2 py-1 space-y-1">

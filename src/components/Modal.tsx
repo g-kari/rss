@@ -4,6 +4,7 @@ import { useId, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { usePopupLock } from "@/hooks/usePopupLock";
 import { useModalFocusTrap } from "@/hooks/useModalFocusTrap";
+import { useNativeControlSpace } from "@/hooks/useNativeControlSpace";
 import { VisualModeSwitch } from "./VisualModeBar";
 import Backdrop from "./Backdrop";
 
@@ -52,6 +53,7 @@ export default function Modal({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   usePopupLock();
+  useNativeControlSpace(dialogRef);
 
   // #790 Phase 1: focus trap + return focus restore + Escape/Tab cycle を hook に集約。
   // 旧 useEffect + useCallback はすべて useModalFocusTrap に内包。

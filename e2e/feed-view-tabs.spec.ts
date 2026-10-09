@@ -164,8 +164,8 @@ for (const theme of ["light", "dark"] as const) {
       for (const [index, item] of measurements.entries()) {
         expect(item.fontSize).toBeGreaterThanOrEqual(12);
         expect(item.lineHeight).toBeGreaterThanOrEqual(16);
-        // The existing resize minimum is150px;44px height is retained there.
-        expect(item.width).toBeGreaterThanOrEqual(size.width < 200 ? 24 : 44);
+        // At the existing 150px resize minimum, tabs wrap rather than shrink targets.
+        expect(item.width).toBeGreaterThanOrEqual(44);
         expect(item.height).toBeGreaterThanOrEqual(44);
         expect(item.labelTop).toBeGreaterThanOrEqual(item.iconBottom);
         expect(item.iconWidth).toBe(12);
@@ -183,7 +183,12 @@ for (const theme of ["light", "dark"] as const) {
         expect(item.labelScrollWidth).toBeLessThanOrEqual(item.labelClientWidth);
         expect(item.right).toBeLessThanOrEqual(listRect!.x + listRect!.width);
         expect(item.left).toBeGreaterThanOrEqual(listRect!.x);
-        if (index > 0) expect(item.left).toBeGreaterThanOrEqual(measurements[index - 1].right);
+        if (index > 0) {
+          const previous = measurements[index - 1];
+          if (Math.abs(item.top - previous.top) < 1)
+            expect(item.left).toBeGreaterThanOrEqual(previous.right);
+          else expect(item.top).toBeGreaterThanOrEqual(previous.bottom);
+        }
         await expect(tabs.nth(index)).toBeVisible();
       }
       expect(

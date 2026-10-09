@@ -85,7 +85,7 @@ export default function ArticleListHeader({
           )}
           <div className="flex-1 min-w-0">
             <p className="text-meta text-text-muted">読む記事を選ぶ</p>
-            <h2 className="text-[15px] font-medium text-text-strong break-words">{title}</h2>
+            <h2 className="text-primary font-medium text-text-strong break-words">{title}</h2>
             <p className="text-meta text-text-muted tabular-nums">{filteredCount} 件</p>
           </div>
           <button

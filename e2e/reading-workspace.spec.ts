@@ -6,29 +6,55 @@ import { readFile, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { resolve, relative, join } from "node:path";
+import { workspaceFonts } from "./helpers/workspace-fonts";
 
 // Actual full App, not a mock layout. The before tree is the immutable PR base from CI.
 const root = resolve(import.meta.dirname, "..");
-const baseline = process.env.RSS_UI_BASELINE_SHA ?? "0fd6874e7d1dde0c6c7c9d3f472c7bb63c31740f";
+const baseline =
+  process.env.RSS_UI_BASELINE_SHA ||
+  execFileSync("git", ["rev-parse", "HEAD^"], { cwd: root, encoding: "utf8" }).trim();
 if (!/^[0-9a-f]{40}$/.test(baseline))
   throw new Error("RSS_UI_BASELINE_SHA must be an exact commit SHA");
+const alternative = process.env.RSS_UI_ALTERNATIVE_SHA;
+if (alternative && !/^[0-9a-f]{40}$/.test(alternative))
+  throw new Error("RSS_UI_ALTERNATIVE_SHA must be an exact commit SHA");
 const html = new Map<string, string>();
-let baselineRoot = "";
+const archivedRoots: string[] = [];
+let fonts: Awaited<ReturnType<typeof workspaceFonts>>;
 const errors = new WeakMap<Page, string[]>();
 const external = new WeakMap<Page, string[]>();
-const fromBase = (path: string) =>
-  execFileSync("git", ["show", `${baseline}:${relative(root, path)}`], {
+const fromTree = (sha: string, path: string) =>
+  execFileSync("git", ["show", `${sha}:${relative(root, path)}`], {
     cwd: root,
     encoding: "utf8",
   });
 
 test.beforeAll(async () => {
-  baselineRoot = await mkdtemp(join(tmpdir(), "rss-ui-baseline-"));
-  // Tailwind must scan the old source tree, not infer the old CSS from current classes.
-  const archive = execFileSync("git", ["archive", baseline, "app", "src"], { cwd: root });
-  execFileSync("tar", ["-x", "-C", baselineRoot], { input: archive });
-  await symlink(resolve(root, "node_modules"), join(baselineRoot, "node_modules"), "dir");
-  for (const stage of ["before", "after"]) {
+  if (
+    fromTree(baseline, resolve(root, "app/layout.tsx")) !==
+    (await readFile(resolve(root, "app/layout.tsx"), "utf8"))
+  )
+    throw new Error("Before/after font definitions differ; do not reuse current font assets");
+  fonts = await workspaceFonts(process.env.RSS_UI_FONT_ASSET_ROOT);
+  for (const stage of alternative ? ["before", "after", "alternative"] : ["before", "after"]) {
+    const sha = stage === "before" ? baseline : stage === "alternative" ? alternative : undefined;
+    let stageRoot = root;
+    if (sha) {
+      if (
+        fromTree(sha, resolve(root, "app/layout.tsx")) !==
+        (await readFile(resolve(root, "app/layout.tsx"), "utf8"))
+      )
+        throw new Error("Compared font definitions differ; same-build reuse is invalid");
+      stageRoot = await mkdtemp(join(tmpdir(), "rss-ui-comparison-"));
+      archivedRoots.push(stageRoot);
+      // Tailwind scans each exact source tree; current classes cannot stand in for old CSS.
+      const archive = execFileSync("git", ["archive", sha, "app", "src"], {
+        cwd: root,
+        maxBuffer: 32 * 1024 * 1024,
+      });
+      execFileSync("tar", ["-x", "-C", stageRoot], { input: archive });
+      await symlink(resolve(root, "node_modules"), join(stageRoot, "node_modules"), "dir");
+    }
     const [{ outputFiles }, css] = await Promise.all([
       build({
         entryPoints: [resolve(root, "e2e/fixtures/reading-workspace.tsx")],
@@ -44,40 +70,39 @@ test.beforeAll(async () => {
           path: resolve(root, "src/lib/empty-module.js"),
         },
         define: { "process.env.NODE_ENV": '"test"' },
-        plugins:
-          stage === "before"
-            ? [
-                {
-                  name: "exact-before-tree",
-                  setup(builder) {
-                    builder.onLoad({ filter: /\.(tsx?|jsx?)$/ }, ({ path }) => {
-                      if (!/^(src|app)\//.test(relative(root, path))) return undefined;
-                      return {
-                        contents: fromBase(path),
-                        loader: path.endsWith("tsx") ? "tsx" : path.endsWith("ts") ? "ts" : "js",
-                      };
-                    });
-                  },
+        plugins: sha
+          ? [
+              {
+                name: "exact-before-tree",
+                setup(builder) {
+                  builder.onLoad({ filter: /\.(tsx?|jsx?)$/ }, ({ path }) => {
+                    if (!/^(src|app)\//.test(relative(root, path))) return undefined;
+                    return {
+                      contents: fromTree(sha, path),
+                      loader: path.endsWith("tsx") ? "tsx" : path.endsWith("ts") ? "ts" : "js",
+                    };
+                  });
                 },
-              ]
-            : [],
+              },
+            ]
+          : [],
       }),
-      postcss([tailwind({ base: stage === "before" ? baselineRoot : root })]).process(
-        stage === "before"
-          ? fromBase(resolve(root, "app/globals.css"))
+      postcss([tailwind({ base: stageRoot })]).process(
+        sha
+          ? fromTree(sha, resolve(root, "app/globals.css"))
           : await readFile(resolve(root, "app/globals.css"), "utf8"),
-        { from: resolve(stage === "before" ? baselineRoot : root, "app/globals.css") },
+        { from: resolve(stageRoot, "app/globals.css") },
       ),
     ]);
     html.set(
       stage,
-      `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>:root{--loaded-reddit-sans:system-ui;--loaded-ibm-plex-sans-jp:system-ui}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`,
+      `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>${fonts.css}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`,
     );
   }
 });
 
 test.afterAll(async () => {
-  if (baselineRoot) await rm(baselineRoot, { recursive: true, force: true });
+  for (const path of archivedRoots) await rm(path, { recursive: true, force: true });
 });
 
 test.beforeEach(async ({ page }) => {
@@ -89,6 +114,8 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/*", (route) => {
     const request = route.request(),
       url = new URL(request.url());
+    if (url.origin === "https://rss-workspace.test" && fonts.files.has(url.pathname))
+      return route.fulfill({ contentType: "font/woff2", body: fonts.files.get(url.pathname) });
     if (
       url.origin === "https://rss-workspace.test" &&
       url.pathname === "/demo" &&
@@ -119,11 +146,65 @@ async function open(page: Page, stage: string, theme: string, list = 360, sideba
   );
   await expect(page.getByRole("navigation", { name: "フィード一覧" })).toBeVisible();
   await expect(page.getByRole("button", { name: "すべて", exact: true })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  if (fonts.files.size) {
+    expect(
+      await page.locator("body").evaluate((body) => getComputedStyle(body).fontFamily),
+    ).toMatch(/Reddit.*Sans.*IBM.*Plex.*Sans.*JP/i);
+    expect(
+      await page.evaluate(() => [...document.fonts].some((font) => font.status === "loaded")),
+    ).toBe(true);
+  }
+}
+
+async function textContrast(page: Page) {
+  return page
+    .getByRole("region", { name: "記事一覧", exact: true })
+    .locator("header")
+    .evaluate((header) => {
+      const luminance = (color: string) => {
+        const values = color
+          .match(/[\d.]+/g)!
+          .slice(0, 3)
+          .map(Number)
+          .map((v) => {
+            const channel = v / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+        return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+      };
+      return [...header.querySelectorAll("button, input")].map((element) => {
+        let parent: Element | null = element,
+          background = "";
+        while (parent) {
+          const value = getComputedStyle(parent).backgroundColor;
+          if (value !== "rgba(0, 0, 0, 0)" && value !== "transparent") {
+            background = value;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        if (!background || background.startsWith("rgba"))
+          throw new Error("Contrast surface must be opaque");
+        const color = getComputedStyle(
+          element,
+          element instanceof HTMLInputElement ? "::placeholder" : null,
+        ).color;
+        const a = luminance(color),
+          b = luminance(background);
+        return {
+          label: element.getAttribute("aria-label") || element.textContent?.trim(),
+          color,
+          background,
+          ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+        };
+      });
+    });
 }
 
 for (const width of [1440, 1024, 390, 320])
   for (const theme of ["light", "dark"])
-    for (const stage of ["before", "after"]) {
+    for (const stage of alternative ? ["before", "after", "alternative"] : ["before", "after"]) {
       test.describe(`${stage} ${width}px ${theme} full workspace`, () => {
         test.use({
           viewport: { width, height: width < 1024 ? 844 : 900 },
@@ -158,6 +239,13 @@ for (const width of [1440, 1024, 390, 320])
               await expect(button).toBeVisible();
               expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
             }
+            const contrast = await textContrast(page);
+            for (const entry of contrast)
+              expect(entry.ratio, JSON.stringify(entry)).toBeGreaterThanOrEqual(4.5);
+            await info.attach("measured-control-contrast", {
+              body: JSON.stringify(contrast, null, 2),
+              contentType: "application/json",
+            });
           }
           await page
             .locator(".reader-visual-shell")
@@ -183,6 +271,10 @@ for (const width of [1440, 1024, 390, 320])
             .locator(".reader-visual-shell")
             .screenshot({ path: info.outputPath("article-reader.png") });
           if (width < 1024) {
+            await page.goBack();
+            await expect(list).toBeVisible();
+            await page.goForward();
+            await expect(reader).toBeVisible();
             await reader.getByRole("button", { name: "記事一覧に戻る", exact: true }).click();
             await expect(list).toBeVisible();
             await list.getByRole("button", { name: "フィード一覧に戻る", exact: true }).click();
@@ -192,13 +284,14 @@ for (const width of [1440, 1024, 390, 320])
             body: JSON.stringify({
               stage,
               baseline,
+              alternative,
               current: execFileSync("git", ["rev-parse", "HEAD"], {
                 cwd: root,
                 encoding: "utf8",
               }).trim(),
               width,
               theme,
-              fonts: "System fallback; production Next font pipeline unchanged",
+              fonts: fonts.provenance,
             }),
             contentType: "application/json",
           });
@@ -216,12 +309,16 @@ for (const width of [1440, 320])
       const nav = page.getByRole("navigation", { name: "フィード一覧" });
       await nav.getByRole("button", { name: "すべて", exact: true }).click();
       const list = page.getByRole("region", { name: "記事一覧", exact: true });
+      // On desktop, retain the mounted reader behind the portal to catch native Space theft.
+      if (width === 1440)
+        await list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first().click();
       const filterTrigger = list.getByRole("button", { name: /^絞り込み/ });
       await filterTrigger.focus();
       await page.keyboard.press("Enter");
       const filters = page.getByRole("dialog", { name: "記事の絞り込み", exact: true });
       await expect(filters).toBeVisible();
-      await filters.getByRole("button", { name: "ブックマークフィルター切替 (B)" }).click();
+      await filters.getByRole("button", { name: "ブックマークフィルター切替 (B)" }).focus();
+      await page.keyboard.press("Space");
       await expect(
         filters.getByRole("button", { name: "ブックマークフィルター切替 (B)" }),
       ).toHaveAttribute("aria-pressed", "true");
@@ -246,7 +343,8 @@ for (const width of [1440, 320])
         "ギャラリー表示",
       ]) {
         const button = display.getByRole("button", { name, exact: true });
-        await button.click();
+        await button.focus();
+        await page.keyboard.press("Space");
         await expect(button).toHaveAttribute("aria-pressed", "true");
       }
       await display.getByRole("button", { name: "リスト表示", exact: true }).click();
@@ -255,7 +353,12 @@ for (const width of [1440, 320])
       await expect(displayTrigger).toBeFocused();
       await list.getByRole("button", { name: "操作", exact: true }).click();
       const actions = page.getByRole("dialog", { name: "記事一覧の操作", exact: true });
-      await actions.getByRole("button", { name: /^現在:/ }).click();
+      const sort = actions.getByRole("button", { name: /^現在:/ });
+      await expect(sort).toContainText("新しい順");
+      await sort.focus();
+      await page.keyboard.press("Space");
+      await expect(sort).toContainText("古い順");
+      expect((await sort.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       const mark = actions.getByRole("button", { name: "全て既読にする", exact: true });
       await mark.click();
       await expect(
@@ -286,3 +389,46 @@ for (const width of [1440, 320])
       ).toBeFocused();
     });
   });
+
+test.describe("stress sidebar and enlarged text", () => {
+  test.use({ viewport: { width: 1440, height: 900 }, contextOptions: { reducedMotion: "reduce" } });
+  test("subscription search stays pinned with a long library and 150px sidebar", async ({
+    page,
+  }, info) => {
+    await page.goto("https://rss-workspace.test/demo?stage=after&theme=dark&sidebar=150&stress=1");
+    const nav = page.getByRole("navigation", { name: "フィード一覧" });
+    const search = nav.getByRole("textbox", { name: "フィードを検索", exact: true });
+    await expect(search).toBeVisible();
+    const panel = nav.getByRole("tabpanel");
+    await panel.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect(search).toBeVisible();
+    expect(await search.evaluate((element) => element.closest('[role="tabpanel"]') === null)).toBe(
+      true,
+    );
+    await search.fill("Zenn");
+    await expect(nav.getByRole("button", { name: /Zenn/ }).first()).toBeVisible();
+    await nav.screenshot({ path: info.outputPath("narrow-sidebar-search.png") });
+    await nav.getByRole("button", { name: "検索をクリア", exact: true }).click();
+    await nav.getByRole("button", { name: "学びの資料 1", exact: true }).click();
+    const list = page.getByRole("region", { name: "記事一覧", exact: true });
+    await expect(list.getByRole("heading", { name: "学びの資料", exact: true })).toBeVisible();
+    await expect(
+      list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first(),
+    ).toBeVisible();
+    await nav.getByRole("button", { name: "#資料1 1", exact: true }).click();
+    await expect(list.getByRole("heading", { name: "タグ: 資料1", exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "200%";
+    });
+    expect(
+      await list
+        .locator("header")
+        .evaluate((element) => element.scrollWidth <= element.clientWidth),
+    ).toBe(true);
+    await page
+      .locator(".reader-visual-shell")
+      .screenshot({ path: info.outputPath("enlarged-text.png") });
+  });
+});

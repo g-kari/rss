@@ -53,6 +53,7 @@
   --color-accent-dot: #fb7185; /* rose-400: 未読ドット */
   --color-error: #e11d48; /* rose-600: エラーテキスト (WCAG AA: 4.7:1 on stone-50) */
   --color-bookmark: #fbbf24; /* amber-400: ブックマーク */
+  --color-saved-contrast: #292524; /* Labeled amber/rose saved controls keep dark text in both themes. */
   /* status color (FeedHealthModal / FeedDetailModal、#837):
    * 4 status を semantic token 化、design-system.md 規範整合 + ダークテーマ追従 */
   --color-status-error: #e11d48; /* rose-600: エラー (WCAG AA: 4.7:1 on stone-50) */
