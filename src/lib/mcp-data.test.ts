@@ -119,6 +119,15 @@ describe("read-only MCP subscriptions", () => {
       expect(JSON.stringify(value)).toContain("https://example.com");
     }
   });
+  it("never exposes public redirect aliases added by the write lane", async () => {
+    const fixture = fakeBucket();
+    fixture.seed(SUBS, [
+      { ...subscription(), publicFeedAliases: ["https://publisher.com/unexposed-alias"] },
+    ]);
+    const result = await createMcpDataReader(fixture.bucket, USER).listSubscriptions();
+    expect(JSON.stringify(result)).not.toContain("publicFeedAliases");
+    expect(JSON.stringify(result)).not.toContain("unexposed-alias");
+  });
   it("uses an explicit allowlist, safe site origins, and untrusted-data provenance", async () => {
     const fixture = fakeBucket();
     const response = await createMcpDataReader(fixture.bucket, USER).listSubscriptions();

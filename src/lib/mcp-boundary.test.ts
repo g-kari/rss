@@ -28,6 +28,26 @@ function request(path: string, init?: RequestInit) {
   return new Request(`${ORIGIN}${path}`, init);
 }
 describe("gated OAuth Worker boundary", () => {
+  it("advertises subscription-add scope only with its distinct exact opt-in gate", async () => {
+    const enabled = { ...env, RSS_MCP_SUBSCRIBE_ENABLED: "true" };
+    const response = await routeMcpRequest(
+      request("/.well-known/oauth-authorization-server"),
+      enabled,
+      ctx,
+      defaultHandler,
+    );
+    expect(await response!.json()).toMatchObject({
+      scopes_supported: ["rss:read", "rss:subscriptions:add"],
+    });
+    const disabled = { ...env, RSS_MCP_SUBSCRIBE_ENABLED: "TRUE" };
+    const off = await routeMcpRequest(
+      request("/.well-known/oauth-authorization-server"),
+      disabled,
+      ctx,
+      defaultHandler,
+    );
+    expect(await off!.json()).toMatchObject({ scopes_supported: ["rss:read"] });
+  });
   it("defaults off without any storage/OpenNext access; ordinary RSS requests remain delegated", async () => {
     for (const disabled of [
       { ...env, RSS_MCP_ENABLED: undefined },

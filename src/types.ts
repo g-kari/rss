@@ -114,6 +114,8 @@ export interface KeywordFilter {
 export interface UserSubscription {
   feedHash: string; // SharedFeedMeta を参照
   url: string; // 表示・重複チェック用
+  /** Validated public-feed redirect URLs only. Never inferred from a feed self link. */
+  publicFeedAliases?: string[];
   customTitle?: string; // ユーザーが設定したタイトル上書き
   subscribedAt: string; // ISO 8601
   filter?: KeywordFilter;

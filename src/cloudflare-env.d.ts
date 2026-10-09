@@ -14,6 +14,8 @@ type AiModelId = Parameters<Ai["run"]>[0];
 interface CloudflareEnv extends Partial<SearchIndexEnv> {
   /** Explicit opt-in after OAuth storage provisioning and approved rollout. Unset is OFF. */
   RSS_MCP_ENABLED?: string;
+  /** Separate owner-approved subscription-add rollout. Unset is OFF. */
+  RSS_MCP_SUBSCRIBE_ENABLED?: string;
   /** Canonical app origin, used by the native MCP/OAuth boundary. */
   APP_BASE_URL?: string;
   /** Native OAuth exchanges must retain the existing beta access boundary. */

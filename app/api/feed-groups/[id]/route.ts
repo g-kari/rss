@@ -7,7 +7,7 @@ import {
   FEED_GROUP_NAME_MAX_LENGTH,
   MAX_FEED_GROUPS_PER_USER,
 } from "@/lib/feed-groups";
-import { readUserSubscriptions, writeUserSubscriptions } from "@/lib/shared-feed";
+import { mutateUserSubscriptions } from "@/lib/user-subscription-mutations";
 import { parseName, parseOrder, isValidSessionId } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -82,12 +82,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     );
 
     // 2. 所属購読の groupId をクリア
-    const subs = await readUserSubscriptions(env.RSS_DATA, session.userId);
-    const affected = subs.filter((s) => s.groupId === id);
-    if (affected.length > 0) {
-      for (const sub of affected) delete sub.groupId;
-      await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
-    }
+    await mutateUserSubscriptions(env.RSS_DATA, session.userId, (current) => ({
+      subscriptions: current.map((s) => {
+        if (s.groupId !== id) return s;
+        const updated = { ...s };
+        delete updated.groupId;
+        return updated;
+      }),
+      result: undefined,
+      changed: current.some((s) => s.groupId === id),
+    }));
     return NextResponse.json({ ok: true });
   });
 }

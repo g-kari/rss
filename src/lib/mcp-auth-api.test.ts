@@ -68,7 +68,13 @@ import {
 import { GET as settingsGet, POST as settingsPost } from "../../app/api/mcp/settings/route";
 import { GET as loginGet } from "../../app/api/auth/login/route";
 import { GET as callbackGet } from "../../app/api/auth/callback/route";
-import { approveMcpConnection, assertMcpConnection, cleanupMcpGrants, MCP_SCOPE } from "./mcp-auth";
+import {
+  approveMcpConnection,
+  assertMcpConnection,
+  cleanupMcpGrants,
+  MCP_SCOPE,
+  MCP_ADD_SCOPE,
+} from "./mcp-auth";
 
 import { mcpOAuthOptions } from "./mcp-provider";
 
@@ -194,6 +200,48 @@ beforeEach(async () => {
 });
 
 describe("Cookie-authenticated consent and connection routes", () => {
+  it("explicitly displays and approves a write-only scope without granting read or accepting scope form injection", async () => {
+    mock.env.RSS_MCP_SUBSCRIBE_ENABLED = "true";
+    const handler = { fetch: async () => new Response("synthetic") };
+    provider = getOAuthApi(mcpOAuthOptions(handler, handler, ORIGIN, true), mock.env);
+    mock.env.OAUTH_PROVIDER = provider;
+    authorizationUrl.searchParams.set("scope", MCP_ADD_SCOPE);
+    const page = await authorizeGet(request(authorizationUrl));
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain(MCP_ADD_SCOPE);
+    expect(html).not.toContain("保存済み記事本文も読み取り対象");
+    const handle = formHandle(html);
+    const injected = await authorizePost(
+      request(
+        `${ORIGIN}/api/mcp/authorize`,
+        "POST",
+        `handle=${handle}&decision=approve&scope=rss:read`,
+        responseCookies(page),
+      ),
+    );
+    expect(injected.status).toBe(400);
+    const approved = await authorizePost(
+      request(
+        `${ORIGIN}/api/mcp/authorize`,
+        "POST",
+        `handle=${handle}&decision=approve`,
+        responseCookies(page),
+      ),
+    );
+    expect(approved.status).toBe(200);
+    const grants = await provider.listUserGrants("account-a");
+    expect(grants.items).toHaveLength(1);
+    expect(grants.items[0].scope).toEqual([MCP_ADD_SCOPE]);
+    const status = (await (
+      await connectionGet(request(`${ORIGIN}/api/mcp/connection`))
+    ).json()) as { approvedScopes: string[]; scope: string };
+    expect(status.approvedScopes).toEqual([MCP_ADD_SCOPE]);
+    expect(status.scope).toBe(MCP_ADD_SCOPE);
+    const settings = await (await settingsGet(request(`${ORIGIN}/api/mcp/settings`))).text();
+    expect(settings).toContain("すべての連携を解除");
+    expect(settings).not.toContain("保存済み記事本文も読み取り対象");
+  });
   it("shows account/read scope/private-feed consequences, escapes clients, preserves provider and refreshed cookies", async () => {
     const response = await authorizeGet(request(authorizationUrl));
     const html = await response.text();

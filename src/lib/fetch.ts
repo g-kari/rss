@@ -224,6 +224,13 @@ export function fetchWithTimeout(
   return withTimeout(timeoutMs, (signal) => fetch(url, { ...init, signal }));
 }
 
+/** Additional caller restrictions cannot replace the shared redirect safety checks. */
+export interface SafeRedirectPolicy {
+  validateUrl?: (url: string) => boolean;
+  /** The requested final URL, rather than the upstream-controlled Response.url. */
+  onResponseUrl?: (url: string) => void;
+}
+
 /**
  * リダイレクトを安全に追跡する fetch ラッパー。
  * 各リダイレクト先を isValidFeedUrl で検証し、プライベート IP への
@@ -239,12 +246,16 @@ export function fetchFollowSafeRedirects(
   timeoutMs: number,
   sharedSignal?: AbortSignal,
   checkSharedDeadline?: () => void,
+  policy: SafeRedirectPolicy = {},
 ): Promise<Response> {
   const check = (signal: AbortSignal) => {
     if (sharedSignal) checkSharedDeadline?.();
     signal.throwIfAborted();
   };
   const follow = async (signal: AbortSignal) => {
+    if (policy.validateUrl && (!isValidFeedUrl(url) || !policy.validateUrl(url))) {
+      throw new Error("Initial URL rejected by fetch policy");
+    }
     let currentUrl = url;
     let redirectCount = 0;
     const visitedUrls = new Set<string>([url]);
@@ -268,7 +279,10 @@ export function fetchFollowSafeRedirects(
 
       // 304 Not Modified はリダイレクトではなく「変更なし」を示す。
       // Location ヘッダーを持たないため、リダイレクト追跡の対象外としてそのまま返す。
-      if (res.status === 304) return res;
+      if (res.status === 304) {
+        policy.onResponseUrl?.(currentUrl);
+        return res;
+      }
 
       // 安全なリダイレクトコードのみ追跡する。
       // 300 (Multiple Choices) / 305 (Use Proxy, 廃止) / 306 (廃止) 等は除外。
@@ -291,6 +305,9 @@ export function fetchFollowSafeRedirects(
         if (!isValidFeedUrl(nextUrl)) {
           throw new Error(`Redirect to blocked URL: ${nextUrl}`);
         }
+        if (policy.validateUrl && !policy.validateUrl(nextUrl)) {
+          throw new Error("Redirect URL rejected by fetch policy");
+        }
         if (visitedUrls.has(nextUrl)) {
           throw new Error(`Redirect loop detected: ${nextUrl}`);
         }
@@ -300,6 +317,7 @@ export function fetchFollowSafeRedirects(
         continue;
       }
 
+      policy.onResponseUrl?.(currentUrl);
       return res;
     }
     throw new Error(`Too many redirects (>=${MAX_REDIRECTS})`);

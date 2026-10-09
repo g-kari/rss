@@ -3,6 +3,9 @@ import {
   assertMcpConnection,
   MCP_PATH,
   MCP_SCOPE,
+  MCP_ADD_SCOPE,
+  isMcpScopeSet,
+  isMcpSubscriptionAddEnabled,
   McpConnectionError,
   validateMcpAuthProps,
 } from "./mcp-auth";
@@ -10,6 +13,9 @@ import { createMcpOAuthProvider } from "./mcp-provider";
 import { serveMcpData } from "./mcp-server";
 import { evaluateSlidingWindow } from "./rate-limit-logic";
 import { serialized } from "./serialize-async";
+import { createMcpSubscriptionAdder } from "./mcp-subscription-add";
+import { addUserToIndex, FEED_USER_MAP_CACHE_KEY } from "./shared-feed";
+import { buildCacheKey } from "./cache-helper";
 
 const OAUTH_BODY_LIMIT = 16 * 1024;
 const OAUTH_PATHS = new Set([
@@ -183,7 +189,7 @@ export async function routeMcpRequest(
           (!Number.isFinite(auth.expiresAt) || auth.expiresAt <= Date.now() / 1000))
       )
         return problem("MCP_AUTH_INVALID", 401, challenge);
-      if (!auth.scope.includes(MCP_SCOPE)) {
+      if (!isMcpScopeSet(auth.scope, isMcpSubscriptionAddEnabled(apiEnv))) {
         return problem("MCP_INSUFFICIENT_SCOPE", 403, `${challenge}, error="insufficient_scope"`);
       }
       try {
@@ -201,13 +207,49 @@ export async function routeMcpRequest(
         limited.headers.set("Cache-Control", "private, no-store");
         return limited;
       }
-      return serveMcpData(apiRequest, apiEnv.RSS_DATA, props.userId);
+      const repair = async () => {
+        await addUserToIndex(apiEnv.RSS_DATA, props.userId);
+        await apiEnv.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
+        if (typeof caches !== "undefined" && caches.default)
+          await caches.default.delete(
+            await buildCacheKey(appOrigin, "feeds", `user:${props.userId}`),
+          );
+      };
+      const subscriptionAdder = isMcpSubscriptionAddEnabled(apiEnv)
+        ? createMcpSubscriptionAdder(apiEnv, props.userId, {
+            assertAuthorized: async () => {
+              if (
+                apiEnv.RSS_MCP_ENABLED !== "true" ||
+                !isMcpSubscriptionAddEnabled(apiEnv) ||
+                !isMcpScopeSet(auth.scope, true) ||
+                !auth.scope.includes(MCP_ADD_SCOPE) ||
+                auth.audience !== resource ||
+                auth.userId !== props.userId ||
+                !Number.isFinite(auth.expiresAt) ||
+                auth.expiresAt! <= Date.now() / 1000
+              )
+                throw new McpConnectionError("MCP_AUTH_INVALID");
+              await assertMcpConnection(apiEnv.RSS_DATA, props, apiEnv);
+            },
+            afterCommit: repair,
+            onExisting: repair,
+          })
+        : undefined;
+      return serveMcpData(apiRequest, apiEnv.RSS_DATA, props.userId, {
+        scopes: auth.scope,
+        subscriptionAdder,
+      });
     },
   } satisfies ExportedHandler<CloudflareEnv>;
   try {
     const bounded = path === MCP_PATH ? request : await boundedOAuthBody(request);
     if (bounded instanceof Response) return bounded;
-    const provider = createMcpOAuthProvider(apiHandler, defaultHandler, appOrigin);
+    const provider = createMcpOAuthProvider(
+      apiHandler,
+      defaultHandler,
+      appOrigin,
+      isMcpSubscriptionAddEnabled(env),
+    );
     // RFC 9728 derives the metadata path from the /mcp resource. Retain the
     // root discovery alias for hosts probing it, with the same canonical data.
     const providerRequest =

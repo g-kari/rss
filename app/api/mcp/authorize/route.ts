@@ -11,6 +11,7 @@ import {
   isMcpBetaAllowed,
   isMcpTransactionHandle,
   MCP_SCOPE,
+  isMcpSubscriptionAddEnabled,
   mcpLoginResumeData,
   readMcpConnection,
   readMcpConsentAccount,
@@ -51,6 +52,7 @@ async function authorizeRequest(
   request: Request,
   provider: OAuthHelpers,
   origin: string,
+  allowAdd: boolean,
 ): Promise<{ auth: AuthRequest; headers: Headers }> {
   const url = new URL(request.url);
   if (url.searchParams.has("state") && !url.searchParams.has("client_id")) {
@@ -62,11 +64,11 @@ async function authorizeRequest(
       throw new McpConnectionError("MCP_AUTH_INVALID");
     const resumed = await provider.finishUpstream(request);
     validateMcpLoginResume(resumed.data);
-    validateMcpAuthorization(resumed.request, origin);
+    validateMcpAuthorization(resumed.request, origin, allowAdd);
     return { auth: resumed.request, headers: resumed.headers };
   }
   const auth = await provider.parseAuthRequest(request);
-  validateMcpAuthorization(auth, origin);
+  validateMcpAuthorization(auth, origin, allowAdd);
   return { auth, headers: new Headers() };
 }
 async function consentPage(
@@ -76,7 +78,12 @@ async function consentPage(
   userId: string | null,
 ): Promise<NextResponse> {
   const provider = env.OAUTH_PROVIDER!;
-  const { auth, headers } = await authorizeRequest(request, provider, origin);
+  const { auth, headers } = await authorizeRequest(
+    request,
+    provider,
+    origin,
+    isMcpSubscriptionAddEnabled(env),
+  );
   const description = await provider.describeConsent(auth);
   const snapshot = userId ? await readMcpConnection(env.RSS_DATA, userId) : null;
   const consent = await provider.beginConsent(auth);
@@ -85,6 +92,7 @@ async function consentPage(
     consent.handle,
     userId,
     snapshot?.state?.revision ?? null,
+    auth.scope,
   );
   appendMcpHeaders(headers, consent.headers);
   const response = new NextResponse(renderMcpConsent(description, consent.handle, userId), {
@@ -154,8 +162,14 @@ export async function POST(request: Request): Promise<NextResponse> {
         appendMcpHeaders(response.headers, denied.headers);
         return secured(response);
       }
-      const approved = await provider.approveConsent(request, form.handle, { scope: [MCP_SCOPE] });
-      validateMcpAuthorization(approved.request, origin);
+      const scopes = account.scopes ?? [MCP_SCOPE];
+      const approved = await provider.approveConsent(request, form.handle, { scope: scopes });
+      validateMcpAuthorization(approved.request, origin, isMcpSubscriptionAddEnabled(env));
+      if (
+        approved.request.scope.length !== scopes.length ||
+        !approved.request.scope.every((scope) => scopes.includes(scope))
+      )
+        throw new McpConnectionError("MCP_AUTH_INVALID");
       await deleteMcpConsentAccount(env.OAUTH_KV!, form.handle);
       if (!userId) {
         const upstream = await provider.beginUpstream(approved.request, {
@@ -168,13 +182,13 @@ export async function POST(request: Request): Promise<NextResponse> {
         appendMcpHeaders(response.headers, upstream.headers);
         return secured(response);
       }
-      const props = await approveMcpConnection(env.RSS_DATA, userId, account.revision);
+      const props = await approveMcpConnection(env.RSS_DATA, userId, account.revision, scopes);
       const completed = await provider.completeAuthorization({
         request: approved.request,
         userId,
-        scope: [MCP_SCOPE],
+        scope: scopes,
         props,
-        metadata: { scope: MCP_SCOPE },
+        metadata: { scope: scopes.join(" ") },
         revokeExistingGrants: false,
       });
       const response = navigation(

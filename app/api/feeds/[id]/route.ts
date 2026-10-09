@@ -5,35 +5,32 @@ import { assertFeedSubscribed } from "@/lib/api-feed-guard";
 import { purgeFeedsCache } from "@/lib/cache-helper";
 import {
   readUserSubscriptions,
-  writeUserSubscriptions,
   readFeedMeta,
   assembleClientFeed,
-  removeUserFromIndex,
   FEED_USER_MAP_CACHE_KEY,
 } from "@/lib/shared-feed";
 import { parseKeywordFilter } from "@/lib/keyword-filter";
 import { readFeedGroups } from "@/lib/feed-groups";
 import { stripControlChars, isValidIso8601 } from "@/lib/validation";
+import { mutateUserSubscriptions } from "@/lib/user-subscription-mutations";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: feedHash } = await params;
   const validationErr = assertValidFeedHash(feedHash);
   if (validationErr) return validationErr;
   return withSession(request, async ({ session, env, ctx, origin }) => {
-    const { subs, err } = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
+    const { err } = await assertFeedSubscribed(env.RSS_DATA, session.userId, feedHash);
     if (err) return err;
     // 購読から削除するだけ（共有フィードデータは残す）
-    const remainingSubs = subs.filter((s) => s.feedHash !== feedHash);
-    // POST と同型 (d33ae105): writeUserSubscriptions + removeUserFromIndex (条件付き) + KV delete を並列化
-    await Promise.all([
-      writeUserSubscriptions(env.RSS_DATA, session.userId, remainingSubs),
-      // 購読がゼロになったユーザーはインデックスから削除（cron の R2 LIST 削減）
-      remainingSubs.length === 0
-        ? removeUserFromIndex(env.RSS_DATA, session.userId)
-        : Promise.resolve(),
-      // フィード削除時に feedUserMap KV キャッシュを無効化
-      env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY),
-    ]);
+    await mutateUserSubscriptions(env.RSS_DATA, session.userId, (current) => ({
+      subscriptions: current.filter((s) => s.feedHash !== feedHash),
+      result: undefined,
+      changed: current.some((s) => s.feedHash === feedHash),
+    }));
+    // Keep the conservative user index membership: removing an empty account from
+    // a separate object can race a simultaneous add and permanently hide its feeds.
+    // Cron safely skips empty subscription arrays; index compaction is separate.
+    await env.RATE_LIMIT.delete(FEED_USER_MAP_CACHE_KEY);
     await purgeFeedsCache(origin, session.userId, ctx);
     return NextResponse.json({ ok: true });
   });
@@ -179,10 +176,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    await writeUserSubscriptions(env.RSS_DATA, session.userId, subs);
+    const mutableFields = [
+      "customTitle",
+      "filter",
+      "nsfw",
+      "priority",
+      "category",
+      "groupId",
+      "mutedUntil",
+      "view",
+      "digestLimit",
+    ] as const;
+    const requestedFields = mutableFields.filter(
+      (field) => (field === "customTitle" ? "title" : field) in body,
+    );
+    const updated = await mutateUserSubscriptions(env.RSS_DATA, session.userId, (current) => {
+      const latest = current.find((s) => s.feedHash === feedHash);
+      if (!latest) return { subscriptions: current, result: null, changed: false };
+      for (const field of requestedFields) {
+        if (Object.hasOwn(sub, field)) Object.assign(latest, { [field]: sub[field] });
+        else delete latest[field];
+      }
+      return { subscriptions: current, result: latest };
+    });
+    if (!updated) return apiError("Feed not found", 404, { code: "FEED_NOT_FOUND" });
 
     await purgeFeedsCache(origin, session.userId, ctx);
 
-    return NextResponse.json(assembleClientFeed(meta, sub));
+    return NextResponse.json(assembleClientFeed(meta, updated));
   });
 }

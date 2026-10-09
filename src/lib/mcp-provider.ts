@@ -12,6 +12,9 @@ import {
   MCP_PATH,
   MCP_REFRESH_TOKEN_TTL,
   MCP_SCOPE,
+  MCP_ADD_SCOPE,
+  isMcpScopeSet,
+  isMcpSubscriptionAddEnabled,
   MCP_TOKEN_PATH,
   McpConnectionError,
   validateMcpAuthProps,
@@ -21,6 +24,7 @@ export function mcpOAuthOptions(
   apiHandler: NonNullable<OAuthProviderOptions<CloudflareEnv>["apiHandler"]>,
   defaultHandler: OAuthProviderOptions<CloudflareEnv>["defaultHandler"],
   appBaseUrl: string,
+  subscribeEnabled = false,
 ): OAuthProviderOptions<CloudflareEnv> {
   const origin = canonicalMcpOrigin(appBaseUrl);
   return {
@@ -32,8 +36,8 @@ export function mcpOAuthOptions(
     accessTokenTTL: MCP_ACCESS_TOKEN_TTL,
     refreshTokenTTL: MCP_REFRESH_TOKEN_TTL,
     refreshTokenIdleTTL: MCP_REFRESH_TOKEN_TTL,
-    scopesSupported: [MCP_SCOPE],
-    requiredScopes: [MCP_SCOPE],
+    scopesSupported: subscribeEnabled ? [MCP_SCOPE, MCP_ADD_SCOPE] : [MCP_SCOPE],
+    requiredScopes: subscribeEnabled ? [] : [MCP_SCOPE],
     clientIdMetadataDocumentEnabled: true,
     allowTokenExchangeGrant: false,
     allowPrivateUseRedirectUris: false,
@@ -42,17 +46,24 @@ export function mcpOAuthOptions(
       resource: `${origin}${MCP_PATH}`,
       authorization_servers: [origin],
       bearer_methods_supported: ["header"],
-      resource_name: "RSS Reader read-only subscriptions and articles",
+      resource_name: subscribeEnabled
+        ? "RSS Reader stored data and public-feed subscription additions"
+        : "RSS Reader read-only subscriptions and articles",
     },
     tokenExchangeCallback: async (options) => {
       if (
         !isMcpEnabled(options.env) ||
         (options.grantType !== "authorization_code" && options.grantType !== "refresh_token") ||
         options.resource !== `${origin}${MCP_PATH}` ||
-        options.scope.length !== 1 ||
-        options.scope[0] !== MCP_SCOPE ||
-        options.requestedScope.length !== 1 ||
-        options.requestedScope[0] !== MCP_SCOPE ||
+        !isMcpScopeSet(
+          options.scope,
+          subscribeEnabled && isMcpSubscriptionAddEnabled(options.env),
+        ) ||
+        !isMcpScopeSet(
+          options.requestedScope,
+          subscribeEnabled && isMcpSubscriptionAddEnabled(options.env),
+        ) ||
+        !options.requestedScope.every((scope) => options.scope.includes(scope)) ||
         validateMcpAuthProps(options.props)?.userId !== options.userId
       )
         throw new OAuthError("invalid_grant", {
@@ -71,7 +82,7 @@ export function mcpOAuthOptions(
           headers: { "Retry-After": "30" },
         });
       }
-      return { accessTokenScope: [MCP_SCOPE] };
+      return { accessTokenScope: [...options.requestedScope] };
     },
   };
 }
@@ -79,6 +90,9 @@ export function createMcpOAuthProvider(
   apiHandler: NonNullable<OAuthProviderOptions<CloudflareEnv>["apiHandler"]>,
   defaultHandler: OAuthProviderOptions<CloudflareEnv>["defaultHandler"],
   appBaseUrl: string,
+  subscribeEnabled = false,
 ): OAuthProvider<CloudflareEnv> {
-  return new OAuthProvider(mcpOAuthOptions(apiHandler, defaultHandler, appBaseUrl));
+  return new OAuthProvider(
+    mcpOAuthOptions(apiHandler, defaultHandler, appBaseUrl, subscribeEnabled),
+  );
 }

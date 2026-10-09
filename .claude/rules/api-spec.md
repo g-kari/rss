@@ -60,6 +60,14 @@ paths: "app/api/**/route.ts"
 - 3 toolsは購読/記事のpure readだけ。既存GET feedsのlastAccessedAt/repair更新を呼ばず、notes/readstate/savedclip/requestCookie/guid/arbitrarymetadata/credential-bearingURLを返さない。記事の命令文はprovenance/warning付きuntrusteddata。
 - data errorsはINVALID_ARGUMENT/INVALID_CURSOR/STALE_CURSOR/NOT_SUBSCRIBED/FEED_UNAVAILABLE/ARTICLE_UNAVAILABLE/CORRUPT_STORAGE/STORAGE_UNAVAILABLE/BUDGET_EXCEEDED。transportはHost/Origin403、query400、body413、無認証/期限/解除401、scope403、authstorage503、best-effort limiter429。raw credentials/storage errorsをecho/logしない。詳細`docs/mcp.md`。
 
+## 公開フィード追加MCP（別opt-in、2026-10-06）
+
+- `RSS_MCP_SUBSCRIBE_ENABLED=true` と既存MCP有効化条件のすべてが必要。初期無効。`add_subscription({url})` は独立した `rss:subscriptions:add` OAuth scopeを要求し、既存 `rss:read` grantを拡張しない。
+- 対象は検証済み公開HTTPS RSS/Atom/JSON Feedのみ。Cookie・token・userId・headers・CSS・RSSHub/HTML/AI変換を入力に持たない。すべてのredirectを取得前に再検証する。既存購読と実取得redirect別名を重複排除する。
+- 結果は `added` / `already_subscribed` / `repair_required` と有界な失敗status。`repair_required` の `subscriptionCommitted:true` は購読保存済み・index/cache修復待ちを意味する。初回記事は通常cronで取得する。
+- 現在の購読上限は1000。購読を変更するすべてのproduction経路はfresh snapshot + ETag条件付き変換を使用し、既存設定と無関係な同時変更を保持する。`RSS_FEED_WRITES_PAUSED` はMCP追加とGET最終アクセス保存も止める。
+- 正確なscope同意・refresh非拡張・tool単位scope検証・解除revisionを維持する。本番設定、scope拡張、private plugin接続と定期処理の有効化は最終レビュー後に別途確認する。詳細は `docs/mcp.md`。
+
 ## SingleFile (2026-09-30)
 
 - `POST /api/clip`: `Authorization: Bearer <clip_v1 token>`、`multipart/form-data`の`html` Fileと`url`文字列。既存の同一origin Cookie + JSON `{html,url}`も維持。成功200/201 `{ok:true,url,article}`。本文と画像の私有R2保存を待って応答する。

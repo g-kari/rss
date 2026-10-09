@@ -262,7 +262,7 @@ for (const scenario of [
   {
     title: "signed-out consent reaches the synthetic IdP through the same-origin login redirect",
     account: null,
-    button: "この読み取り連携を確認して0g0 IDでログイン",
+    button: "この連携を確認して0g0 IDでログイン",
     destination: "idp",
     parameter: "state",
     value: "synthetic-flow",

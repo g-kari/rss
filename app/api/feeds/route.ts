@@ -22,7 +22,6 @@ import {
   writeFeedMeta,
   readFeedMeta,
   readUserSubscriptions,
-  writeUserSubscriptions,
   assembleClientFeed,
   addUserToIndex,
   R2_CONCURRENCY,
@@ -33,6 +32,8 @@ import { pMap } from "@/lib/concurrency";
 import type { SelectorConfig } from "@/types";
 import { registerAndFetchFeed } from "@/cron/fetch";
 import type { UserSubscription } from "@/types";
+import { mutateUserSubscriptions } from "@/lib/user-subscription-mutations";
+import { assertFeedWritesAllowed, isFeedWritesPaused } from "@/lib/feed-write-maintenance";
 
 const LAST_ACCESSED_UPDATE_INTERVAL_MS = 60 * 60 * 1000; // 1 時間
 const FEEDS_CACHE_TTL_SEC = 30;
@@ -56,10 +57,21 @@ export async function GET(request: Request) {
         !s.lastAccessedAt ||
         Date.now() - new Date(s.lastAccessedAt).getTime() > LAST_ACCESSED_UPDATE_INTERVAL_MS,
     );
-    if (needsUpdate && subs.length > 0) {
-      const updatedSubs = subs.map((s) => ({ ...s, lastAccessedAt: now }));
+    if (needsUpdate && subs.length > 0 && !isFeedWritesPaused(env.RSS_FEED_WRITES_PAUSED)) {
       ctx.waitUntil(
-        writeUserSubscriptions(env.RSS_DATA, session.userId, updatedSubs).catch((e: unknown) =>
+        mutateUserSubscriptions(
+          env.RSS_DATA,
+          session.userId,
+          (current) => ({
+            subscriptions: current.map((s) =>
+              !s.lastAccessedAt || Date.parse(s.lastAccessedAt) < Date.parse(now)
+                ? { ...s, lastAccessedAt: now }
+                : s,
+            ),
+            result: undefined,
+          }),
+          { beforeCommit: async () => assertFeedWritesAllowed(env) },
+        ).catch((e: unknown) =>
           console.error("[feeds] writeUserSubscriptions failed:", formatError(e)),
         ),
       );
@@ -210,10 +222,21 @@ export async function POST(request: Request) {
       lastAccessedAt: new Date().toISOString(),
       ...(cookie ? { requestCookie: cookie } : {}),
     };
-    subs.push(newSub);
-    // 3 つの独立ストレージ書き込みを並列化 (R2 subscriptions + R2 user index + KV delete)
+    const committed = await mutateUserSubscriptions(env.RSS_DATA, session.userId, (current) => {
+      if (current.some((s) => s.feedHash === feedHash))
+        return { subscriptions: current, result: "exists" as const, changed: false };
+      if (current.length >= MAX_FEEDS_PER_USER)
+        return { subscriptions: current, result: "full" as const, changed: false };
+      return { subscriptions: [...current, newSub], result: "added" as const };
+    });
+    if (committed === "exists")
+      return apiError("Feed already exists", 409, { code: "FEED_EXISTS" });
+    if (committed === "full")
+      return apiError(`Feed limit reached (max ${MAX_FEEDS_PER_USER})`, 422, {
+        code: "FEED_LIMIT_REACHED",
+      });
+    // Subscription commit precedes repairable index/cache updates.
     await Promise.all([
-      writeUserSubscriptions(env.RSS_DATA, session.userId, subs),
       // ユーザーインデックスに追加（cron の R2 LIST 削減）
       addUserToIndex(env.RSS_DATA, session.userId),
       // フィード追加時に feedUserMap KV キャッシュを無効化

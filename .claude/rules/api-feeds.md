@@ -15,7 +15,7 @@ description: Feeds API 仕様 — /api/feeds の CRUD + refresh + OPML import/ex
 
 ## POST /api/feeds
 
-フィードを追加する。最大 `MAX_FEEDS_PER_USER`（現在 20）件まで登録可能。
+フィードを追加する。最大 `MAX_FEEDS_PER_USER`（現在 1000）件まで登録可能。
 
 ### リクエスト
 
@@ -44,7 +44,7 @@ description: Feeds API 仕様 — /api/feeds の CRUD + refresh + OPML import/ex
 | `400`      | `INVALID_SELECTOR`   | CSS セレクタが不正または 500 文字超                        |
 | `409`      | `FEED_EXISTS`        | 同一フィードが既に登録済み                                 |
 | `422`      | `NO_FEED_FOUND`      | RSS フィードが見つからず LLM 推論も失敗                    |
-| `422`      | `FEED_LIMIT_REACHED` | フィード上限 (20件) に達している                           |
+| `422`      | `FEED_LIMIT_REACHED` | フィード上限 (1000件) に達している                         |
 | `429`      | `RATE_LIMITED`       | 30 秒クールダウン中                                        |
 
 ### 処理フロー
