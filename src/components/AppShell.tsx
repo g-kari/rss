@@ -1029,6 +1029,14 @@ export default function AppShell({
                 readingListIds,
                 selectedArticleId: selectedArticle?.id ?? null,
                 selectedFeedId,
+                scopeTitle: selectedGroupId
+                  ? feedGroups.find((group) => group.id === selectedGroupId)?.name
+                  : selectedTag
+                    ? `タグ: ${selectedTag}`
+                    : selectedCollectionId
+                      ? collections.find((collection) => collection.id === selectedCollectionId)
+                          ?.name
+                      : undefined,
                 layout,
                 loading: loadingArticles,
                 fetchError,

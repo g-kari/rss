@@ -10,6 +10,7 @@ export interface ArticleListHeaderProps {
   onMarkAllRead?: () => void;
   filteredCount: number;
   selectedFeedId: string | null;
+  scopeTitle?: string;
   feeds: Feed[];
 }
 

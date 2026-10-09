@@ -69,7 +69,7 @@ export default function ArticleHeaderEngagement({
       <div
         role="group"
         aria-label="エンゲージメント"
-        className="flex items-center rounded-full border border-border-default overflow-hidden"
+        className="flex flex-wrap items-center rounded-lg border border-border-default"
       >
         <EngagementSegmentButton
           isActive={isInReadingList}
@@ -94,6 +94,7 @@ export default function ArticleHeaderEngagement({
             <path d="M12 6v6l4 2" />
             <circle cx="12" cy="12" r="9" />
           </svg>
+          <span className="text-control">後で読む</span>
         </EngagementSegmentButton>
         <div className="w-px self-stretch bg-border-default" />
         <EngagementSegmentButton
@@ -117,6 +118,7 @@ export default function ArticleHeaderEngagement({
               d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
             />
           </svg>
+          <span className="text-control">ブックマーク</span>
         </EngagementSegmentButton>
         <div className="w-px self-stretch bg-border-default" />
         <EngagementSegmentButton
@@ -169,6 +171,7 @@ export default function ArticleHeaderEngagement({
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
+          <span className="text-control">メモ</span>
         </ToggleIconButton>
       )}
       {collections && onAddToCollection && onRemoveFromCollection && (
@@ -187,7 +190,7 @@ export default function ArticleHeaderEngagement({
         title={focusMode ? "フォーカスモード終了 (\\)" : "フォーカスモード (\\)"}
         aria-label={focusMode ? "フォーカスモード終了" : "フォーカスモード"}
         aria-pressed={focusMode}
-        className={`p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
+        className={`p-2 min-w-[44px] min-h-[44px] rounded-lg transition-colors duration-200 ${focusMode ? "text-text-muted" : "text-text-faint hover:text-text-muted"}`}
       >
         <svg
           className="w-[18px] h-[18px] lg:w-[14px] lg:h-[14px]"

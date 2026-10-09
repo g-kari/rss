@@ -94,6 +94,7 @@ for (const viewport of [
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(entry).toBeFocused();
+      await page.getByRole("button", { name: /^絞り込み/ }).click();
       await expect(
         page.getByRole("button", { name: "ブックマークフィルター切替 (B)" }),
       ).toHaveAttribute("aria-pressed", "true");
@@ -101,6 +102,7 @@ for (const viewport of [
         page.getByRole("button", { name: "リーディングリストフィルター切替 (T)" }),
       ).toHaveAttribute("aria-pressed", "true");
 
+      await page.keyboard.press("Escape");
       const search = page.getByRole("combobox", { name: "検索" });
       await search.fill("missing-result");
       await expect(entry).toBeDisabled();
@@ -128,9 +130,11 @@ for (const viewport of [
       await page.getByRole("button", { name: "フィードを切り替える" }).click();
       await expect(recommendations.getByRole("button", { name: /を読む$/ })).toHaveCount(0);
       await expect(entry).toBeEnabled();
+      await page.getByRole("button", { name: /^絞り込み/ }).click();
       await expect(
         page.getByRole("button", { name: "ブックマークフィルター切替 (B)" }),
       ).toHaveAttribute("aria-pressed", "true");
+      await page.keyboard.press("Escape");
     });
 
     test("shows only zero/one/two scoped candidates and keeps group/date/Digest constraints", async ({
@@ -161,16 +165,20 @@ for (const viewport of [
       await expect(recommendations.getByText(/現在のフィルターに合う未読/)).toBeVisible();
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("feed");
       await expect(picks).toHaveCount(2);
+      await page.getByRole("button", { name: /^絞り込み/ }).click();
       await page.getByRole("button", { name: /^日付フィルター切替:.*\(d\)$/ }).click();
+      await page.keyboard.press("Escape");
       await expect(picks).toHaveCount(1);
       await expect(picks).toHaveAttribute("aria-label", "条件に合う記事を読む");
       await page.screenshot({ path: testInfo.outputPath("dated-scoped-entry.png") });
 
       // Cycle the real date control back to all before selecting the special feed.
+      await page.getByRole("button", { name: /^絞り込み/ }).click();
       for (let index = 0; index < 4; index++)
         await page.getByRole("button", { name: /^日付フィルター切替:.*\(d\)$/ }).click();
       await page.getByRole("button", { name: "ブックマークフィルター切替 (B)" }).click();
       await page.getByRole("button", { name: "リーディングリストフィルター切替 (T)" }).click();
+      await page.keyboard.press("Escape");
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("digest");
       await expect(picks).toHaveCount(3);
       await entry.click();

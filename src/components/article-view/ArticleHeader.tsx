@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+import { useNativeControlSpace } from "../../hooks/useNativeControlSpace";
 import type { Article, Collection, EngagementAction, Feed } from "../../types";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import { useToast } from "../../contexts/ToastContext";
@@ -162,6 +164,8 @@ export default function ArticleHeader({
   onRemoveFromCollection,
   onCreateCollection,
 }: Props) {
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useNativeControlSpace(actionsRef);
   const toast = useToast();
   const { focusMode, toggleFocusMode: onToggleFocusMode } = useReaderSettings();
   const {
@@ -195,72 +199,88 @@ export default function ArticleHeader({
         feedName={feed?.title}
       />
 
-      <div
-        data-print="hide"
-        className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap"
-      >
-        <QuickReadingSettings key={article.id} />
-        <ArticleHeaderAiTts
-          article={article}
-          hasContent={hasContent}
-          hasImages={hasImages}
-          fetching={fetching}
-          aiResult={aiResult}
-          aiLoading={aiLoading}
-          aiError={aiError}
-          resetAi={resetAi}
-          doRunAi={doRunAi}
-          handleTranslate={handleTranslate}
-          translateResult={translateResult}
-          translateLoading={translateLoading}
-          translateError={translateError}
-          ttsSupported={ttsSupported}
-          ttsPlaying={ttsPlaying}
-          ttsPaused={ttsPaused}
-          ttsRate={ttsRate}
-          ttsCycleRate={ttsCycleRate}
-          ttsVolume={ttsVolume}
-          ttsCycleVolume={ttsCycleVolume}
-          onTtsToggle={onTtsToggle}
-          autoMode={autoMode}
-          onToggleAutoMode={onToggleAutoMode}
-          downloadAllImages={downloadAllImages}
-          downloadingImages={downloadingImages}
-          imageDownloadProgress={imageDownloadProgress}
-        />
-
-        <ArticleHeaderShare
-          article={article}
-          feed={feed}
-          storedContent={storedContent}
-          onShareError={(msg) => toast.error(msg)}
-          onSaveFilter={onSaveFilter}
-          globalFilter={globalFilter}
-          onSaveGlobalFilter={onSaveGlobalFilter}
-        />
-
-        <ArticleHeaderEngagement
-          article={article}
-          isBookmarked={isBookmarked}
-          onToggleBookmark={onToggleBookmark}
-          isInReadingList={isInReadingList}
-          onToggleReadingList={onToggleReadingList}
-          isLiked={isLiked}
-          onToggleLike={onToggleLike}
-          onReadingListToast={(msg) => toast.info(msg)}
-          note={note}
-          noteExpanded={noteExpanded}
-          setNoteExpanded={setNoteExpanded}
-          onSetNote={onSetNote}
-          collections={collections}
-          onAddToCollection={onAddToCollection}
-          onAddBulkToCollection={onAddBulkToCollection}
-          bookmarkIds={bookmarkIds}
-          onRemoveFromCollection={onRemoveFromCollection}
-          onCreateCollection={onCreateCollection}
-          focusMode={focusMode}
-          onToggleFocusMode={onToggleFocusMode}
-        />
+      <div ref={actionsRef} data-print="hide" className="space-y-2">
+        <div role="group" aria-label="読書補助" className="flex flex-wrap items-center gap-2">
+          <QuickReadingSettings key={article.id} />
+          <details className="min-w-0">
+            <summary className="min-h-[44px] px-3 py-2 inline-flex items-center gap-2 rounded-lg border border-border-default text-control text-text-muted cursor-pointer">
+              要約・翻訳・音声
+              {(ttsPlaying || ttsPaused || autoMode) && (
+                <span className="text-selection-accent">動作中</span>
+              )}
+            </summary>
+            <div className="py-2 flex flex-wrap items-center gap-2 reader-aid-actions">
+              <ArticleHeaderAiTts
+                article={article}
+                hasContent={hasContent}
+                hasImages={hasImages}
+                fetching={fetching}
+                aiResult={aiResult}
+                aiLoading={aiLoading}
+                aiError={aiError}
+                resetAi={resetAi}
+                doRunAi={doRunAi}
+                handleTranslate={handleTranslate}
+                translateResult={translateResult}
+                translateLoading={translateLoading}
+                translateError={translateError}
+                ttsSupported={ttsSupported}
+                ttsPlaying={ttsPlaying}
+                ttsPaused={ttsPaused}
+                ttsRate={ttsRate}
+                ttsCycleRate={ttsCycleRate}
+                ttsVolume={ttsVolume}
+                ttsCycleVolume={ttsCycleVolume}
+                onTtsToggle={onTtsToggle}
+                autoMode={autoMode}
+                onToggleAutoMode={onToggleAutoMode}
+                downloadAllImages={downloadAllImages}
+                downloadingImages={downloadingImages}
+                imageDownloadProgress={imageDownloadProgress}
+              />
+            </div>
+          </details>
+        </div>
+        <div role="group" aria-label="保存・整理" className="flex flex-wrap items-center gap-2">
+          <ArticleHeaderEngagement
+            article={article}
+            isBookmarked={isBookmarked}
+            onToggleBookmark={onToggleBookmark}
+            isInReadingList={isInReadingList}
+            onToggleReadingList={onToggleReadingList}
+            isLiked={isLiked}
+            onToggleLike={onToggleLike}
+            onReadingListToast={(msg) => toast.info(msg)}
+            note={note}
+            noteExpanded={noteExpanded}
+            setNoteExpanded={setNoteExpanded}
+            onSetNote={onSetNote}
+            collections={collections}
+            onAddToCollection={onAddToCollection}
+            onAddBulkToCollection={onAddBulkToCollection}
+            bookmarkIds={bookmarkIds}
+            onRemoveFromCollection={onRemoveFromCollection}
+            onCreateCollection={onCreateCollection}
+            focusMode={focusMode}
+            onToggleFocusMode={onToggleFocusMode}
+          />
+          <details className="min-w-0">
+            <summary className="min-h-[44px] px-3 py-2 inline-flex items-center rounded-lg border border-border-default text-control text-text-muted cursor-pointer">
+              共有・管理
+            </summary>
+            <div className="py-2 flex flex-wrap items-center gap-2 reader-aid-actions">
+              <ArticleHeaderShare
+                article={article}
+                feed={feed}
+                storedContent={storedContent}
+                onShareError={(msg) => toast.error(msg)}
+                onSaveFilter={onSaveFilter}
+                globalFilter={globalFilter}
+                onSaveGlobalFilter={onSaveGlobalFilter}
+              />
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   );

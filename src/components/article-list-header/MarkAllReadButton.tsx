@@ -33,27 +33,30 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
       title={confirmMarkAll ? "もう一度押すと全て既読にします" : `${SHORTCUT_MAP["m"]} (m)`}
       className={`relative overflow-hidden flex items-center justify-center rounded-full transition-all duration-200 ${
         confirmMarkAll
-          ? "px-2 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-meta font-medium text-error border border-rose-400 hover:bg-rose-400/10"
-          : "w-6 h-6 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+          ? "px-3 min-h-[44px] min-w-[44px] text-meta font-medium text-error border border-rose-400 hover:bg-rose-400/10"
+          : "px-3 min-h-[44px] min-w-[44px] border border-border-default text-text-faint hover:text-text-muted hover:bg-surface-subtle"
       }`}
     >
       {confirmMarkAll ? (
         "全既読?"
       ) : (
-        <svg
-          aria-hidden={true}
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="6" cy="6" r="4.5" />
-          <path d="M3.5 6l1.8 1.8L8.5 4" />
-        </svg>
+        <span className="flex items-center gap-2 text-control">
+          全て既読
+          <svg
+            aria-hidden={true}
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="6" cy="6" r="4.5" />
+            <path d="M3.5 6l1.8 1.8L8.5 4" />
+          </svg>
+        </span>
       )}
       {confirmMarkAll && (
         // 確認状態のカウントダウン進捗バー: 3 秒で 100% → 0% に縮む細線。

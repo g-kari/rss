@@ -1547,3 +1547,14 @@ body {
   max-height: none;
   aspect-ratio: auto;
 }
+
+/* Reader disclosure actions retain independent 44px targets without overlapping margins. */
+.reader-aid-actions button {
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px;
+}
+.reader-aid-actions > div {
+  flex-wrap: wrap;
+}

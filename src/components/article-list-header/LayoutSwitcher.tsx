@@ -19,12 +19,12 @@ export default function LayoutSwitcher({
   onToggleListFocusMode,
 }: LayoutSwitcherProps) {
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="p-4 grid grid-cols-2 gap-2">
       {LAYOUT_CYCLE.map((l) => (
         <button
           key={l}
           onClick={() => onChangeLayout(l)}
-          className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-200 ${
+          className={`px-3 py-3 min-w-[44px] min-h-[44px] flex items-center justify-start gap-2 rounded-lg border border-border-default transition-all duration-200 ${
             layout === l
               ? "text-text-strong bg-surface-subtle"
               : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -34,12 +34,13 @@ export default function LayoutSwitcher({
           aria-pressed={layout === l}
         >
           <LayoutIcon layout={l} />
+          <span className="text-control">{LAYOUT_ARIA_LABELS[l]}</span>
         </button>
       ))}
       {/* 記事一覧フォーカスモード切替 */}
       <button
         onClick={onToggleListFocusMode}
-        className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-200 ${
+        className={`px-3 py-3 min-w-[44px] min-h-[44px] flex items-center justify-start gap-2 rounded-lg border border-border-default transition-all duration-200 ${
           listFocusMode
             ? "text-text-strong bg-surface-subtle"
             : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"
@@ -75,6 +76,9 @@ export default function LayoutSwitcher({
             </>
           )}
         </svg>
+        <span className="text-control">
+          {listFocusMode ? "一覧フォーカスを終了" : "一覧に集中"}
+        </span>
       </button>
     </div>
   );

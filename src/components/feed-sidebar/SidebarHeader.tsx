@@ -65,7 +65,7 @@ export default function SidebarHeader({
       }}
       className="border-b border-border-default"
     >
-      <div className="px-4 py-3.5 flex items-center justify-between gap-2 overflow-x-auto [&>*]:shrink-0">
+      <div className="px-3 py-3 flex flex-wrap items-center justify-between gap-2">
         <button
           onClick={(event) => {
             const suppressPointerClick = suppressLogoClickRef.current && event.detail > 0;
@@ -89,7 +89,7 @@ export default function SidebarHeader({
           onContextMenu={(e) => {
             if (nsfwMode) e.preventDefault();
           }}
-          className={`text-meta font-medium tracking-[0.25em] uppercase transition-colors duration-150 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
+          className={`min-h-[44px] min-w-[44px] text-meta font-medium tracking-[0.25em] uppercase transition-colors duration-150 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
           title={nsfwMode ? "長押しでNSFWモード解除" : ""}
         >
           RSS
@@ -97,7 +97,7 @@ export default function SidebarHeader({
         <button
           onClick={onToggleInput}
           disabled={!isOnline}
-          className={`inline-flex items-center gap-1 px-2 max-md:min-h-[44px] lg:min-h-[28px] rounded text-control font-medium transition-colors duration-150 disabled:opacity-40 ${
+          className={`inline-flex items-center gap-1 px-2 min-h-[44px] min-w-[44px] rounded text-control font-medium transition-colors duration-150 disabled:opacity-40 ${
             inputOpen
               ? "bg-accent-subtle text-accent"
               : "bg-accent text-accent-contrast hover:bg-accent-hover"
@@ -122,7 +122,7 @@ export default function SidebarHeader({
         <button
           onClick={onRefresh}
           disabled={refreshing || !isOnline}
-          className="w-5 h-5 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-colors duration-150 disabled:opacity-40"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-colors duration-150 disabled:opacity-40"
           title={!isOnline ? "オフラインです" : "フィードを更新"}
           aria-label={!isOnline ? "オフライン" : refreshing ? "フィードを更新中" : "フィードを更新"}
         >

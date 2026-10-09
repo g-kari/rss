@@ -230,7 +230,7 @@ export default function SearchBar() {
         aria-haspopup="listbox"
         aria-controls={listboxOpen ? "search-suggestion-listbox" : undefined}
         aria-activedescendant={activeDescendantId}
-        className="w-full text-[12px] bg-surface-base border border-border-default rounded-lg pl-2.5 pr-9 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
+        className="w-full min-h-[44px] text-control bg-surface-base border border-border-default rounded-lg pl-2.5 pr-9 py-1.5 text-text-strong placeholder-text-faint outline-none focus:border-text-muted transition-colors duration-200"
       />
       {rawQuery.trim().length >= 2 && savingSearch === null && (
         <button

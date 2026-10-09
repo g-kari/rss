@@ -5,6 +5,7 @@ export default defineConfig({
   testDir: "./e2e",
   testMatch: [
     "scoped-recommendations.spec.ts",
+    "reading-workspace.spec.ts",
     "recommendation-reasons.spec.ts",
     "immersive-articles.spec.ts",
     "immersive-continuity.spec.ts",

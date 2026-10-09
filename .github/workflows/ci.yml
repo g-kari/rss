@@ -57,6 +57,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - name: pnpm セットアップ
         uses: pnpm/action-setup@v6.0.8
@@ -107,6 +108,8 @@ jobs:
           src/cron/fetch.test.ts
 
       - name: レスポンシブな production component fixture を確認
+        env:
+          RSS_UI_BASELINE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: pnpm run test:e2e:scoped
 
       - name: 合成データのレポートとスクリーンショットを保存
