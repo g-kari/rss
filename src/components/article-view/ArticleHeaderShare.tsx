@@ -11,6 +11,8 @@ import { devError } from "../../lib/dev-log";
 
 interface Props {
   article: Article;
+  /** primary = クイックシェア・共有メニュー、secondary = フィルター・印刷 (「その他」内) */
+  section?: "primary" | "secondary" | "all";
   feed?: Feed;
   storedContent: string | null;
   onShareError: (msg: string) => void;
@@ -27,6 +29,7 @@ interface Props {
  */
 export default function ArticleHeaderShare({
   article,
+  section = "all",
   feed,
   storedContent,
   onShareError,
@@ -36,10 +39,12 @@ export default function ArticleHeaderShare({
 }: Props) {
   const [headerShareTargetIds] = useHeaderShareTargets();
   const enabledShareTargets = SHARE_TARGETS.filter((t) => headerShareTargetIds.includes(t.id));
+  const primary = section !== "secondary";
+  const secondary = section !== "primary";
 
   return (
     <>
-      {enabledShareTargets.length > 0 && article.link && (
+      {primary && enabledShareTargets.length > 0 && article.link && (
         <div role="group" aria-label="クイックシェア" className="flex items-center gap-1">
           {enabledShareTargets.map((target) => (
             <button
@@ -61,39 +66,41 @@ export default function ArticleHeaderShare({
         </div>
       )}
 
-      {article.link && (
+      {primary && article.link && (
         <ShareMenu article={article} feed={feed} contentHtml={storedContent ?? undefined} />
       )}
-      {feed && onSaveFilter && (
+      {secondary && feed && onSaveFilter && (
         <FilterMenu article={article} feed={feed} onSaveFilter={onSaveFilter} />
       )}
-      {onSaveGlobalFilter && (
+      {secondary && onSaveGlobalFilter && (
         <GlobalFilterMenu
           article={article}
           globalFilter={globalFilter ?? null}
           onSaveGlobalFilter={onSaveGlobalFilter}
         />
       )}
-      <button
-        onClick={() => window.print()}
-        title="印刷"
-        aria-label="印刷"
-        className="p-2 -m-2 lg:p-0 lg:m-0 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
-      >
-        <svg
-          viewBox="0 0 18 18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
+      {secondary && (
+        <button
+          onClick={() => window.print()}
+          title="印刷"
+          aria-label="印刷"
+          className="p-2 -m-2 lg:p-0 lg:m-0 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted transition-colors duration-200 [&>svg]:w-[18px] [&>svg]:h-[18px] lg:[&>svg]:w-[14px] lg:[&>svg]:h-[14px]"
         >
-          <rect x={3} y={7} width={12} height={8} rx={1} />
-          <path d="M6 7V3h6v4" />
-          <path d="M6 13h6M6 11h2" />
-        </svg>
-      </button>
+          <svg
+            viewBox="0 0 18 18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x={3} y={7} width={12} height={8} rx={1} />
+            <path d="M6 7V3h6v4" />
+            <path d="M6 13h6M6 11h2" />
+          </svg>
+        </button>
+      )}
     </>
   );
 }

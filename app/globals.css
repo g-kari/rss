@@ -1006,7 +1006,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 10px;
+  font-size: var(--text-meta);
   font-weight: 700;
   letter-spacing: 0.16em;
   white-space: nowrap;
@@ -1031,13 +1031,28 @@ body {
   background: var(--color-surface-elevated);
   cursor: pointer;
 }
+/* 常設の補助スイッチは主操作 (フィード追加・記事) と競合しないよう、細かいポインターでは低く・静かにする */
+@media (pointer: fine) {
+  .visual-mode-bar {
+    min-height: 2.5rem;
+  }
+  .visual-mode-switch,
+  .visual-motion-switch {
+    min-height: 32px;
+  }
+}
+.visual-mode-switch:not([aria-pressed="true"]) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+}
 .visual-mode-switch:hover,
 .visual-motion-switch:hover {
   background: var(--color-surface-subtle);
 }
 .visual-motion-switch {
   border-color: transparent;
-  font-size: 10px;
+  font-size: var(--text-meta);
   padding-inline: 0.5rem;
 }
 [data-visual-mode="cinema"] {
@@ -1406,14 +1421,14 @@ body {
 @media (max-width: 420px) {
   .visual-mode-brand {
     letter-spacing: 0.06em;
-    font-size: 9px;
+    font-size: var(--text-meta);
   }
   .visual-mode-orbit {
     display: none;
   }
   .visual-mode-switch {
     padding-inline: 0.65rem;
-    font-size: 10px;
+    font-size: var(--text-meta);
   }
   .visual-mode-bar {
     padding-inline: max(0.4rem, env(safe-area-inset-left));
