@@ -257,7 +257,7 @@ function ArticleView({
       >
         {/* #677: 下スクロールで隠す sticky ラッパー (上スクロール / 上端で表示) */}
         <div
-          className="sticky top-0 z-20 bg-surface-elevated transition-transform duration-200 ease-out"
+          className="sticky top-0 z-20 bg-surface-elevated transition-transform duration-200 ease-(--ease-interaction)"
           style={{
             transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
           }}

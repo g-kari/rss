@@ -114,14 +114,14 @@ export default function ArticleHeaderMeta({
               key={cat}
               onClick={() => onSetQuery(cat)}
               title={`「${cat}」で記事を絞り込む`}
-              className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
+              className="text-meta px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default transition-colors"
             >
               {cat}
             </button>
           ) : (
             <span
               key={cat}
-              className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted"
+              className="text-meta px-1.5 py-0.5 rounded-full bg-surface-subtle text-text-muted"
             >
               {cat}
             </span>

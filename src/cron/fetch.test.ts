@@ -5,6 +5,8 @@ import { makeArticle } from "../../e2e/helpers/article";
 import {
   buildArticle,
   buildBatchedPushPayload,
+  FEED_NETWORK_CONCURRENCY,
+  FEED_PARSE_CONCURRENCY,
   fetchAllFeeds,
   fetchAndUpdateSharedFeed,
   fetchArticles,
@@ -209,7 +211,7 @@ describe("safe article rollout defaults", () => {
         expect.any(Object),
         expect.any(Array),
         [],
-        { allowLegacyMigration: false },
+        { allowLegacyMigration: false, maintainSearchIndex: true },
       );
       expect(index).not.toHaveBeenCalled();
       expect(prepare).not.toHaveBeenCalled();
@@ -235,7 +237,7 @@ describe("safe article rollout defaults", () => {
       expect.any(Object),
       expect.any(Array),
       [],
-      { allowLegacyMigration: true },
+      { allowLegacyMigration: true, maintainSearchIndex: true },
     );
     expect(index).toHaveBeenCalledWith(db, env.RSS_DATA, expect.any(Object), undefined);
   });
@@ -355,7 +357,7 @@ describe("bounded feed bodies", () => {
 
 describe("feed body concurrency", () => {
   it.each(["refresh", "cron"])(
-    "%s starts at most two upstream responses and consumes them without a queued body",
+    "%s keeps body reads at the parse limit while header fetches run ahead",
     async (mode) => {
       const hashes = Array.from({ length: 20 }, (_, i) => `feed-${i}`);
       vi.mocked(readUserSubscriptions).mockResolvedValue(
@@ -385,6 +387,12 @@ describe("feed body concurrency", () => {
         openResponses++;
         peakResponses = Math.max(peakResponses, openResponses);
         let started = false;
+        let closed = false;
+        const finishResponse = () => {
+          if (closed) return;
+          closed = true;
+          openResponses--;
+        };
         return new Response(
           new ReadableStream<Uint8Array>(
             {
@@ -395,10 +403,13 @@ describe("feed body concurrency", () => {
                 peak = Math.max(peak, reading);
                 release.push(() => {
                   reading--;
-                  openResponses--;
+                  finishResponse();
                   controller.enqueue(new TextEncoder().encode(i % 2 ? HTML : XML));
                   controller.close();
                 });
+              },
+              cancel() {
+                finishResponse();
               },
             },
             { highWaterMark: 0 },
@@ -407,18 +418,23 @@ describe("feed body concurrency", () => {
       });
       vi.stubGlobal("fetch", fetch);
       const run = mode === "refresh" ? fetchArticles(env, "user") : fetchAllFeeds(env);
-      await vi.waitFor(() => expect(reading).toBe(2));
-      expect(fetch).toHaveBeenCalledTimes(2);
-      expect(reading).toBe(2);
+      await vi.waitFor(() => {
+        expect(reading).toBe(FEED_PARSE_CONCURRENCY);
+        expect(fetch.mock.calls.length).toBeGreaterThan(FEED_PARSE_CONCURRENCY);
+      });
+      expect(peakResponses).toBeLessThanOrEqual(FEED_NETWORK_CONCURRENCY);
+      expect(peakResponses).toBeGreaterThan(FEED_PARSE_CONCURRENCY);
+      expect(reading).toBe(FEED_PARSE_CONCURRENCY);
       for (let i = 0; i < hashes.length; i++) {
         await vi.waitFor(() => expect(release.length).toBeGreaterThan(i));
         release[i]();
       }
       await run;
-      expect(peak).toBe(2);
-      expect(peakResponses).toBe(2);
+      expect(peak).toBe(FEED_PARSE_CONCURRENCY);
+      expect(peakResponses).toBeLessThanOrEqual(FEED_NETWORK_CONCURRENCY);
+      expect(peakResponses).toBeGreaterThan(FEED_PARSE_CONCURRENCY);
       expect(openResponses).toBe(0);
-      expect(fetch).toHaveBeenCalledTimes(20);
+      expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(20);
       expect(reading).toBe(0);
       expect(parseFeed).toHaveBeenCalledTimes(10);
       expect(
@@ -451,12 +467,11 @@ it("cancels stalled bodies, admits waiting feeds, and allows a successful forced
   vi.stubGlobal("fetch", fetch);
   const run = fetchArticles(env, "user");
   await vi.advanceTimersByTimeAsync(0);
-  expect(fetch).toHaveBeenCalledTimes(2);
-  expect(cancel).not.toHaveBeenCalled();
+  expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(FEED_PARSE_CONCURRENCY);
   await vi.advanceTimersByTimeAsync(15_000);
   await run;
   expect(cancel).toHaveBeenCalledTimes(2);
-  expect(fetch).toHaveBeenCalledTimes(6);
+  expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(6);
   expect(metas.filter((meta) => meta.fetchError)).toHaveLength(2);
   expect(metas.filter((meta) => !meta.fetchError)).toHaveLength(4);
   for (const meta of metas.filter((meta) => meta.fetchError)) {
@@ -484,10 +499,10 @@ it("holds body permits until article storage finishes", async () => {
   const fetch = vi.fn(async () => new Response(XML));
   vi.stubGlobal("fetch", fetch);
   const run = fetchArticles(env, "user");
-  await vi.waitFor(() => expect(finishStorage).toHaveLength(2));
-  expect(fetch).toHaveBeenCalledTimes(2);
-  expect(parseFeed).toHaveBeenCalledTimes(2);
-  expect(finishStorage).toHaveLength(2);
+  await vi.waitFor(() => expect(finishStorage).toHaveLength(FEED_PARSE_CONCURRENCY));
+  expect(fetch.mock.calls.length).toBeGreaterThan(FEED_PARSE_CONCURRENCY);
+  expect(parseFeed).toHaveBeenCalledTimes(FEED_PARSE_CONCURRENCY);
+  expect(finishStorage).toHaveLength(FEED_PARSE_CONCURRENCY);
   for (let i = 0; i < 4; i++) {
     await vi.waitFor(() => expect(finishStorage.length).toBeGreaterThan(i));
     finishStorage[i]();

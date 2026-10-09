@@ -385,7 +385,7 @@ const ArticleContentBody = forwardRef<HTMLDivElement, ArticleContentBodyProps>(
               翻訳
             </button>
             {contentTab === "translate" && translateResult?.provider && (
-              <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-surface-subtle">
+              <span className="text-meta text-text-muted px-1.5 py-0.5 rounded bg-surface-subtle">
                 {translateResult.provider === "browser" ? "Chrome 翻訳" : "Workers AI"}
               </span>
             )}

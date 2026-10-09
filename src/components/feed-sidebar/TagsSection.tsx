@@ -13,7 +13,7 @@ export default function TagsSection({ sortedTags, selectedTag, onSelectTag }: Pr
   return (
     <div className="mt-1 pt-2 border-t border-border-subtle">
       <div className="px-4 pb-1 flex items-center">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           Tags
         </span>
       </div>
@@ -33,7 +33,7 @@ export default function TagsSection({ sortedTags, selectedTag, onSelectTag }: Pr
             title={tag}
           >
             <span className="text-[13px] truncate">#{tag}</span>
-            <span className="text-[11px] text-text-muted tabular-nums flex-shrink-0">
+            <span className="text-meta text-text-muted tabular-nums flex-shrink-0">
               {formatCount(count)}
             </span>
           </button>

@@ -37,7 +37,9 @@ export function VirtualRow({ vItem, measureRef, animating, extraStyle, children 
         left: 0,
         width: "100%",
         transform: `translateY(${vItem.start}px)`,
-        transition: animating ? "transform 0.2s ease" : undefined,
+        transition: animating
+          ? "transform var(--motion-standard) var(--ease-interaction)"
+          : undefined,
         ...extraStyle,
       }}
     >

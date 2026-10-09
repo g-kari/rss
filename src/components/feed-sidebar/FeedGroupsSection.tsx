@@ -104,7 +104,7 @@ function FeedGroupsSectionImpl({
     <>
       {/* セクションヘッダー + 作成ボタン */}
       <div className="px-4 pt-2.5 pb-0.5 flex items-center gap-1 group">
-        <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.2em] uppercase text-text-muted">
           グループ
         </span>
         {onCreate && !creating && (
@@ -114,7 +114,7 @@ function FeedGroupsSectionImpl({
               setCreateError(null);
               setTimeout(() => createInputRef.current?.focus(), 0);
             }}
-            className="ml-auto w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle transition-all"
+            className="ml-auto w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover transition-all"
             title="グループを作成"
             aria-label="グループを作成"
           >
@@ -155,10 +155,10 @@ function FeedGroupsSectionImpl({
             aria-label="新しいグループ名"
             placeholder="グループ名"
             maxLength={50}
-            className="w-full text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted placeholder-text-faint"
+            className="w-full text-control bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted placeholder-text-faint"
           />
           {createError && (
-            <span role="alert" className="text-[10px] text-error">
+            <span role="alert" className="text-meta text-error">
               {createError}
             </span>
           )}
@@ -214,7 +214,7 @@ function FeedGroupsSectionImpl({
             >
               <button
                 onClick={() => void onToggleCollapse?.(group.id, !isCollapsed)}
-                className="flex-shrink-0 w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
+                className="flex-shrink-0 w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-hover"
                 title={isCollapsed ? "展開" : "折りたたむ"}
                 aria-label={isCollapsed ? `${group.name} を展開` : `${group.name} を折りたたむ`}
                 aria-expanded={!isCollapsed}
@@ -251,7 +251,7 @@ function FeedGroupsSectionImpl({
                     if (!editError) void commitRename(group.id);
                   }}
                   maxLength={50}
-                  className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1 py-0 text-text-strong outline-none focus:border-text-muted min-w-0"
+                  className="flex-1 text-control bg-surface-base border border-border-default rounded px-1 py-0 text-text-strong outline-none focus:border-text-muted min-w-0"
                 />
               ) : (
                 <button
@@ -261,7 +261,7 @@ function FeedGroupsSectionImpl({
                   aria-pressed={isSelected}
                 >
                   <span
-                    className={`text-[11px] font-medium tracking-[0.05em] truncate ${
+                    className={`text-meta font-medium tracking-[0.05em] truncate ${
                       isSelected
                         ? "text-selection-accent"
                         : isMuted
@@ -274,7 +274,7 @@ function FeedGroupsSectionImpl({
                   </span>
                   {isCollapsed && (
                     <span
-                      className={`ml-auto text-[10px] tabular-nums ${groupUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
+                      className={`ml-auto text-badge tabular-nums ${groupUnread > 0 ? "text-text-muted" : "text-text-faint"}`}
                     >
                       {groupUnread > 0 ? formatCount(groupUnread) : feeds.length}
                     </span>
@@ -287,7 +287,7 @@ function FeedGroupsSectionImpl({
                     e.stopPropagation();
                     void onToggleMute(group.id, false);
                   }}
-                  className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-subtle"
+                  className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-muted hover:text-text-default hover:bg-surface-hover"
                   title="ミュートを解除"
                   aria-label={`${group.name} のミュートを解除`}
                 >
@@ -316,7 +316,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         onMarkAllRead(feeds.map((f) => f.id));
                       }}
-                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover"
                       title="グループ内の記事を既読にする"
                       aria-label={`${group.name} の記事を全て既読にする`}
                     >
@@ -341,7 +341,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void onReorder(group.id, "up");
                       }}
-                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover"
                       title="上へ移動"
                       aria-label={`${group.name} を上へ移動`}
                     >
@@ -366,7 +366,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void onReorder(group.id, "down");
                       }}
-                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover"
                       title="下へ移動"
                       aria-label={`${group.name} を下へ移動`}
                     >
@@ -394,7 +394,7 @@ function FeedGroupsSectionImpl({
                         setEditError(null);
                         setTimeout(() => editInputRef.current?.select(), 0);
                       }}
-                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover"
                       title="名前変更"
                       aria-label={`${group.name} の名前を変更`}
                     >
@@ -419,7 +419,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void onToggleMute(group.id, true);
                       }}
-                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-text-default hover:bg-surface-hover"
                       title="グループをミュート（一覧から非表示）"
                       aria-label={`${group.name} をミュート`}
                     >
@@ -445,7 +445,7 @@ function FeedGroupsSectionImpl({
                         e.stopPropagation();
                         void handleDelete(group);
                       }}
-                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-error hover:bg-surface-subtle"
+                      className="w-4 h-4 max-md:min-w-[44px] max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] flex items-center justify-center rounded text-text-faint hover:text-error hover:bg-surface-hover"
                       title="グループを削除"
                       aria-label={`${group.name} を削除`}
                     >
@@ -467,7 +467,7 @@ function FeedGroupsSectionImpl({
               )}
             </div>
             {editError && editingId === group.id && (
-              <div role="alert" className="px-4 pb-1 text-[10px] text-error">
+              <div role="alert" className="px-4 pb-1 text-meta text-error">
                 {editError}
               </div>
             )}
@@ -475,7 +475,7 @@ function FeedGroupsSectionImpl({
               {feeds.length > 0
                 ? feeds.map((feed, i) => <div key={feed.id}>{renderFeed(feed, startIdx + i)}</div>)
                 : !isCollapsed && (
-                    <div className="px-8 py-1 text-[10px] text-text-faint">
+                    <div className="px-8 py-1 text-meta text-text-faint">
                       フィードメニューから「グループに移動」で追加できます
                     </div>
                   )}

@@ -29,6 +29,14 @@ export function isAbortError(err: unknown): boolean {
 
 const MAX_REDIRECTS = 5;
 
+function cancelResponseBody(response: Response): void {
+  try {
+    void response.body?.cancel().catch(() => {});
+  } catch {
+    // Cleanup cannot replace a timeout or the original redirect/transport error.
+  }
+}
+
 /** チャンク配列を 1 つの Uint8Array に結合する */
 function concatChunks(chunks: Uint8Array[], totalBytes: number): Uint8Array<ArrayBuffer> {
   const merged = new Uint8Array(totalBytes);
@@ -49,13 +57,26 @@ async function readBodyBytesCore(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
   strict: boolean,
+  signal?: AbortSignal,
 ): Promise<Uint8Array<ArrayBuffer> | null> {
+  signal?.throwIfAborted();
   const reader = body.getReader();
+  // Do not await cleanup: an upstream cancel hook can stall or reject too.
+  const cancel = () => {
+    try {
+      void reader.cancel().catch(() => {});
+    } catch {
+      // Preserve the original read/timeout failure if cleanup throws synchronously.
+    }
+  };
+  signal?.addEventListener("abort", cancel, { once: true });
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
   try {
     for (;;) {
+      signal?.throwIfAborted();
       const { done, value } = await reader.read();
+      signal?.throwIfAborted();
       if (done) break;
       totalBytes += value.byteLength;
       if (strict) {
@@ -73,7 +94,15 @@ async function readBodyBytesCore(
       }
     }
   } finally {
-    reader.cancel().catch(() => {});
+    signal?.removeEventListener("abort", cancel);
+    cancel();
+    if (signal) {
+      try {
+        reader.releaseLock();
+      } catch {
+        // Best-effort cleanup must not replace the original error.
+      }
+    }
   }
   return concatChunks(chunks, totalBytes);
 }
@@ -97,8 +126,21 @@ export async function readBodyBytes(
 export async function readBodyBytesPartial(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
+  signal?: AbortSignal,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  return readBodyBytesCore(body, maxBytes, false) as Promise<Uint8Array<ArrayBuffer>>;
+  return readBodyBytesCore(body, maxBytes, false, signal) as Promise<Uint8Array<ArrayBuffer>>;
+}
+
+/**
+ * Content-Length が上限を超える応答は本文を読まずに拒否する。
+ * 欠落・過少申告・圧縮転送では宣言を信用せず、読み取り側で実測も制限する。
+ */
+export function rejectDeclaredOversizedBody(response: Response, maxBytes: number): void {
+  const contentLength = response.headers.get("Content-Length");
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
+    void response.body?.cancel().catch(() => {});
+    throw new BodyTooLargeError(maxBytes);
+  }
 }
 
 /**
@@ -111,11 +153,7 @@ export async function readResponseText(
   maxBytes: number,
   timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<string> {
-  const contentLength = response.headers.get("Content-Length");
-  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
-    void response.body?.cancel().catch(() => {});
-    throw new BodyTooLargeError(maxBytes);
-  }
+  rejectDeclaredOversizedBody(response, maxBytes);
   if (!response.body) return "";
   const reader = response.body.getReader();
   return withTimeout(timeoutMs, async (signal) => {
@@ -191,23 +229,42 @@ export function fetchWithTimeout(
  * 各リダイレクト先を isValidFeedUrl で検証し、プライベート IP への
  * オープンリダイレクト経由 SSRF を防ぐ。
  * タイムアウト時は AbortError をスローする。
+ * sharedSignal 指定時は caller が headers/body を含む全体 deadline を所有する。
+ * checkSharedDeadline を併用すると timer 配信前の絶対期限も各 hop 境界で確認する。
+ * 未指定の既存 caller は従来どおり timeoutMs の headers/redirect timeout を使用する。
  */
 export function fetchFollowSafeRedirects(
   url: string,
   init: Omit<RequestInit, "redirect">,
   timeoutMs: number,
+  sharedSignal?: AbortSignal,
+  checkSharedDeadline?: () => void,
 ): Promise<Response> {
-  return withTimeout(timeoutMs, async (signal) => {
+  const check = (signal: AbortSignal) => {
+    if (sharedSignal) checkSharedDeadline?.();
+    signal.throwIfAborted();
+  };
+  const follow = async (signal: AbortSignal) => {
     let currentUrl = url;
     let redirectCount = 0;
     const visitedUrls = new Set<string>([url]);
 
     while (redirectCount < MAX_REDIRECTS) {
+      check(signal);
       const res = await fetch(currentUrl, {
         ...init,
         signal,
         redirect: "manual",
       });
+      if (sharedSignal) {
+        try {
+          // Do not follow/read a late result, even before the abort timer is delivered.
+          check(signal);
+        } catch (err) {
+          cancelResponseBody(res);
+          throw err;
+        }
+      }
 
       // 304 Not Modified はリダイレクトではなく「変更なし」を示す。
       // Location ヘッダーを持たないため、リダイレクト追跡の対象外としてそのまま返す。
@@ -223,7 +280,7 @@ export function fetchFollowSafeRedirects(
         res.status === 308
       ) {
         // 読まない redirect body を解放して接続とバッファを次 hop へ持ち越さない。
-        void res.body?.cancel().catch(() => {});
+        cancelResponseBody(res);
         const location = res.headers.get("location");
         if (!location) throw new Error("Redirect without Location header");
         const nextUrl = new URL(location, currentUrl).href;
@@ -246,7 +303,8 @@ export function fetchFollowSafeRedirects(
       return res;
     }
     throw new Error(`Too many redirects (>=${MAX_REDIRECTS})`);
-  });
+  };
+  return sharedSignal ? follow(sharedSignal) : withTimeout(timeoutMs, follow);
 }
 
 /** Cache-Control 由来の次回フェッチ間隔の下限（秒）— cron 間隔（30 分）以下の値は効果がないためここに合わせる */

@@ -53,6 +53,11 @@ function normalizeConcurrency(concurrency: number, itemCount: number): number {
 
 export interface ConcurrencyLimiter {
   <T>(fn: () => Promise<T>): Promise<T>;
+  /** Take a slot without waiting. False leaves the limiter unchanged. */
+  tryAcquire(): boolean;
+  /** Wait for a FIFO slot. Pair every success with release, including tryAcquire. */
+  acquire(): Promise<void>;
+  release(): void;
 }
 
 /** バッチ単位の FIFO リミッター。ネットワーク待ちとメモリを使う処理を別々に制限する。 */
@@ -60,20 +65,33 @@ export function createConcurrencyLimiter(concurrency: number): ConcurrencyLimite
   const limit = normalizeConcurrency(concurrency, Number.MAX_SAFE_INTEGER);
   let active = 0;
   const waiting: Array<() => void> = [];
-  return async <T>(fn: () => Promise<T>): Promise<T> => {
-    if (active >= limit) {
-      await new Promise<void>((resolve) => waiting.push(resolve));
-    } else {
+  // A waiter inherits the releasing holder's slot, so active is not incremented again.
+  function acquire(): Promise<void> {
+    if (active < limit) {
       active++;
+      return Promise.resolve();
     }
+    return new Promise<void>((resolve) => waiting.push(resolve));
+  }
+  function tryAcquire(): boolean {
+    if (active >= limit) return false;
+    active++;
+    return true;
+  }
+  function release(): void {
+    const next = waiting.shift();
+    if (next) next();
+    else active--;
+  }
+  const run = async <T>(fn: () => Promise<T>): Promise<T> => {
+    await acquire();
     try {
       return await fn();
     } finally {
-      const next = waiting.shift();
-      if (next) next();
-      else active--;
+      release();
     }
   };
+  return Object.assign(run, { acquire, tryAcquire, release });
 }
 
 /** Rotate a bounded-maintenance batch fairly across cycles without persistent state. */

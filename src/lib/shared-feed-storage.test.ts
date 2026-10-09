@@ -852,9 +852,10 @@ describe("explicit shared feed storage migration", () => {
 describe("legacy article write rollout opt-out", () => {
   const legacyOptions = { allowLegacyMigration: false };
 
-  it("keeps initial and subsequent overflow writes in latest/pN arrays with no v2 commit", async () => {
+  it("keeps initial and subsequent overflow writes in latest plus a pending page with no v2 commit", async () => {
     const mock = fakeBucket();
     const meta = metadata();
+    const pendingKey = `feeds/${FEED}/articles/overflow-pending.json`;
     const original = Array.from({ length: 700 }, (_, i) => article(i));
     const initial = await mergeNewArticlesWithChanges(
       mock.bucket,
@@ -865,10 +866,10 @@ describe("legacy article write rollout opt-out", () => {
     );
     expect(initial).toEqual({ newArticles: original });
     expect(JSON.parse(mock.store.get(HEAD)!.body)).toEqual(original.slice(0, 500));
-    expect(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body)).toEqual(
-      original.slice(500),
-    );
+    expect(JSON.parse(mock.store.get(pendingKey)!.body)).toEqual(original.slice(500));
+    expect(mock.store.has(`feeds/${FEED}/articles/p2.json`)).toBe(false);
     expect(meta).toMatchObject({ articleCount: 700, pageCount: 1 });
+    mock.writes.length = 0;
     const added = await mergeNewArticlesWithChanges(
       mock.bucket,
       meta,
@@ -881,12 +882,18 @@ describe("legacy article write rollout opt-out", () => {
       article(-1),
       ...original.slice(0, 499),
     ]);
-    expect(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body)).toEqual(
-      original.slice(499),
-    );
-    expect([...mock.store.keys()].some((key) => key.includes("/segments/"))).toBe(false);
+    expect(JSON.parse(mock.store.get(pendingKey)!.body)).toEqual(original.slice(499));
+    expect(mock.writes).toEqual([
+      HEAD,
+      pendingKey,
+      `feeds/${FEED}/articles/overflow-manifest.json`,
+    ]);
+    expect([...mock.store.keys()].some((key) => key.includes("/segments/spill-"))).toBe(false);
     expect(mock.store.get(HEAD)?.customMetadata?.articleRevision).toBeUndefined();
     expect(meta.articleRevision).toBeUndefined();
+    expect((await readArticlePage(mock.bucket, FEED, 2)).map((article) => article.id)).toEqual(
+      original.slice(499).map((article) => article.id),
+    );
   });
 
   it("preserves legacy latest-only updates, createdAt and unchanged-response no-op semantics", async () => {
@@ -918,6 +925,12 @@ describe("legacy article write rollout opt-out", () => {
     mock.seed(HEAD, articles.slice(0, 500));
     mock.seed(`feeds/${FEED}/articles/p2.json`, articles.slice(500, 1000));
     mock.seed(`feeds/${FEED}/articles/p3.json`, articles.slice(1000));
+    const p2 = `feeds/${FEED}/articles/p2.json`;
+    const p3 = `feeds/${FEED}/articles/p3.json`;
+    const p2Body = mock.store.get(p2)!.body;
+    const p3Body = mock.store.get(p3)!.body;
+    mock.reads.length = 0;
+    mock.writes.length = 0;
     const result = await mergeNewArticlesWithChanges(
       mock.bucket,
       meta,
@@ -927,11 +940,21 @@ describe("legacy article write rollout opt-out", () => {
     );
     expect(result).toEqual({ newArticles: [article(-1)] });
     expect(meta).toMatchObject({ articleCount: 1501, pageCount: 3 });
-    expect(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p4.json`)!.body)).toEqual([
-      article(1499),
+    expect(mock.store.get(p2)!.body).toBe(p2Body);
+    expect(mock.store.get(p3)!.body).toBe(p3Body);
+    expect(mock.store.has(`feeds/${FEED}/articles/p4.json`)).toBe(false);
+    expect(
+      JSON.parse(mock.store.get(`feeds/${FEED}/articles/overflow-pending.json`)!.body),
+    ).toEqual([article(499)]);
+    expect(mock.writes).toEqual([
+      HEAD,
+      `feeds/${FEED}/articles/overflow-pending.json`,
+      `feeds/${FEED}/articles/overflow-manifest.json`,
     ]);
-    expect(mock.writes.every((key) => key === HEAD || /\/p\d+\.json$/.test(key))).toBe(true);
+    expect(mock.reads.filter((key) => /\/p\d+\.json$/.test(key))).toEqual([p3]);
     expect(JSON.parse(mock.store.get(HEAD)!.body)).toBeInstanceOf(Array);
+    expect((await readArticlePage(mock.bucket, FEED, 2))[0]).toEqual(article(499));
+    expect(await allArticles(mock.bucket)).toHaveLength(1501);
   });
 
   it("keeps an actual v2 head on the v2 path even with opt-out and stale legacy metadata", async () => {
@@ -999,7 +1022,9 @@ describe("legacy article write rollout opt-out", () => {
       ).rejects.toBeInstanceOf(LegacyArticleWriteConflictError);
       const stored = [
         ...(JSON.parse(mock.store.get(HEAD)!.body) as Article[]),
-        ...(JSON.parse(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body) as Article[]),
+        ...(JSON.parse(
+          mock.store.get(`feeds/${FEED}/articles/overflow-pending.json`)!.body,
+        ) as Article[]),
       ];
       expect(stored).toHaveLength(501);
       expect(new Set(stored.map((a) => a.id)).size).toBe(501);
@@ -1032,7 +1057,9 @@ describe("legacy article write rollout opt-out", () => {
     ).rejects.toBeInstanceOf(LegacyArticleWriteConflictError);
     expect(meta).toEqual(before);
     expect(mock.writes).toEqual([HEAD]);
-    expect(mock.reads.every((key) => key === HEAD)).toBe(true);
+    expect(mock.reads.every((key) => key === HEAD || key.endsWith("/overflow-manifest.json"))).toBe(
+      true,
+    );
   });
 
   it("does not leak caller metadata mutations when a legacy archive write fails", async () => {
@@ -1041,7 +1068,7 @@ describe("legacy article write rollout opt-out", () => {
     const meta = { ...metadata(), articleCount: 500, knownIds: articles.map((a) => a.id) };
     const before = structuredClone(meta);
     mock.seed(HEAD, articles);
-    mock.fail((key) => key.endsWith("/p2.json"));
+    mock.fail((key) => key.endsWith("/overflow-pending.json"));
     await expect(
       mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
     ).rejects.toThrow("Injected PUT failure");
@@ -1091,5 +1118,192 @@ describe("legacy article write rollout opt-out", () => {
     expect(await allArticles(mock.bucket)).toEqual(articles);
     expect(meta).toEqual(before);
     expect(mock.store.has(`feeds/${FEED}/articles/p2.json`)).toBe(false);
+  });
+
+  it.each([
+    [499, false],
+    [500, false],
+    [501, true],
+  ])("treats %i articles at the latest-page boundary (archive %s)", async (count, spills) => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    const articles = Array.from({ length: count }, (_, index) => article(index));
+    await mergeNewArticlesWithChanges(mock.bucket, meta, articles, [], legacyOptions);
+    expect(meta).toMatchObject({ articleCount: count, pageCount: spills ? 1 : 0 });
+    expect(mock.store.has(`feeds/${FEED}/articles/overflow-manifest.json`)).toBe(spills);
+    expect(JSON.parse(mock.store.get(HEAD)!.body)).toHaveLength(Math.min(count, 500));
+    if (spills) {
+      expect(
+        JSON.parse(mock.store.get(`feeds/${FEED}/articles/overflow-pending.json`)!.body),
+      ).toEqual([article(500)]);
+    }
+  });
+
+  it("stores one copy when the response repeats an id that crosses into the archive", async () => {
+    const mock = fakeBucket();
+    const meta = { ...metadata(), articleCount: 500, knownIds: [article(0).id] };
+    const latest = Array.from({ length: 500 }, (_, index) => article(index));
+    mock.seed(HEAD, latest);
+    meta.knownIds = latest.map((item) => item.id);
+    const repeated = article(-1, { title: "second" });
+    const result = await mergeNewArticlesWithChanges(
+      mock.bucket,
+      meta,
+      [article(-1), repeated],
+      [],
+      legacyOptions,
+    );
+    expect(result.newArticles).toEqual([repeated]);
+    expect(meta.articleCount).toBe(501);
+    const pending = JSON.parse(
+      mock.store.get(`feeds/${FEED}/articles/overflow-pending.json`)!.body,
+    ) as Article[];
+    expect(pending).toEqual([article(499)]);
+    expect(new Set((await allArticles(mock.bucket)).map((item) => item.id)).size).toBe(501);
+  });
+
+  it("adopts an uncommitted pending page without duplicating the displaced article", async () => {
+    const mock = fakeBucket();
+    const latest = Array.from({ length: 500 }, (_, index) => article(index));
+    const meta = { ...metadata(), articleCount: 500, knownIds: latest.map((item) => item.id) };
+    mock.seed(HEAD, latest);
+    mock.seed(`feeds/${FEED}/articles/overflow-pending.json`, [article(499)]);
+    await mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions);
+    expect(
+      JSON.parse(mock.store.get(`feeds/${FEED}/articles/overflow-pending.json`)!.body),
+    ).toEqual([article(499)]);
+    expect(meta.articleCount).toBe(501);
+  });
+
+  it("seals full spill segments once and leaves their bytes unchanged", async () => {
+    const mock = fakeBucket();
+    const meta = metadata();
+    const original = Array.from({ length: 2000 }, (_, index) => article(index));
+    await mergeNewArticlesWithChanges(mock.bucket, meta, original, [], legacyOptions);
+    const spillKeys = [...mock.store.keys()]
+      .filter((key) => key.includes("/segments/spill-"))
+      .sort();
+    expect(spillKeys).toEqual([
+      `feeds/${FEED}/articles/segments/spill-0.json`,
+      `feeds/${FEED}/articles/segments/spill-1.json`,
+      `feeds/${FEED}/articles/segments/spill-2.json`,
+    ]);
+    const bodies = spillKeys.map((key) => mock.store.get(key)!.body);
+    expect(mock.store.has(`feeds/${FEED}/articles/overflow-pending.json`)).toBe(false);
+    expect(meta.pageCount).toBe(3);
+    await mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions);
+    expect(spillKeys.map((key) => mock.store.get(key)!.body)).toEqual(bodies);
+    const page = await readArticlePage(mock.bucket, FEED, 2);
+    expect(page.map((item) => item.id)).toEqual(
+      [article(499), ...original.slice(500, 999)].map((item) => item.id),
+    );
+  });
+
+  it("appends to a multi-page legacy history by reading only the tail page", async () => {
+    const mock = fakeBucket();
+    const pages = 5;
+    const latest = Array.from({ length: 500 }, (_, index) => article(index));
+    const meta = {
+      ...metadata(),
+      articleCount: 500 * (pages + 1),
+      pageCount: pages,
+      knownIds: latest.map((item) => item.id),
+    };
+    mock.seed(HEAD, latest);
+    for (let page = 2; page <= pages + 1; page++) {
+      mock.seed(
+        `feeds/${FEED}/articles/p${page}.json`,
+        Array.from({ length: 500 }, (_, index) => article(500 * (page - 1) + index)),
+      );
+    }
+    const frozen = mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body;
+    mock.reads.length = 0;
+    mock.writes.length = 0;
+    await mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions);
+    expect(mock.reads.filter((key) => /\/p\d+\.json$/.test(key))).toEqual([
+      `feeds/${FEED}/articles/p6.json`,
+    ]);
+    expect(mock.writes).toEqual([
+      HEAD,
+      `feeds/${FEED}/articles/overflow-pending.json`,
+      `feeds/${FEED}/articles/overflow-manifest.json`,
+    ]);
+    expect(mock.store.get(`feeds/${FEED}/articles/p2.json`)!.body).toBe(frozen);
+    expect(meta.pageCount).toBe(pages + 1);
+  });
+
+  it("sets oversizeAlert at the page cap without rewriting frozen legacy pages", async () => {
+    const mock = fakeBucket();
+    const latest = Array.from({ length: PAGE_SIZE }, (_, index) => article(index));
+    const meta = {
+      ...metadata(),
+      articleCount: PAGE_SIZE + (MAX_PAGES - 2) * PAGE_SIZE + 501,
+      pageCount: MAX_PAGES - 1,
+      knownIds: latest.map((item) => item.id),
+    };
+    mock.seed(HEAD, latest);
+    const middle = `feeds/${FEED}/articles/p${MAX_PAGES - 1}.json`;
+    const tail = `feeds/${FEED}/articles/p${MAX_PAGES}.json`;
+    mock.seed(
+      middle,
+      Array.from({ length: PAGE_SIZE }, (_, index) => article(100_000 + index)),
+    );
+    mock.seed(
+      tail,
+      Array.from({ length: 501 }, (_, index) => article(200_000 + index)),
+    );
+    const middleBody = mock.store.get(middle)!.body;
+    const tailBody = mock.store.get(tail)!.body;
+    mock.reads.length = 0;
+    await mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions);
+    expect(meta.oversizeAlert).toBe(true);
+    expect(meta.pageCount).toBe(MAX_PAGES - 1);
+    expect(mock.store.get(middle)!.body).toBe(middleBody);
+    expect(mock.store.get(tail)!.body).toBe(tailBody);
+    expect(mock.reads.filter((key) => /\/p\d+\.json$/.test(key))).toEqual([tail]);
+    const last = await readArticlePage(mock.bucket, FEED, MAX_PAGES);
+    expect(last[0]).toEqual(article(100_000 + PAGE_SIZE - 1));
+    expect(last).toHaveLength(502);
+    expect(last.at(-1)).toEqual(article(200_500));
+  });
+
+  it("includes spilled and frozen pages when an explicit v2 migration runs", async () => {
+    const mock = fakeBucket();
+    const articles = Array.from({ length: 1500 }, (_, index) => article(index));
+    const meta = {
+      ...metadata(),
+      articleCount: 1500,
+      pageCount: 2,
+      knownIds: articles.map((item) => item.id),
+    };
+    mock.seed(HEAD, articles.slice(0, 500));
+    mock.seed(`feeds/${FEED}/articles/p2.json`, articles.slice(500, 1000));
+    mock.seed(`feeds/${FEED}/articles/p3.json`, articles.slice(1000));
+    await mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions);
+    const migrated = await migrateFeedArticleStorage(mock.bucket, meta);
+    expect(migrated.migrated).toBe(true);
+    const stored = await allArticles(mock.bucket);
+    expect(stored).toHaveLength(1501);
+    expect(new Set(stored.map((item) => item.id)).size).toBe(1501);
+    expect(stored.some((item) => item.id === article(-1).id)).toBe(true);
+    expect(stored.some((item) => item.id === article(1499).id)).toBe(true);
+  });
+
+  it("rejects a corrupt overflow manifest before it changes the latest page", async () => {
+    const mock = fakeBucket();
+    const latest = Array.from({ length: 500 }, (_, index) => article(index));
+    const meta = { ...metadata(), articleCount: 500, knownIds: latest.map((item) => item.id) };
+    mock.seed(HEAD, latest);
+    mock.store.set(`feeds/${FEED}/articles/overflow-manifest.json`, {
+      body: JSON.stringify({ version: 1 }),
+      etag: "bad",
+    });
+    const before = structuredClone(meta);
+    const head = mock.store.get(HEAD);
+    await expect(
+      mergeNewArticlesWithChanges(mock.bucket, meta, [article(-1)], [], legacyOptions),
+    ).rejects.toThrow("Invalid overflow manifest");
+    expect(meta).toEqual(before);
+    expect(mock.store.get(HEAD)).toBe(head);
   });
 });

@@ -33,6 +33,23 @@ describe("createConcurrencyLimiter", () => {
     expect(results.slice(1).every((result) => result.status === "fulfilled")).toBe(true);
   });
 
+  it("tryAcquire does not wait and release frees a slot for the next waiter", async () => {
+    const limit = createConcurrencyLimiter(1);
+    expect(limit.tryAcquire()).toBe(true);
+    expect(limit.tryAcquire()).toBe(false);
+    let released = false;
+    const waiting = limit.acquire().then(() => {
+      released = true;
+    });
+    await Promise.resolve();
+    expect(released).toBe(false);
+    limit.release();
+    await waiting;
+    expect(released).toBe(true);
+    limit.release();
+    expect(await limit(async () => "ok")).toBe("ok");
+  });
+
   it("releases its slot after a synchronous throw", async () => {
     const limit = createConcurrencyLimiter(1);
     await expect(

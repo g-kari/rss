@@ -86,10 +86,10 @@ export default function GlobalFilterMenu({ article, globalFilter, onSaveGlobalFi
           className="min-w-[220px] max-h-[320px] overflow-y-auto"
         >
           <div className="px-3 pt-2 pb-1">
-            <p className="text-[10px] font-medium tracking-[0.15em] uppercase text-text-muted">
+            <p className="text-meta font-medium tracking-[0.15em] uppercase text-text-muted">
               グローバルフィルター
             </p>
-            <p className="text-[10px] text-text-faint mt-0.5">全フィードに適用</p>
+            <p className="text-meta text-text-faint mt-0.5">全フィードに適用</p>
           </div>
           <button
             role="menuitem"

@@ -62,9 +62,9 @@ export default function ArticleAiPanel({
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <p className="text-[10px] tracking-[0.1em] uppercase text-text-faint">AI 要約</p>
+              <p className="text-meta tracking-[0.1em] uppercase text-text-faint">AI 要約</p>
               {aiResultProvider && (
-                <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-surface-subtle">
+                <span className="text-meta text-text-muted px-1.5 py-0.5 rounded bg-surface-subtle">
                   {aiResultProvider === "browser" ? "Chrome 要約" : "Workers AI"}
                 </span>
               )}

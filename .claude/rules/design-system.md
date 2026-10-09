@@ -13,42 +13,51 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 コンポーネントでは **セマンティックトークン** を使う。石版色やzinc値を直接書かない。
 
-| トークン               | ライト (stone)     | ダーク (zinc)      | 用途                                                                |
-| ---------------------- | ------------------ | ------------------ | ------------------------------------------------------------------- |
-| `surface-base`         | stone-50           | zinc-950           | メイン背景                                                          |
-| `surface-elevated`     | white              | zinc-900           | サイドバー・カード                                                  |
-| `surface-subtle`       | stone-100          | zinc-800           | 中立の補助面                                                        |
-| `surface-hover`        | stone-50           | zinc-800/50        | ホバー状態                                                          |
-| `selection-surface`    | teal-50 (#f0fdfa)  | #102c2b            | フィード・記事・タブの現在位置の背景                                |
-| `selection-accent`     | teal-700 (#0f766e) | teal-300 (#5eead4) | 現在位置の側線・下線・ナビ文字 (選択背景上 5.25:1 / 10.02:1)        |
-| `border-default`       | stone-200          | zinc-800           | 主ボーダー                                                          |
-| `border-subtle`        | stone-100          | zinc-800/50        | 薄ボーダー                                                          |
-| `text-strong`          | stone-800          | zinc-200           | 見出し・選択中                                                      |
-| `text-default`         | stone-600          | zinc-300           | 通常テキスト                                                        |
-| `text-soft`            | stone-500          | zinc-400           | 本文                                                                |
-| `text-muted`           | stone-500          | zinc-400           | バッジ数字・ラベル                                                  |
-| `text-faint`           | stone-500          | zinc-400           | タイムスタンプ・空状態 (WCAG AA: ~4.6:1 / ~5.75:1 (WCAG AA))        |
-| `status-error`         | rose-600 (#e11d48) | rose-400 (#fb7185) | エラー状態                                                          |
-| `ink`                  | stone-800          | zinc-200           | 主アクション背景                                                    |
-| `ink-hover`            | stone-700          | zinc-300           | 主アクションホバー                                                  |
-| `ink-text`             | white              | zinc-950           | 主アクション上のテキスト                                            |
-| `accent-dot`           | rose-400           | indigo-500         | 未読ドット                                                          |
-| `error`                | rose-600           | rose-400           | エラーテキスト (WCAG AA: 4.7:1 / 5.4:1)                             |
-| `bookmark`             | amber-400          | amber-400          | ブックマーク                                                        |
-| `toast-success`        | emerald-500        | emerald-500        | ToastContainer success icon (#1169 Phase 1)                         |
-| `toast-error`          | rose-500           | rose-500           | ToastContainer error icon (#1169 Phase 1)                           |
-| `toast-undo`           | amber-500          | amber-500          | ToastContainer undo icon + progress bar (#1169 Phase 1)             |
-| `memo`                 | amber-400          | amber-400          | NoteIcon メモあり indicator (#1169 Phase 2、bookmark と別 semantic) |
-| `like`                 | rose-400           | rose-400           | EngagementSegmentButton いいね active 背景 (#1169 Phase 2)          |
-| `action-danger`        | rose-500 (#f43f5e) | rose-500 (#f43f5e) | 破壊的アクション button 背景 (ConfirmModal danger、#1169 Phase 3)   |
-| `action-danger-hover`  | rose-600 (#e11d48) | rose-600 (#e11d48) | 同 hover (#1169 Phase 3)                                            |
-| `border-error`         | rose-400 (#fb7185) | rose-400 (#fb7185) | 入力バリデーションエラーの border (#1169 Phase 3)                   |
-| `feed-star`            | amber-400          | amber-400          | スター付き (priority high) active (#1169 Phase 4)                   |
-| `feed-star-hover`      | amber-300          | amber-300          | 同 hover (#1169 Phase 4)                                            |
-| `feed-mute`            | amber-500          | amber-500          | ミュート中 active (#1169 Phase 4)                                   |
-| `feed-mute-hover`      | amber-400          | amber-400          | 同 hover (#1169 Phase 4)                                            |
-| `error-hover`          | rose-300           | rose-300           | error 系アイコンの hover (nsfw / fetchError、#1169 Phase 4)         |
-| `collection-indicator` | indigo-400         | indigo-400         | コレクション所属あり indicator (#1169 Phase 4)                      |
+| トークン               | ライト (stone)     | ダーク (zinc)      | 用途                                                                                |
+| ---------------------- | ------------------ | ------------------ | ----------------------------------------------------------------------------------- |
+| `surface-base`         | stone-50           | zinc-950           | メイン背景                                                                          |
+| `surface-elevated`     | white              | zinc-900           | サイドバー・カード                                                                  |
+| `surface-subtle`       | stone-100          | zinc-800           | 中立の補助面                                                                        |
+| `surface-hover`        | stone-50           | zinc-800/50        | ホバー状態                                                                          |
+| `selection-surface`    | teal-50 (#f0fdfa)  | #102c2b            | フィード・記事・タブの現在位置の背景                                                |
+| `selection-accent`     | teal-700 (#0f766e) | teal-300 (#5eead4) | 現在位置の側線・下線・ナビ文字 (選択背景上 5.25:1 / 10.02:1)。`accent` の別名       |
+| `surface-nav`          | stone-100          | zinc-950           | サイドバー面。List (`surface-base`) < Reader (`surface-elevated`) の段階 (#1382)    |
+| `accent`               | teal-700           | teal-300           | UI accent (#1386): 現在位置 / アクティブタブ / 主 CTA の背景 / focus の補助表現だけ |
+| `accent-hover`         | teal-800           | teal-200           | 主 CTA の hover                                                                     |
+| `accent-subtle`        | teal-50            | #102c2b            | 選択背景 (`selection-surface` の実体)                                               |
+| `accent-contrast`      | white              | zinc-950           | `accent` 背景上のテキスト                                                           |
+| `border-default`       | stone-200          | zinc-800           | 主ボーダー                                                                          |
+| `border-subtle`        | stone-100          | zinc-800/50        | 薄ボーダー                                                                          |
+| `text-strong`          | stone-800          | zinc-200           | 見出し・選択中                                                                      |
+| `text-default`         | stone-600          | zinc-300           | 通常テキスト                                                                        |
+| `text-soft`            | stone-500          | zinc-400           | 本文                                                                                |
+| `text-muted`           | stone-500          | zinc-400           | バッジ数字・ラベル                                                                  |
+| `text-faint`           | stone-500          | zinc-400           | タイムスタンプ・空状態 (WCAG AA: ~4.6:1 / ~5.75:1 (WCAG AA))                        |
+| `status-error`         | rose-600 (#e11d48) | rose-400 (#fb7185) | エラー状態                                                                          |
+| `ink`                  | stone-800          | zinc-200           | 主アクション背景                                                                    |
+| `ink-hover`            | stone-700          | zinc-300           | 主アクションホバー                                                                  |
+| `ink-text`             | white              | zinc-950           | 主アクション上のテキスト                                                            |
+| `accent-dot`           | rose-400           | indigo-500         | 未読ドット                                                                          |
+| `error`                | rose-600           | rose-400           | エラーテキスト (WCAG AA: 4.7:1 / 5.4:1)                                             |
+| `bookmark`             | amber-400          | amber-400          | ブックマーク                                                                        |
+| `toast-success`        | emerald-500        | emerald-500        | ToastContainer success icon (#1169 Phase 1)                                         |
+| `toast-error`          | rose-500           | rose-500           | ToastContainer error icon (#1169 Phase 1)                                           |
+| `toast-undo`           | amber-500          | amber-500          | ToastContainer undo icon + progress bar (#1169 Phase 1)                             |
+| `memo`                 | amber-400          | amber-400          | NoteIcon メモあり indicator (#1169 Phase 2、bookmark と別 semantic)                 |
+| `like`                 | rose-400           | rose-400           | EngagementSegmentButton いいね active 背景 (#1169 Phase 2)                          |
+| `action-danger`        | rose-500 (#f43f5e) | rose-500 (#f43f5e) | 破壊的アクション button 背景 (ConfirmModal danger、#1169 Phase 3)                   |
+| `action-danger-hover`  | rose-600 (#e11d48) | rose-600 (#e11d48) | 同 hover (#1169 Phase 3)                                                            |
+| `border-error`         | rose-400 (#fb7185) | rose-400 (#fb7185) | 入力バリデーションエラーの border (#1169 Phase 3)                                   |
+| `feed-star`            | amber-400          | amber-400          | スター付き (priority high) active (#1169 Phase 4)                                   |
+| `feed-star-hover`      | amber-300          | amber-300          | 同 hover (#1169 Phase 4)                                                            |
+| `feed-mute`            | amber-500          | amber-500          | ミュート中 active (#1169 Phase 4)                                                   |
+| `feed-mute-hover`      | amber-400          | amber-400          | 同 hover (#1169 Phase 4)                                                            |
+| `error-hover`          | rose-300           | rose-300           | error 系アイコンの hover (nsfw / fetchError、#1169 Phase 4)                         |
+| `collection-indicator` | indigo-400         | indigo-400         | コレクション所属あり indicator (#1169 Phase 4)                                      |
+
+**accent と意味色の分離 (#1386)**: `accent` 系は「いま選んでいる / 押すべき主操作」だけを表す。`bookmark` / `like` / `memo` / `error` / `status-*` / `feed-star` / `feed-mute` / `accent-dot` (未読) は意味色なので accent に統合・流用しない。破壊的操作は `action-danger`。主 CTA は `bg-accent hover:bg-accent-hover text-accent-contrast`、確認ダイアログなど中立の操作は従来の `bg-ink`。新しい色を足すときは raw palette 値を直書きせず `@theme` にトークンを追加する。
+
+**3 ペインの面 (#1382)**: Sidebar `bg-surface-nav` → List `bg-surface-base` → Reader `bg-surface-elevated`。Reader を最も明るく静かな面にする。`surface-nav` 上の補助ボタンの hover は `surface-hover` (`surface-subtle` は面と同色になる)。
 
 **使用例**: `bg-surface-base`, `text-text-strong`, `border-border-default`, `bg-ink`, `text-ink-text`, `text-error`
 
@@ -81,20 +90,47 @@ paths: "src/components/**/*.tsx,app/globals.css"
 
 ## タイポグラフィ
 
-Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）以上を最小値にする。主要な FeedViewTabs の「記事・画像・動画・SNS」はこの組み合わせを使い、`whitespace-nowrap` でラベルを一行に保つ。アイコンはラベルの上に置き、150px のリサイズ最小幅 / 200px の既定幅 / 220px のサイドバー / 320px のモバイルで収める。light / dark、44px の操作高（200px 以上は幅も 44px 以上）を production CSS の native fixture で確認する。150px では従来の 4 列を保ち、操作幅は 24px 以上を確認する。これは #1384 の主要ビュータブの段階対応。
+Navigation / tab label は `text-xs leading-4`（デフォルト 12px / 16px）以上を最小値にする。主要な FeedViewTabs の「記事・画像・動画・SNS」はこの組み合わせを使い、`whitespace-nowrap` でラベルを一行に保つ。アイコンはラベルの上に置き、150px のリサイズ最小幅 / 200px の既定幅 / 220px のサイドバー / 320px のモバイルで収める。light / dark、44px の操作高（200px 以上は幅も 44px 以上）を production CSS の native fixture で確認する。150px では従来の 4 列を保ち、操作幅は 24px 以上を確認する。これは #1384 の主要ビュータブだけの段階対応で、他の navigation / control / metadata / Reader title の全体 scale は別途評価する。
 
-Reader title は `.reader-title` の semantic role を使う。タイトルだけの `.reader-typography` を named inline-size container とし、利用できる文字幅が35rem未満なら1.5rem、35rem以上なら1.75rem、40rem以上なら2rem（既定24 / 28 / 32px）。viewport breakpointは本文ペインのリサイズ幅と一致しないため使わない。`font-medium`、既存の3行clamp / em基準の予約高、`text-text-strong`を維持し、`overflow-wrap: anywhere`で長い英単語を収める。root remに従ってブラウザーの既定文字拡大も反映する。header / popup / bodyをcontainerへ含めない。他のnavigation / control / metadataの全体scaleは #1384 の残課題。
+| 用途                       | クラス                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| UI フォント・記事本文      | `font-sans` (Reddit Sans + IBM Plex Sans JP)                                      |
+| 記事タイトル (ArticleView) | `reader-title font-medium text-text-strong tracking-[0.02em]` (24 / 28 / 32px)    |
+| 未読記事タイトル           | `text-[13px] font-medium text-text-strong`                                        |
+| 既読記事タイトル           | `text-[13px] font-normal text-text-muted`                                         |
+| 記事本文                   | `text-[16px] leading-[1.9] tracking-[0.02em] text-text-soft` (`.article-content`) |
+| メタ情報                   | `text-meta text-text-muted`                                                       |
+| フィード名                 | `text-[13px]`                                                                     |
+| セクションヘッダー         | `text-meta font-medium tracking-[0.25em] uppercase text-text-muted`               |
 
-| 用途                       | クラス                                                                              |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| UI フォント・記事本文      | `font-sans` (Reddit Sans + IBM Plex Sans JP)                                        |
-| 記事タイトル (ArticleView) | `reader-title font-medium text-text-strong tracking-[0.02em]`（24 / 28 / 32px相当） |
-| 未読記事タイトル           | `text-[13px] font-medium text-text-strong`                                          |
-| 既読記事タイトル           | `text-[13px] font-normal text-text-muted`                                           |
-| 記事本文                   | `text-[16px] leading-[1.9] tracking-[0.02em] text-text-soft` (`.article-content`)   |
-| メタ情報                   | `text-[11px] text-text-muted`                                                       |
-| フィード名                 | `text-[13px]`                                                                       |
-| セクションヘッダー         | `text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted`               |
+### Type scale (#1384)
+
+`app/globals.css` の `@theme` に用途別の font-size token を定義している。`text-[10px]` / `text-[11px]` / `text-[12px]` を新規に直書きせず、次を使う。
+
+| クラス              | サイズ   | 用途                                                      |
+| ------------------- | -------- | --------------------------------------------------------- |
+| `text-badge`        | 10px     | バッジ・カウンタ・キー表記だけ (文章・ラベルには使わない) |
+| `text-meta`         | 11px     | 副次メタ情報 (時刻・フィード名・件数)、セクション見出し   |
+| `text-control`      | 12px     | ナビ / タブ / コントロールラベルの下限                    |
+| `text-ui`           | 13px     | サイドバー・一覧の標準文字                                |
+| `text-primary`      | 14px     | 主要コントロール                                          |
+| `text-reader-title` | 24〜32px | Reader の記事タイトルの viewport 基準 fallback token      |
+
+Reader の記事タイトルと本文は管理 UI とは別の階層として扱う。
+
+Reader title は `.reader-title` の semantic role を使う。タイトルだけの `.reader-typography` を named inline-size container とし、利用できる文字幅が35rem未満なら1.5rem、35rem以上なら1.75rem、40rem以上なら2rem（既定24 / 28 / 32px）。viewport 基準の `text-reader-title` token は本文ペインのリサイズ幅と一致しないため、Reader の見出しでは container 幅で上書きする。`font-medium`、既存の3行clamp / em基準の予約高、`text-text-strong`を維持し、`overflow-wrap: anywhere`で長い英単語を収める。root remに従ってブラウザーの既定文字拡大も反映する。header / popup / bodyをcontainerへ含めない。
+
+## Motion (#1387)
+
+時間と easing は `app/globals.css` の `--motion-*` / `--ease-*` に集約する。
+
+| 用途     | 時間  | Tailwind       | 例                                                   |
+| -------- | ----- | -------------- | ---------------------------------------------------- |
+| fast     | 150ms | `duration-150` | hover / press / 色・opacity                          |
+| standard | 200ms | `duration-200` | menu / tab / ヘッダー表示切替 / 一覧の小さな状態変化 |
+| slow     | 300ms | `duration-300` | pane / modal / ギャラリー再配置などの構造遷移        |
+
+easing は `--ease-interaction` (往復する変化) / `--ease-entrance` (出現: `animate-fade-up` / `animate-slide-up` / `animate-slide-in-right`) / `--ease-exit` (退場: `animate-fade-out`) の 3 種だけ。fade は出現・退場の opacity、slide は画面端から現れる面、scale は退場時の `animate-fade-out` だけに使う。進行状況バー・Undo の残り時間・読み上げなど時計として働く時間は scale に含めない。`prefers-reduced-motion: reduce` では transition / animation を即時化し、`animate-fade-up` / `animate-slide-up` / `animate-slide-in-right` の移動は止める。状態理解に必要な `animate-spin` は残す。
 
 ## レイアウト
 

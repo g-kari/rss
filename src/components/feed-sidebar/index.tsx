@@ -398,7 +398,7 @@ function FeedSidebar({
   return (
     <nav
       aria-label="フィード一覧"
-      className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-elevated"
+      className="h-full flex flex-col min-h-0 overflow-hidden border-r border-border-default bg-surface-nav"
     >
       {/* ヘッダー */}
       <SidebarHeader
@@ -480,7 +480,7 @@ function FeedSidebar({
           </button>
           <span className="flex items-center gap-1 flex-shrink-0">
             {totalUnread > 0 && (
-              <span className="text-[11px] text-text-muted tabular-nums">
+              <span className="text-meta text-text-muted tabular-nums">
                 {formatCount(totalUnread)}
               </span>
             )}
@@ -559,7 +559,7 @@ function FeedSidebar({
         <div className="px-4 py-1">
           <button
             onClick={saveDialog.open}
-            className="flex items-center gap-1.5 text-[11px] text-text-faint hover:text-text-muted transition-colors duration-200"
+            className="flex items-center gap-1.5 text-meta text-text-faint hover:text-text-muted transition-colors duration-200"
             title="URL から記事を保存"
           >
             <svg
@@ -624,14 +624,14 @@ function FeedSidebar({
 
         {loadError && feeds.length === 0 && (
           <div className="px-4 py-3 text-center">
-            <p role="alert" className="text-[12px] text-error mb-2">
+            <p role="alert" className="text-control text-error mb-2">
               {loadError}
             </p>
             {onRetry && (
               <button
                 type="button"
                 onClick={onRetry}
-                className="text-[12px] text-text-default hover:text-text-strong underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
+                className="text-control text-text-default hover:text-text-strong underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded"
               >
                 再試行
               </button>
@@ -712,7 +712,7 @@ function FeedSidebar({
               if (feedId) handleDropFeedOnGroup(feedId, null);
               setDragOverUngrouped(false);
             }}
-            className={`mx-4 my-2 px-3 py-2 rounded border border-dashed text-[11px] text-center transition-colors ${
+            className={`mx-4 my-2 px-3 py-2 rounded border border-dashed text-meta text-center transition-colors ${
               dragOverUngrouped
                 ? "border-text-muted bg-surface-subtle text-text-strong"
                 : "border-border-default text-text-muted"
@@ -773,7 +773,7 @@ function FeedSidebar({
       />
       {importMessage && (
         <div
-          className={`px-3 py-1.5 text-[11px] border-t border-border-subtle ${importMessage.isError ? "text-error" : "text-text-muted"}`}
+          className={`px-3 py-1.5 text-meta border-t border-border-subtle ${importMessage.isError ? "text-error" : "text-text-muted"}`}
         >
           {importMessage.text}
         </div>

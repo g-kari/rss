@@ -38,7 +38,7 @@ export default function RecommendationSection({
     <div className="py-1">
       {/* ヘッダー */}
       <div className="flex items-center justify-between px-4 py-1">
-        <span className="text-[10px] font-medium tracking-[0.25em] uppercase text-text-muted">
+        <span className="text-meta font-medium tracking-[0.25em] uppercase text-text-muted">
           おすすめ
         </span>
         <div className="flex items-center gap-1">
@@ -69,7 +69,7 @@ export default function RecommendationSection({
       </div>
 
       {topics.length > 0 && (
-        <div className="px-4 pb-1 text-[10px] text-text-faint truncate" title={topics.join("、")}>
+        <div className="px-4 pb-1 text-meta text-text-faint truncate" title={topics.join("、")}>
           関心トピック: {topics.join("・")}
         </div>
       )}

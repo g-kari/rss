@@ -386,7 +386,7 @@ function FeedItem({
           onKeyDown={handleCategoryKeyDown}
           onClick={(e) => e.stopPropagation()}
           maxLength={50}
-          className="flex-1 text-[12px] bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted min-w-0 placeholder-text-faint"
+          className="flex-1 text-control bg-surface-base border border-border-default rounded px-1.5 py-0.5 text-text-strong outline-none focus:border-text-muted min-w-0 placeholder-text-faint"
         />
       ) : (
         <FeedTitleContent
@@ -400,7 +400,7 @@ function FeedItem({
       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
         {count > 0 && (
           <span
-            className={`text-[11px] ${feed.fetchError ? "text-error" : "text-text-muted"} tabular-nums group-hover:opacity-0 transition-opacity duration-150 ${menuOpen ? "opacity-0" : ""}`}
+            className={`text-meta ${feed.fetchError ? "text-error" : "text-text-muted"} tabular-nums group-hover:opacity-0 transition-opacity duration-150 ${menuOpen ? "opacity-0" : ""}`}
           >
             {formatCount(count)}
           </span>

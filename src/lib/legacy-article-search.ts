@@ -3,9 +3,11 @@ import type { Article, ReadState, UserSubscription } from "../types";
 import { compareByDateDesc } from "./article-utils";
 import { pMap } from "./concurrency";
 import { compileSearchQuery, type SearchContext } from "./full-text-search";
+import { loadReadySearchIndex } from "./article-search-r2";
 import {
   MAX_USER_ARTICLES,
   readFeedArticleObject,
+  readFeedArticleRevision,
   readFeedArticleSnapshot,
   readFeedMeta,
 } from "./shared-feed";
@@ -49,7 +51,8 @@ function offerArticle(heap: Article[], article: Article, limit: number): void {
 /**
  * Preserve the original q-path semantics: saved copies win before matching, then subscription
  * order, then latest/archive order. Keyword and TTL filters do not apply to full-text search.
- * Physical reads support both legacy arrays and v2 segments. At most four bodies are in flight;
+ * A ready per-feed R2 index replaces the page scan. Otherwise physical reads support both
+ * legacy arrays and v2 segments. At most four bodies are in flight;
  * only top-K matching bodies and exact seen IDs are retained across physical-object batches.
  */
 export async function searchLegacyArticles(
@@ -89,6 +92,12 @@ export async function searchLegacyArticles(
   accept(savedArticles);
   // Process feeds in subscription order; parallel completion must not decide duplicate winners.
   for (const { sub, meta } of sources) {
+    const revision = await readFeedArticleRevision(bucket, sub.feedHash, meta);
+    const indexed = await loadReadySearchIndex(bucket, sub.feedHash, revision);
+    if (indexed) {
+      accept(indexed);
+      continue;
+    }
     const snapshot = await readFeedArticleSnapshot(bucket, sub.feedHash, meta);
     accept(snapshot.latest);
     snapshot.latest = []; // Only the heap needs to retain matching latest article bodies.

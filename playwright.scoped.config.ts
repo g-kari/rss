@@ -26,6 +26,8 @@ export default defineConfig({
     "article-note.spec.ts",
     "feed-add-paste.spec.ts",
     "article-actions-keyboard.spec.ts",
+    "ogp-queue.spec.ts",
+    "thumbnail-candidates.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
