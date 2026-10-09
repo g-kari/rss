@@ -47,6 +47,10 @@ APP_BASE_URL = "https://rss.0g0.xyz"
 #   `npx wrangler secret put BETA_ALLOWED_SUBS`
 # vars と secret は同名で共存できないため、wrangler.toml には宣言しない。
 VAPID_SUBJECT = "mailto:admin@0g0.xyz"
+# MCP/OAuth gates. Both are inert (fail closed) until the dedicated OAUTH_KV binding below
+# is provisioned and uncommented. RSS_MCP_SUBSCRIBE_ENABLED additionally needs RSS_MCP_ENABLED.
+RSS_MCP_ENABLED = "true"
+RSS_MCP_SUBSCRIBE_ENABLED = "true"
 # Cloudflare AI toMarkdown API (全文取得フォールバック用)
 # CLOUDFLARE_API_TOKEN は `npx wrangler secret put CLOUDFLARE_API_TOKEN` で設定
 
@@ -64,8 +68,8 @@ bucket_name = "rss-reader-data"
 # migrations_dir = "migrations/article-search"
 # Binding alone does not activate D1 reads/writes: RSS_ARTICLE_SEARCH_INDEX=true is required.
 
-# MCP/OAuth is disabled unless RSS_MCP_ENABLED="true" AND a dedicated OAUTH_KV
-# binding are supplied after approved provisioning/rollout. Never share RATE_LIMIT
+# MCP/OAuth needs RSS_MCP_ENABLED="true" (set in [vars]) AND a dedicated OAUTH_KV
+# binding; without the binding MCP stays disabled. Never share RATE_LIMIT
 # storage or enable this while only merging code. See docs/mcp.md.
 # [[kv_namespaces]]
 # binding = "OAUTH_KV"

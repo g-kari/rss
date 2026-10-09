@@ -2,7 +2,7 @@
 
 ## Public-feed subscription additions (separate opt-in)
 
-The optional `add_subscription({url})` tool requires the separate `rss:subscriptions:add` OAuth scope and `RSS_MCP_SUBSCRIBE_ENABLED="true"`, in addition to the existing approved MCP setup. Both feature gates remain unset/off in committed configuration. Existing `rss:read` grants do not gain write authority. A write-only grant does not gain stored article or subscription read authority. Scope expansion, production configuration, plugin installation, and user-controlled OAuth consent remain separate approval steps after exact-diff review and verification.
+The optional `add_subscription({url})` tool requires the separate `rss:subscriptions:add` OAuth scope and `RSS_MCP_SUBSCRIBE_ENABLED="true"`, in addition to the existing approved MCP setup. Both gates are set to `"true"` in the committed `wrangler.toml` `[vars]` (Workers Builds deploys them from master), but MCP stays disabled until the dedicated `OAUTH_KV` binding is provisioned and added to `wrangler.toml` (this is a separate step; no secrets are required by this feature). Existing `rss:read` grants do not gain write authority. A write-only grant does not gain stored article or subscription read authority. Scope expansion, production configuration, plugin installation, and user-controlled OAuth consent remain separate approval steps after exact-diff review and verification.
 
 The authorization server advertises its scope catalogue. When additions are enabled, the resource has no globally required scope: each read tool still requires `rss:read`, and the add tool requires `rss:subscriptions:add`. Tool descriptors and insufficient-scope challenges name the operation's exact permission. Consent displays and binds the exact requested scopes; refresh may downscope but cannot expand a grant. Account connection status shows the union of explicitly approved scopes, which never authorizes an individual token beyond that token's own grant.
 
@@ -26,7 +26,7 @@ The application can expose its current user's subscriptions and stored feed arti
 
 ## Rollout is opt-in
 
-Merging this code does not activate MCP. Both `RSS_MCP_ENABLED="true"` and a dedicated `OAUTH_KV` binding are required. Missing, malformed, or partial setup fails closed; ordinary RSS login, feed routes, maintenance, and cron retain their behavior.
+`RSS_MCP_ENABLED="true"` is set in `wrangler.toml`, but a dedicated `OAUTH_KV` binding is also required; until it is added MCP remains off. Missing, malformed, or partial setup fails closed; ordinary RSS login, feed routes, maintenance, and cron retain their behavior.
 
 Provisioning a production namespace, setting its binding/enable variable, creating/installing the private plugin, granting OAuth access, and reading real user data are separate rollout actions. Do not create a namespace or grant while merely testing this code. Never alias `OAUTH_KV` to `RATE_LIMIT`, put a placeholder namespace ID in active config, or paste tokens into chat/plugin files/query URLs.
 
