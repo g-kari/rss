@@ -112,6 +112,7 @@ async function mount(page: Page, result: Result) {
 async function send(page: Page, keyboard = false) {
   const trigger = page.getByRole("button", { name: "その他のメニュー" });
   await trigger.click();
+  await expect(page.getByRole("menuitem").first()).toBeFocused();
   const action = page.getByRole("menuitem", { name: "テスト通知を送信" });
   if (keyboard) {
     await action.focus();
@@ -165,6 +166,7 @@ for (const width of [390, 1280]) {
       const state = await mount(page, 200);
       const trigger = page.getByRole("button", { name: "その他のメニュー" });
       await trigger.click();
+      await expect(page.getByRole("menuitem").first()).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
       await expect(trigger).toBeFocused();
