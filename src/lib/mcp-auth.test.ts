@@ -458,7 +458,7 @@ describe("provider-bound consent and safe first-party login resume", () => {
     expect(html).toContain("fixed=keep&amp;code=synthetic&amp;state=synthetic");
     expect(html).not.toContain("<script");
     expect(html).toContain(
-      `<meta http-equiv="refresh" content="0;url=${base.replace("&", "&amp;")}&amp;code=synthetic&amp;state=synthetic&amp;iss=${ORIGIN}">`,
+      `<meta http-equiv="refresh" content="0;url=https://client.example/callback?fixed=keep&amp;code=synthetic&amp;state=synthetic&amp;iss=${ORIGIN}">`,
     );
     expect(html).toContain('<a href="https://client.example/callback?fixed=keep&amp;code=');
     expect(
