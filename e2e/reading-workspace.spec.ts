@@ -28,6 +28,12 @@ const fromTree = (sha: string, path: string) =>
     cwd: root,
     encoding: "utf8",
   });
+// Later PRs can compare against a baseline that already contains the relocation.
+// Keep the old-button contract explicit without assuming every future base is legacy.
+const baselineHasStandaloneNsfwExit = fromTree(
+  baseline,
+  resolve(root, "src/components/feed-sidebar/SidebarHeader.tsx"),
+).includes("NSFWモード解除");
 
 test.beforeAll(async () => {
   if (
@@ -210,6 +216,7 @@ for (const width of [1440, 1024, 390, 320])
       test.describe(`${stage} ${width}px ${theme} full workspace`, () => {
         test.use({
           viewport: { width, height: width < 1024 ? 844 : 900 },
+          hasTouch: width < 1024,
           contextOptions: { reducedMotion: "reduce" },
         });
         test("compact navigation, list and reader preserve the selected design", async ({
@@ -250,6 +257,32 @@ for (const width of [1440, 1024, 390, 320])
           await page
             .locator(".reader-visual-shell")
             .screenshot({ path: info.outputPath("article-list.png") });
+          if (stage === "after" && width < 1024) {
+            const recommendations = list.getByRole("region", {
+              name: "いま読むおすすめ",
+              exact: true,
+            });
+            const options = recommendations.locator("summary").filter({ hasText: "選び方" });
+            await options.focus();
+            await expect(options).toBeFocused();
+            const sectionBounds = (await recommendations.boundingBox())!;
+            const summaryBounds = (await options.boundingBox())!;
+            expect(summaryBounds.y).toBeGreaterThanOrEqual(sectionBounds.y);
+            expect(summaryBounds.y + summaryBounds.height).toBeLessThanOrEqual(
+              sectionBounds.y + sectionBounds.height,
+            );
+            await page.keyboard.press("Space");
+            expect(
+              await options.evaluate((el) => (el.parentElement as HTMLDetailsElement).open),
+            ).toBe(true);
+            await page.keyboard.press("Space");
+            expect(
+              await options.evaluate((el) => (el.parentElement as HTMLDetailsElement).open),
+            ).toBe(false);
+            await recommendations.evaluate((el) => {
+              el.scrollTop = 0;
+            });
+          }
           await list.getByText("React 19 の新機能と移行ガイド", { exact: true }).first().click();
           const reader = page.getByRole("article", { name: "記事本文", exact: true });
           await expect(reader).toBeVisible();
@@ -259,10 +292,13 @@ for (const width of [1440, 1024, 390, 320])
           if (stage === "after") {
             const quick = reader.getByRole("button", { name: "読書設定", exact: true });
             const translate = reader.getByRole("button", { name: "AI 翻訳", exact: true });
+            const summarize = reader.getByRole("button", { name: "AI 要約", exact: true });
             await expect(quick).toBeVisible();
             expect((await quick.boundingBox())!.height).toBe(
               (await translate.boundingBox())!.height,
             );
+            expect((await quick.boundingBox())!.height).toBe(width < 1024 ? 44 : 32);
+            expect((await summarize.boundingBox())!.height).toBe(width < 1024 ? 44 : 32);
           }
           await page
             .locator(".reader-visual-shell")
@@ -296,7 +332,11 @@ for (const width of [1440, 1024, 390, 320])
     }
 for (const width of [1440, 320])
   test.describe(`${width}px complete workspace controls`, () => {
-    test.use({ viewport: { width, height: 900 }, contextOptions: { reducedMotion: "reduce" } });
+    test.use({
+      viewport: { width, height: 900 },
+      hasTouch: width < 1024,
+      contextOptions: { reducedMotion: "reduce" },
+    });
     test("native Space, unified modes, filters, layouts and settings are reversible", async ({
       page,
     }, info) => {
@@ -311,8 +351,14 @@ for (const width of [1440, 320])
       await page.keyboard.press("Space");
       await expect(bookmark).toHaveAttribute("aria-pressed", "true");
       await list.getByRole("button", { name: /絞り込み/ }).click();
-      await list.getByLabel("カテゴリでフィルター").selectOption("技術");
-      await expect(list.getByLabel("カテゴリでフィルター")).toHaveValue("技術");
+      await list.getByRole("button", { name: "フォルダ", exact: true }).click();
+      await page
+        .getByRole("menu", { name: "カテゴリ選択", exact: true })
+        .getByRole("menuitem", { name: "技術", exact: true })
+        .click();
+      await expect(
+        list.getByRole("button", { name: "カテゴリ「技術」フィルターを解除", exact: true }),
+      ).toBeVisible();
       await list.getByRole("button", { name: "すべてのフィルターをクリア" }).click();
       await expect(bookmark).toHaveAttribute("aria-pressed", "false");
       for (const name of [
@@ -405,7 +451,7 @@ test.describe("NSFW settings relocation full workspace", () => {
       await nav.getByRole("button", { name: "すべて", exact: true }).click();
       await expect(page.getByRole("region", { name: "記事一覧", exact: true })).toBeVisible();
       const exit = page.getByRole("button", { name: "NSFWモード解除", exact: true });
-      if (stage === "before") await expect(exit).toBeVisible();
+      if (stage === "before" && baselineHasStandaloneNsfwExit) await expect(exit).toBeVisible();
       else await expect(exit).toHaveCount(0);
       await page
         .locator(".reader-visual-shell")
