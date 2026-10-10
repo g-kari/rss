@@ -47,3 +47,11 @@ export function parseTtsVolume(stored: string | null | undefined): number {
   const parsed = parseFloat(stored);
   return clampTtsVolume(parsed);
 }
+
+/** 記事の音量ボタンは10ポイントずつ下げ、ミュートの次は100%へ戻す (#727)。 */
+export function cycleTtsVolume(value: number): number {
+  const current = clampTtsVolume(value);
+  if (current === TTS_VOLUME_MIN) return TTS_VOLUME_MAX;
+  // 設定スライダーの1%刻みを維持し、繰り返し操作の浮動小数点誤差を避ける。
+  return Math.max(TTS_VOLUME_MIN, Math.round((current - 0.1) * 100) / 100);
+}

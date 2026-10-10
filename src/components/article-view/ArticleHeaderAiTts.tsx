@@ -4,6 +4,7 @@ import type { Article } from "../../types";
 import type { AiOperationResult, AiError } from "../../hooks/useArticleAi";
 import Spinner from "../Spinner";
 import { TTS_RATES } from "../../hooks/useSpeechSynthesis";
+import { cycleTtsVolume } from "../../lib/tts-volume";
 import { cycleValue } from "../../lib/article-utils";
 import { DownloadIcon } from "./icons";
 
@@ -34,7 +35,7 @@ interface Props {
   ttsPaused: boolean;
   ttsRate: number;
   ttsCycleRate: () => void;
-  /** #727: 3 段階 (full / half / muted) で cycle する音量。再生中のみ表示 */
+  /** #727: 10ポイントずつ下げる音量。再生中・一時停止中に表示 */
   ttsVolume: number;
   ttsCycleVolume: () => void;
   onTtsToggle: () => void;
@@ -266,8 +267,8 @@ export default function ArticleHeaderAiTts({
       {secondary && (ttsPlaying || ttsPaused) && (
         <button
           onClick={ttsCycleVolume}
-          title={`音量: ${Math.round(ttsVolume * 100)}% → クリックで切替（フル / 半 / ミュート）`}
-          aria-label={`音量 ${Math.round(ttsVolume * 100)}パーセント`}
+          title={`音量: ${Math.round(ttsVolume * 100)}% → 次: ${Math.round(cycleTtsVolume(ttsVolume) * 100)}%（10%ずつ調整）`}
+          aria-label={`音量 ${Math.round(ttsVolume * 100)}パーセント、次は ${Math.round(cycleTtsVolume(ttsVolume) * 100)}パーセント`}
           className="p-2 -m-2 max-md:min-w-[44px] max-md:min-h-[44px] lg:p-0 lg:m-0 lg:min-w-[24px] lg:min-h-[24px] text-ink hover:text-text-muted transition-colors duration-200"
         >
           {ttsVolume >= 0.99 ? (
@@ -286,7 +287,7 @@ export default function ArticleHeaderAiTts({
               <path d="M9.5 5.5C10 6 10 8 9.5 8.5" />
               <path d="M11 4C12 5 12 9 11 10" />
             </svg>
-          ) : ttsVolume >= 0.49 ? (
+          ) : ttsVolume > 0 ? (
             <svg
               width="14"
               height="14"
