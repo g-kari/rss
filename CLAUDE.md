@@ -48,3 +48,10 @@ AI が起票・コメントする GitHub Issue / PR は、起票主体を一目�
 ## Issue / PR 作業時のプロジェクト固有ルール
 
 `gh issue` (`view` / `close` / `comment` / `list`) を扱うとき、または Issue / PR の本文・コメントを作成するときは、本プロジェクト固有の処理前チェックリスト・設計方針コメントテンプレート・タイトルのみ Issue 対応・自動クローズ後コメント運用・最小スコープ判断軸・自走採用条件などの retrospective 派生ケースが集約された **`issue-handling` skill を必ず invoke** してから作業すること。
+
+## Cursor Cloud specific instructions
+
+- 依存関係は `pnpm install --frozen-lockfile`（`packageManager` は pnpm 10.29.3）。ユニットテストの `node:sqlite` は SQLite FTS5 が必要。Node 22.22.2（`/home/ubuntu/.nvm/versions/node/v22.22.2`）を使い、`/usr/local/bin` と `/usr/local/cargo/bin` から参照する。
+- 開発サーバーは `APP_BASE_URL=http://localhost:3000` と `DEV_AUTH_BYPASS_USER_ID=dev-local` を付けて `pnpm dev --hostname 0.0.0.0 --port 3000`。`next.config.ts` はローカル miniflare（`remoteBindings: false`）なので wrangler login は不要。バイパスは `NODE_ENV` が production 以外のときだけ有効。
+- 確認コマンドは `pnpm check`、`pnpm typecheck`、`pnpm test:unit`、`pnpm build`。
+- 未作成の記事ヘッドへの実フィード取得は、R2 の条件付き put が `new Headers` を miniflare の dev proxy に渡して `DevalueError: Cannot stringify arbitrary non-POJOs` になる。購読レコードは残る。記事の投入と一覧表示は開発バイパス中の `POST /api/test/seed` で確認できる。
