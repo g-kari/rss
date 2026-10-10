@@ -67,6 +67,29 @@ async function open(page: Page) {
   await page.goto(READER_MOTION_DOCUMENT_URL);
   await expect(page.getByRole("button", { name: "Change feed", exact: true })).toBeVisible();
 }
+async function changeVisualMode(page: Page, enabled: boolean) {
+  const modes = page.locator("summary").filter({ hasText: "読み方" });
+  await modes.click();
+  const visual = page.getByRole("button", { name: "ビジュアル表示", exact: true });
+  await expect(visual).toHaveAttribute("aria-pressed", String(!enabled));
+  await visual.click();
+  await expect(visual).toHaveAttribute("aria-pressed", String(enabled));
+  await page.keyboard.press("Escape");
+  await expect(modes.locator("..")).toHaveJSProperty("open", false);
+  await expect(modes).toBeFocused();
+}
+async function changeMotion(page: Page, enabled: boolean) {
+  const modes = page.locator("summary").filter({ hasText: "読み方" });
+  await modes.click();
+  const motion = page.getByRole("button", { name: /^動き (ON|OFF)$/ });
+  await expect(motion).toHaveText(enabled ? "動き OFF" : "動き ON");
+  await expect(motion).toHaveAttribute("aria-pressed", String(!enabled));
+  await motion.click();
+  await expect(motion).toHaveAttribute("aria-pressed", String(enabled));
+  await page.keyboard.press("Escape");
+  await expect(modes.locator("..")).toHaveJSProperty("open", false);
+  await expect(modes).toBeFocused();
+}
 async function settled(page: Page) {
   // Let the post-commit arrival frame start before checking its settled state.
   await page.waitForTimeout(32);
@@ -138,7 +161,7 @@ for (const viewport of [
         el.scrollTop = 300;
       });
       const before = await article.evaluate((el) => el.scrollTop);
-      await page.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
+      await changeVisualMode(page, true);
       await expect(page.locator("html")).toHaveAttribute("data-visual-motion", "full");
       expect(await previewAnimation(page)).toEqual([
         "article-content-fade-in",
@@ -147,7 +170,7 @@ for (const viewport of [
       await expect(note).toHaveValue("edited draft");
       expect(await article.evaluate((el) => el === window.retainedArticle)).toBe(true);
       expect(await article.evaluate((el) => el.scrollTop)).toBe(before);
-      await page.getByRole("button", { name: "通常表示に戻す", exact: true }).click();
+      await changeVisualMode(page, false);
       await expect(note).toHaveValue("edited draft");
       expect(await article.evaluate((el) => el.scrollTop)).toBe(before);
       expect(
@@ -164,7 +187,7 @@ for (const viewport of [
       await list.evaluate((el) => {
         el.scrollTop = 260;
       });
-      await page.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
+      await changeVisualMode(page, true);
       expect(await list.evaluate((el) => el.scrollTop)).toBe(260);
       expect(
         await list
@@ -183,7 +206,7 @@ for (const viewport of [
       page,
     }, testInfo) => {
       await open(page);
-      await page.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
+      await changeVisualMode(page, true);
       await page.getByRole("button", { name: "Change feed", exact: true }).click();
       await expect.poll(async () => (await events(page)).length).toBeGreaterThan(0);
       expect(
@@ -195,12 +218,12 @@ for (const viewport of [
       await page.getByRole("button", { name: "Next article", exact: true }).click();
       await expect.poll(async () => (await events(page)).includes("title")).toBe(true);
       await page.screenshot({ path: testInfo.outputPath("article-arriving.png") });
-      await page.getByRole("button", { name: "動き ON", exact: true }).click();
+      await changeMotion(page, false);
       await settled(page);
       expect(await previewAnimation(page)).toEqual(["none", "none"]);
       await expect(page.locator('[data-reader-arrival="title"]')).toHaveCSS("opacity", "1");
       await expect(page.locator('[data-reader-arrival="title"]')).toHaveCSS("transform", "none");
-      await page.getByRole("button", { name: "動き OFF", exact: true }).click();
+      await changeMotion(page, true);
       await clearEvents(page);
       for (let i = 0; i < 4; i++)
         await page.getByRole("button", { name: "Next article", exact: true }).click();
@@ -250,7 +273,7 @@ for (const policy of ["reduced", "weak", "save-data"]) {
           });
       }, policy);
     await open(page);
-    await page.getByRole("button", { name: "ビジュアル表示", exact: true }).click();
+    await changeVisualMode(page, true);
     await expect(page.locator("html")).toHaveAttribute("data-visual-motion", "still");
     await page.getByRole("button", { name: "Change feed", exact: true }).click();
     await page.getByRole("button", { name: "Next article", exact: true }).click();

@@ -137,8 +137,12 @@ for (const width of [320, 390, 1280])
       test("immersive keeps the current card and playback state while nested reason choices change", async ({
         page,
       }, testInfo) => {
-        await page.getByRole("button", { name: "ドパガキモード", exact: true }).click();
+        const region = page.getByRole("region", { name: "いま読むおすすめ" });
+        const modes = region.locator("summary").filter({ hasText: "読み方" });
+        await modes.click();
+        await region.getByRole("button", { name: "ドパガキモード", exact: true }).click();
         const immersive = page.getByRole("dialog", { name: "ドパガキモード" });
+        await expect(modes.locator("..")).toHaveJSProperty("open", false);
         await expect(immersive.getByRole("heading", { name: "合成記事 a" })).toBeVisible();
         const pause = immersive.getByRole("button", { name: "自動再生を再開" });
         await expect(pause).toBeVisible();
@@ -155,9 +159,7 @@ for (const width of [320, 390, 1280])
         await expect(pause).toBeVisible();
         await expect(immersive).toHaveAttribute("aria-modal", "true");
         await immersive.getByRole("button", { name: "一覧に戻る" }).click();
-        await expect(
-          page.getByRole("button", { name: "ドパガキモード", exact: true }),
-        ).toBeFocused();
+        await expect(modes).toBeFocused();
         expect(await page.getByTestId("mutations").textContent()).toMatch(/選択0 既読[01] 保存0/);
       });
     });
