@@ -319,6 +319,8 @@ function FeedItem({
         editing || categoryEditing
           ? undefined
           : (e) => {
+              // Nested controls and React portals own their native activation.
+              if (e.target !== e.currentTarget) return;
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 setMenuOpen(false);
