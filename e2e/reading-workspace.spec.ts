@@ -391,6 +391,7 @@ for (const width of [1440, 320])
       await list.getByRole("button", { name: "ドパガキモード", exact: true }).click();
       const immersive = page.getByRole("dialog", { name: "ドパガキモード", exact: true });
       await expect(immersive).toBeVisible();
+      await immersive.screenshot({ path: info.outputPath("immersive-mode.png") });
       await page.keyboard.press("Escape");
       await expect(immersive).toHaveCount(0);
       await expect(modes).toBeFocused();
