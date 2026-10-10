@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
@@ -141,6 +141,23 @@ async function unchangedReader(page: Page, selections: number) {
   );
 }
 
+async function navigateToItem(page: Page, menu: Locator, item: Locator) {
+  const selector = '[role="menuitem"]:not(:disabled), [role="menuitemradio"]:not(:disabled)';
+  // Observe the production RAF focus before navigating; programmatic item.focus()
+  // can run before that RAF and have its target replaced by the first item.
+  await expect(menu).toBeVisible();
+  await expect(menu.locator(selector).first()).toBeFocused();
+  const index = await item.evaluate(
+    (element, selector) =>
+      Array.from(element.closest('[role="menu"]')!.querySelectorAll(selector)).indexOf(element),
+    selector,
+  );
+  expect(index).toBeGreaterThanOrEqual(0);
+  await page.keyboard.press("Home");
+  for (let step = 0; step < index; step++) await page.keyboard.press("ArrowDown");
+  await expect(item).toBeFocused();
+}
+
 for (const theme of ["light", "dark"] as const) {
   for (const key of ["Enter", "Space"] as const) {
     test(`${theme} ${key}: native feed/menu activation with document delegation`, async ({
@@ -188,7 +205,7 @@ for (const theme of ["light", "dark"] as const) {
         await trigger.focus();
         await page.keyboard.press(key);
         const item = menu.getByRole("menuitem", { name: label, exact: true });
-        await item.focus();
+        await navigateToItem(page, menu, item);
         await page.keyboard.press(key);
         await count(page, field, 1);
         await count(page, "menuClicks", ++clicks);
@@ -203,17 +220,18 @@ for (const theme of ["light", "dark"] as const) {
       ]) {
         await trigger.focus();
         await page.keyboard.press(key);
-        await menu.getByRole("menuitem", { name: action, exact: true }).focus();
+        await navigateToItem(page, menu, menu.getByRole("menuitem", { name: action, exact: true }));
         await page.keyboard.press(key);
         await count(page, "menuClicks", ++clicks);
         const submenu = page.getByRole("menu", { name, exact: true });
-        await expect(submenu).toBeVisible();
-        await submenu
-          .getByRole(field === "mutes" ? "menuitem" : "menuitemradio", {
+        await navigateToItem(
+          page,
+          submenu,
+          submenu.getByRole(field === "mutes" ? "menuitem" : "menuitemradio", {
             name: choice,
             exact: true,
-          })
-          .focus();
+          }),
+        );
         await page.keyboard.press(key);
         await count(page, field, 1);
         await count(page, "menuClicks", ++clicks);
@@ -223,7 +241,9 @@ for (const theme of ["light", "dark"] as const) {
       // Pointer opening remains independent, and the reader still owns Space.
       await trigger.click();
       await expect(menu).toBeVisible();
+      await expect(menu.getByRole("menuitem").first()).toBeFocused();
       await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
       await expect(trigger).toBeFocused();
       await unchangedReader(page, 1);
       await page.getByRole("main", { name: "記事本文" }).focus();
