@@ -27,6 +27,7 @@ export default defineConfig({
     "article-note.spec.ts",
     "feed-add-paste.spec.ts",
     "article-actions-keyboard.spec.ts",
+    "feed-menu-keyboard.spec.ts",
     "mcp-consent-navigation.spec.ts",
     "ogp-queue.spec.ts",
     "thumbnail-candidates.spec.ts",
