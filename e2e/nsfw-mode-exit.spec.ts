@@ -23,6 +23,7 @@ test.beforeAll(async () => {
           import { useState } from "react";
           import { createRoot } from "react-dom/client";
           import SidebarHeader from "./src/components/feed-sidebar/SidebarHeader";
+          import NsfwModeSettings from "./src/components/user-settings/NsfwModeSettings";
           import FeedViewTabs from "./src/components/feed-sidebar/FeedViewTabs";
           import { useNSFWMode } from "./src/hooks/useNSFWMode";
           import { useKeyboardNav } from "./src/hooks/useKeyboardNav";
@@ -49,6 +50,7 @@ test.beforeAll(async () => {
                   onDeactivateNsfw={() => { setExits(n => n + 1); mode.deactivateNSFW(); }}
                   onToggleInput={() => setInputOpen(v => !v)}
                   onRefresh={() => setRefreshes(n => n + 1)} />
+                <NsfwModeSettings enabled={mode.nsfwMode} onDeactivate={() => { setExits(n => n + 1); mode.deactivateNSFW(); }} />
                 {inputOpen && <input aria-label="合成フィードURL" />}
                 <FeedViewTabs activeView={view} onChangeView={setView} />
                 <div id="feed-view-panel" role="tabpanel" aria-labelledby={"feed-view-tab-" + view}>Synthetic feed</div>
@@ -190,10 +192,10 @@ for (const theme of ["light", "dark"] as const) {
       await page.screenshot({ path: testInfo.outputPath("active-focused.png") });
       await page.keyboard.press("Enter");
       await checkExit(page, 1);
-      await expect(page.getByRole("group", { name: "サイドバー操作" })).toBeFocused();
+      await expect(page.getByRole("group", { name: "NSFW表示設定" })).toBeFocused();
       for (let i = 0; i < 6; i++) await page.keyboard.press("Enter");
       await expect(page.getByLabel("有効化操作回数")).toHaveText("0");
-      await page.keyboard.press("Tab");
+      await page.getByRole("button", { name: "RSS", exact: true }).focus();
       await expect(page.getByRole("button", { name: "RSS", exact: true })).toBeFocused();
       await page.keyboard.press("Tab");
       await page.keyboard.press("Enter");
@@ -208,11 +210,14 @@ for (const theme of ["light", "dark"] as const) {
       await exit.focus();
       await page.keyboard.press("Space");
       await checkExit(page, 2);
-      await expect(page.getByRole("group", { name: "サイドバー操作" })).toBeFocused();
+      await expect(page.getByRole("group", { name: "NSFW表示設定" })).toBeFocused();
       for (let i = 0; i < 6; i++) await page.keyboard.press("Space");
       const reader = page.getByRole("main", { name: "記事本文" });
       expect(await reader.evaluate((main) => main.scrollTop)).toBe(0);
       await page.getByRole("button", { name: "次の操作" }).focus();
+      await page.keyboard.press("Space");
+      expect(await reader.evaluate((main) => main.scrollTop)).toBe(0);
+      await page.evaluate(() => (document.activeElement as HTMLElement).blur());
       await page.keyboard.press("Space");
       await expect.poll(() => reader.evaluate((main) => main.scrollTop)).toBeGreaterThan(0);
       await page.screenshot({ path: testInfo.outputPath("mode-off.png") });

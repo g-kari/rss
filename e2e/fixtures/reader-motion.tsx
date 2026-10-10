@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import ArticleList from "../../src/components/ArticleList";
 import ArticleView from "../../src/components/ArticleView";
 import ThreePaneLayout from "../../src/components/ThreePaneLayout";
+import ReadingModeControls from "../../src/components/ReadingModeControls";
 import { MobilePane } from "../../src/components/MobilePane";
 import Modal from "../../src/components/Modal";
 import { VisualModeProvider } from "../../src/contexts/VisualModeContext";
@@ -122,7 +123,16 @@ function Reader() {
         >
           <ReaderSettingsProvider value={settings}>
             <ArticleFilterProvider value={{ ...filter, onSaveFilter: async () => {} }}>
-              <div className="fixture-controls" aria-label="Local test controls">
+              <div
+                className="fixture-controls"
+                aria-label="Local test controls"
+                style={{ alignContent: "flex-start" }}
+              >
+                {/* Keep production mode controls reachable from either mobile pane, within the
+                    fixed-height harness so its disclosure cannot resize the reader/list. */}
+                <div className="w-full min-w-0 shrink-0">
+                  <ReadingModeControls onEnterImmersive={noop} ready={false} />
+                </div>
                 <button
                   onClick={() => {
                     setFeed((old) => (old === "a" ? "b" : "a"));

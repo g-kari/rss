@@ -31,10 +31,10 @@ export default function MarkAllReadButton({ onMarkAllRead }: MarkAllReadButtonPr
       onClick={handleClick}
       aria-label={confirmMarkAll ? "全記事を既読にする（確認）" : "全て既読にする"}
       title={confirmMarkAll ? "もう一度押すと全て既読にします" : `${SHORTCUT_MAP["m"]} (m)`}
-      className={`relative overflow-hidden flex items-center justify-center rounded-full transition-all duration-200 ${
+      className={`relative overflow-hidden flex items-center justify-center rounded transition-all duration-200 ${
         confirmMarkAll
-          ? "px-2 h-6 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-meta font-medium text-error border border-rose-400 hover:bg-rose-400/10"
-          : "w-6 h-6 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] text-text-faint hover:text-text-muted hover:bg-surface-subtle"
+          ? "px-2 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 text-control font-medium text-error border border-rose-400 hover:bg-rose-400/10"
+          : "w-6 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 text-text-faint hover:text-text-muted hover:bg-surface-subtle"
       }`}
     >
       {confirmMarkAll ? (

@@ -7,6 +7,7 @@ import Modal from "./Modal";
 import { useReaderSettings } from "../contexts/ReaderSettingsContext";
 import { useHeaderShareTargets } from "../hooks/useHeaderShareTargets";
 import type { Article, Collection, Feed } from "../types";
+import NsfwModeSettings from "./user-settings/NsfwModeSettings";
 import DisplayTabPanel from "./user-settings/DisplayTabPanel";
 import AiNotificationTabPanel from "./user-settings/AiNotificationTabPanel";
 import FeedManagementTabPanel from "./user-settings/FeedManagementTabPanel";
@@ -14,6 +15,8 @@ import ImportExportTabPanel from "./user-settings/ImportExportTabPanel";
 
 interface Props {
   userId: string;
+  nsfwMode?: boolean;
+  onDeactivateNsfw?: () => void;
   onClose: () => void;
   feeds: Feed[];
   articles: Article[];
@@ -36,6 +39,8 @@ interface Props {
  */
 export default function UserSettingsModal({
   userId,
+  nsfwMode = false,
+  onDeactivateNsfw,
   onClose,
   feeds,
   articles,
@@ -127,9 +132,10 @@ export default function UserSettingsModal({
         !element.closest("[hidden]"),
     );
     const panel = root?.querySelector<HTMLElement>(`#panel-${destination.category}`);
-    const available = target && !target.closest("[hidden]") && control;
+    const available =
+      target && !target.closest("[hidden]") && (control || destination.informational);
     const focusTarget = available
-      ? control
+      ? (control ?? target)
       : target && !target.closest("[hidden]") && !target.matches(":disabled")
         ? target
         : panel;
@@ -180,6 +186,9 @@ export default function UserSettingsModal({
 
         <DisplayTabPanel
           activeCategory={activeCategory}
+          readingModeControls={
+            <NsfwModeSettings enabled={nsfwMode} onDeactivate={onDeactivateNsfw ?? (() => {})} />
+          }
           theme={theme}
           setTheme={setTheme}
           fontSize={fontSize}

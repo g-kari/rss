@@ -100,6 +100,7 @@ describe("immersive cache contract", () => {
     { model: DEFAULT_AI_MODEL, summaries: [summary, summary] },
     response({ ...summary, result: "<think>Only thinking</think>" }),
     response({ ...summary, result: "<think>Unclosed" }),
+    response({ ...summary, result: null }),
     response({ ...summary, result: 1 }),
     response({ ...summary, metadata: null }),
   ])(
@@ -174,6 +175,7 @@ describe("immersive presentation", () => {
   it("uses verbatim fallback for empty, reasoning-only or wrong URL cached text", () => {
     for (const cached of [
       undefined,
+      null,
       { ...summary, result: "<think>hidden</think>" },
       { ...summary, result: "---" },
       { ...summary, url: `${url}/other` },
@@ -188,6 +190,21 @@ describe("immersive presentation", () => {
       });
     }
   });
+
+  it.each([null, undefined])(
+    "uses the loaded excerpt when both the cached summary and article link are absent: %s",
+    (cached) => {
+      // JSON inputs can omit required fields, as the demo article API currently does.
+      const withoutLink = JSON.parse(JSON.stringify({ ...article, link: undefined })) as Article;
+      expect(resolveImmersiveText(withoutLink, cached)).toEqual({
+        text: "フィードの抜粋。",
+        source: "excerpt",
+        sourceLabel: "フィード説明の抜粋",
+        metadata: null,
+        previewShortened: false,
+      });
+    },
+  );
 
   it("distinguishes excerpt shortening from input truncation and never invents completeness", () => {
     const result = "文です。".repeat(400);

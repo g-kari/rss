@@ -87,7 +87,7 @@ export default function ArticleHeaderAiTts({
   return (
     <>
       {primary && hasContent && (
-        <div className="flex items-center gap-1 mr-1">
+        <div className="flex shrink-0 items-center gap-1 mr-1">
           <button
             onClick={() => {
               if (aiResult) {
@@ -103,7 +103,7 @@ export default function ArticleHeaderAiTts({
             }
             aria-label={aiResult ? "AI 要約を閉じる" : "AI 要約"}
             aria-pressed={!!aiResult}
-            className={`text-meta tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+            className={`shrink-0 whitespace-nowrap min-h-11 [@media(pointer:fine)]:min-h-8 text-control tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               aiResult
                 ? "border-ink bg-ink text-ink-text"
                 : aiError
@@ -124,7 +124,7 @@ export default function ArticleHeaderAiTts({
             }
             aria-label={translateResult ? "AI 翻訳を閉じる" : "AI 翻訳"}
             aria-pressed={!!translateResult}
-            className={`text-meta tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
+            className={`shrink-0 whitespace-nowrap min-h-11 [@media(pointer:fine)]:min-h-8 text-control tracking-[0.06em] px-2 py-0.5 rounded border transition-all duration-200 disabled:opacity-50 ${
               translateResult
                 ? "border-ink bg-ink text-ink-text"
                 : translateError

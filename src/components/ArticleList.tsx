@@ -78,6 +78,7 @@ interface Props {
   readingListIds?: Set<string>;
   selectedArticleId: string | null;
   selectedFeedId: string | null;
+  scopeTitle?: string;
   layout: Layout;
   loading?: boolean;
   fetchError?: boolean;
@@ -156,6 +157,7 @@ function ArticleList({
   bookmarkIds,
   selectedArticleId,
   selectedFeedId,
+  scopeTitle,
   layout,
   loading = false,
   fetchError = false,
@@ -726,6 +728,7 @@ function ArticleList({
           onMarkAllRead={onMarkAllRead}
           filteredCount={filtered.length}
           selectedFeedId={selectedFeedId}
+          scopeTitle={scopeTitle}
           feeds={feeds}
         />
 

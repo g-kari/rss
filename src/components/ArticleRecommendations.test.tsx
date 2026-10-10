@@ -118,7 +118,7 @@ describe("ArticleRecommendations", () => {
       expect(document.querySelectorAll(".immersive-slide")).toHaveLength(count);
       fireEvent.click(screen.getByRole("button", { name: "一覧に戻る" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(entry).toHaveFocus();
+      expect(document.querySelector("summary")).toHaveFocus();
       expect(props.onSelectArticle).not.toHaveBeenCalled();
     },
   );
@@ -134,7 +134,7 @@ describe("ArticleRecommendations", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(screen.getByRole("region", { name: "いま読むおすすめ" })).toBeInTheDocument();
       expect(entry).toBeDisabled();
-      expect(screen.getByRole("button", { name: "おすすめを折りたたむ" })).toHaveFocus();
+      expect(document.querySelector("summary")).toHaveFocus();
       expect(screen.queryAllByRole("button", { name: /を読む$/ })).toHaveLength(0);
       expect(
         screen.getByText(/記事を読み込み中|記事を読み込めませんでした|検索条件を反映/),
@@ -152,7 +152,7 @@ describe("ArticleRecommendations", () => {
     fireEvent.click(entry);
     rerender(<ArticleRecommendations {...props} scopeKey="second" candidates={[articles[1]]} />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(entry).toHaveFocus();
+    expect(document.querySelector("summary")).toHaveFocus();
     expect(screen.getByRole("button", { name: "おすすめを表示" })).toHaveAttribute(
       "aria-expanded",
       "false",
@@ -163,7 +163,7 @@ describe("ArticleRecommendations", () => {
     expect(screen.queryByRole("heading", { name: "記事 a" })).not.toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(entry).toHaveFocus();
+    expect(document.querySelector("summary")).toHaveFocus();
   });
 });
 

@@ -5,6 +5,12 @@ import tailwind from "@tailwindcss/postcss";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+async function showReadingModes(page: Page) {
+  const summary = page.locator("summary").filter({ hasText: "読み方" });
+  if (!(await summary.evaluate((element) => (element.parentElement as HTMLDetailsElement).open)))
+    await summary.click();
+}
+
 let html = "";
 const diagnostics = new WeakMap<
   Page,
@@ -59,7 +65,10 @@ test.beforeEach(async ({ page }) => {
     return route.abort();
   });
   await page.goto("https://rss-preview.test/");
-  await expect(page.getByRole("button", { name: "ドパガキモード", exact: true })).toBeVisible();
+  await showReadingModes(page);
+  await expect(
+    page.getByRole("button", { name: "ドパガキモード", exact: true, includeHidden: true }),
+  ).toBeVisible();
 });
 
 test.afterEach(({ page }) => {
@@ -80,10 +89,15 @@ for (const viewport of [
       page,
     }, testInfo) => {
       const recommendations = page.getByRole("region", { name: "いま読むおすすめ" });
-      const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
+      const entry = page.getByRole("button", {
+        name: "ドパガキモード",
+        exact: true,
+        includeHidden: true,
+      });
       await expect(recommendations.getByRole("button", { name: /を読む$/ })).toHaveCount(1);
       await expect(recommendations.getByText("保存されていない選択記事")).toHaveCount(0);
       await page.screenshot({ path: testInfo.outputPath("filtered-entry.png") });
+      await showReadingModes(page);
       await entry.click();
       const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
       await expect(dialog).toBeVisible();
@@ -93,7 +107,7 @@ for (const viewport of [
       await page.screenshot({ path: testInfo.outputPath("filtered-immersive.png") });
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
-      await expect(entry).toBeFocused();
+      await expect(page.locator("summary").filter({ hasText: "読み方" })).toBeFocused();
       await expect(
         page.getByRole("button", { name: "ブックマークフィルター切替 (B)" }),
       ).toHaveAttribute("aria-pressed", "true");
@@ -108,6 +122,7 @@ for (const viewport of [
       await expect(
         recommendations.getByText("現在のフィルターに合う未読のおすすめ記事はありません"),
       ).toBeVisible();
+      await showReadingModes(page);
       await entry.click();
       await expect(dialog).toBeVisible();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
@@ -138,7 +153,11 @@ for (const viewport of [
     }, testInfo) => {
       const recommendations = page.getByRole("region", { name: "いま読むおすすめ" });
       const picks = recommendations.getByRole("button", { name: /を読む$/ });
-      const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
+      const entry = page.getByRole("button", {
+        name: "ドパガキモード",
+        exact: true,
+        includeHidden: true,
+      });
       const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
       for (const count of [0, 1, 2]) {
         // Independent dataset assertions start fresh; queue-continuity transitions are tested below.
@@ -146,13 +165,15 @@ for (const viewport of [
         await page.getByRole("combobox", { name: "合成候補数" }).selectOption(String(count));
         await expect(picks).toHaveCount(count);
         await expect(entry).toBeEnabled();
+        await showReadingModes(page);
         await entry.click();
         await expect(dialog.locator(".immersive-slide")).toHaveCount(count);
         await page.keyboard.press("Escape");
-        await expect(entry).toBeFocused();
+        await expect(page.locator("summary").filter({ hasText: "読み方" })).toBeFocused();
       }
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("group");
       await expect(picks).toHaveCount(2);
+      await showReadingModes(page);
       await entry.click();
       await dialog.getByRole("button", { name: "一覧に戻る" }).click();
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("empty-group");
@@ -161,7 +182,7 @@ for (const viewport of [
       await expect(recommendations.getByText(/現在のフィルターに合う未読/)).toBeVisible();
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("feed");
       await expect(picks).toHaveCount(2);
-      await page.getByRole("button", { name: "詳細フィルター" }).click();
+      await page.getByRole("button", { name: "絞り込み（詳細フィルター）" }).click();
       await page.getByRole("button", { name: /^日付フィルター切替:.*\(d\)$/ }).click();
       await expect(picks).toHaveCount(1);
       await expect(picks).toHaveAttribute("aria-label", "条件に合う記事を読む");
@@ -174,6 +195,7 @@ for (const viewport of [
       await page.getByRole("button", { name: "リーディングリストフィルター切替 (T)" }).click();
       await page.getByRole("combobox", { name: "合成スコープ" }).selectOption("digest");
       await expect(picks).toHaveCount(3);
+      await showReadingModes(page);
       await entry.click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(3);
       await expect(
@@ -187,25 +209,32 @@ for (const viewport of [
       );
       await page.screenshot({ path: testInfo.outputPath("digest-scoped-immersive.png") });
       await page.keyboard.press("Escape");
-      await expect(entry).toBeFocused();
+      await expect(page.locator("summary").filter({ hasText: "読み方" })).toBeFocused();
     });
     test("same-scope empty recovery consumes painted cards and continues with newly loaded articles", async ({
       page,
     }, testInfo) => {
       const count = page.getByRole("combobox", { name: "合成候補数" });
-      const entry = page.getByRole("button", { name: "ドパガキモード", exact: true });
+      const entry = page.getByRole("button", {
+        name: "ドパガキモード",
+        exact: true,
+        includeHidden: true,
+      });
       const dialog = page.getByRole("dialog", { name: "ドパガキモード" });
       await count.selectOption("0");
+      await showReadingModes(page);
       await entry.click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await count.selectOption("1");
+      await showReadingModes(page);
       await entry.click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
       // Wait for the actual read acknowledgement rather than racing Close against paint.
       await expect(page.getByTestId("shown-ids")).toHaveText('["in-scope"]');
       await page.keyboard.press("Escape");
       await count.selectOption("2");
+      await showReadingModes(page);
       await entry.click();
       // The painted first card is consumed; only the newly loaded card remains on reopen.
       await expect(dialog.locator(".immersive-slide")).toHaveCount(1);
@@ -230,7 +259,8 @@ for (const viewport of [
       await page.screenshot({ path: testInfo.outputPath("continued-one-item-batch.png") });
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
-      await expect(entry).toBeFocused();
+      await expect(page.locator("summary").filter({ hasText: "読み方" })).toBeFocused();
+      await showReadingModes(page);
       await entry.click();
       await expect(dialog.locator(".immersive-slide")).toHaveCount(0);
       await expect(
@@ -238,7 +268,7 @@ for (const viewport of [
       ).toBeVisible();
       await expect(dialog.getByRole("button", { name: "次の記事", exact: true })).toBeDisabled();
       await page.keyboard.press("Escape");
-      await expect(entry).toBeFocused();
+      await expect(page.locator("summary").filter({ hasText: "読み方" })).toBeFocused();
     });
   });
 }

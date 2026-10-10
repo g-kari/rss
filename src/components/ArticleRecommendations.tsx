@@ -17,6 +17,7 @@ import { resolveThumbnail } from "../lib/article-utils";
 import { safeRecommendationThumbnail } from "../lib/immersive-articles";
 import ImmersiveArticleMode, { type ImmersiveSessionSnapshot } from "./ImmersiveArticleMode";
 import { ArticleThumbnail } from "./article-items/shared";
+import ReadingModeControls from "./ReadingModeControls";
 
 interface Props extends Omit<ArticleRecommendationOptions, "dismissedIds" | "now" | "limit"> {
   userId: string;
@@ -190,20 +191,15 @@ function RecommendationContent({
         aria-labelledby={headingId}
         className="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border-default bg-surface-elevated"
       >
-        <div className="flex items-center justify-between gap-2 px-4 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-1">
           <h2 id={headingId} className="text-control font-medium text-text-strong">
             いま読むおすすめ
           </h2>
-          <button
-            type="button"
-            onClick={() => setImmersiveOpen(true)}
-            disabled={status !== "ready"}
-            aria-haspopup="dialog"
-            aria-describedby={recommendations.length === 0 ? stateId : undefined}
-            className="min-h-11 rounded-lg border border-border-default px-2 text-control text-text-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 [@media(pointer:fine)]:min-h-8"
-          >
-            ドパガキモード
-          </button>
+          <ReadingModeControls
+            onEnterImmersive={() => setImmersiveOpen(true)}
+            ready={status === "ready"}
+            describedBy={recommendations.length === 0 ? stateId : undefined}
+          />
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}

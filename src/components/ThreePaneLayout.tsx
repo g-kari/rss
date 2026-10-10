@@ -1,6 +1,5 @@
 "use client";
 
-import VisualModeBar from "./VisualModeBar";
 import type { ReactNode } from "react";
 import { useHasOpenPopup } from "@/hooks/usePopupLock";
 
@@ -27,7 +26,6 @@ export default function ThreePaneLayout({
   const hasOpenPopup = useHasOpenPopup();
   return (
     <div className="reader-visual-shell flex h-dvh flex-col overflow-hidden">
-      <VisualModeBar />
       <div
         data-layout="root"
         data-popup-open={hasOpenPopup ? "true" : "false"}

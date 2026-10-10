@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ArticleListHeaderProps } from "./types";
 import { useArticleFilter } from "../../contexts/ArticleFilterContext";
+import { articleListScopeTitle } from "../../lib/article-list-scope";
 import LayoutSwitcher from "./LayoutSwitcher";
 import FilterPills from "./FilterPills";
 import SearchBar from "./SearchBar";
@@ -19,6 +20,7 @@ export default function ArticleListHeader({
   onMarkAllRead,
   filteredCount,
   selectedFeedId,
+  scopeTitle,
   feeds,
 }: ArticleListHeaderProps) {
   const [globalFilterModalOpen, setGlobalFilterModalOpen] = useState(false);
@@ -26,12 +28,18 @@ export default function ArticleListHeader({
 
   const globalFilterActive =
     !!globalFilter && (globalFilter.include.length > 0 || globalFilter.exclude.length > 0);
+  const title =
+    scopeTitle ||
+    articleListScopeTitle({
+      feedId: selectedFeedId,
+      feedTitle: feeds.find((feed) => feed.id === selectedFeedId)?.title,
+    });
 
   return (
     <>
-      <div className="flex flex-col border-b border-border-default bg-surface-elevated">
-        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1 min-w-0 overflow-x-auto [&>*]:shrink-0">
-          <div className="flex items-center gap-1 shrink-0">
+      <header className="flex flex-col border-b border-border-default bg-surface-elevated">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-4 pt-3 pb-1 min-w-0">
+          <div className="flex items-center gap-1 min-w-[5rem] flex-1">
             {onMobileBack && (
               <button
                 onClick={onMobileBack}
@@ -53,10 +61,14 @@ export default function ArticleListHeader({
                 </svg>
               </button>
             )}
-            <span className="text-meta tracking-[0.12em] uppercase text-text-muted">
-              記事
-              {filteredCount > 0 && <span className="ml-1 text-text-faint">({filteredCount})</span>}
-            </span>
+            <h2 className="flex items-baseline gap-1 min-w-0 text-meta text-text-muted">
+              <span className="truncate" title={title}>
+                {title}
+              </span>
+              <span className="shrink-0 tabular-nums" aria-label={`${filteredCount} 件`}>
+                ({filteredCount})
+              </span>
+            </h2>
           </div>
           <LayoutSwitcher
             layout={layout}
@@ -75,7 +87,7 @@ export default function ArticleListHeader({
           />
         </div>
         <SearchBar />
-      </div>
+      </header>
       {globalFilterModalOpen && (
         <FeedFilterModal
           initialFilter={globalFilter}

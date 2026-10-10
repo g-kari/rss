@@ -43,14 +43,6 @@ export default function SidebarHeader({
     };
   }, [nsfwMode]);
 
-  const exitNsfw = () => {
-    cancelLongPress();
-    // The action disappears after exit. Keep focus on a stable, non-activating group
-    // so a held/repeated Enter cannot accidentally start the logo activation flow.
-    headerRef.current?.focus({ preventScroll: true });
-    onDeactivateNsfw();
-  };
-
   return (
     <div
       ref={headerRef}
@@ -90,7 +82,7 @@ export default function SidebarHeader({
             if (nsfwMode) e.preventDefault();
           }}
           className={`text-meta font-medium tracking-[0.25em] uppercase transition-colors duration-150 select-none cursor-default ${nsfwMode ? "text-error" : "text-text-muted"}`}
-          title={nsfwMode ? "長押しでNSFWモード解除" : ""}
+          title={nsfwMode ? "NSFW表示中・長押しで解除、またはユーザー設定" : ""}
         >
           RSS
         </button>
@@ -141,23 +133,6 @@ export default function SidebarHeader({
           </svg>
         </button>
       </div>
-      {nsfwMode && (
-        <div className="px-4 pb-3.5">
-          <button
-            type="button"
-            onClick={exitNsfw}
-            onKeyDown={(event) => {
-              // Keep native Space activation; the document-level article shortcut
-              // must not prevent this button's default click or scroll its reader.
-              if (event.key === " ") event.stopPropagation();
-            }}
-            className="w-full min-h-[44px] px-2 py-2 text-xs leading-4 font-medium rounded border border-border-default text-text-default hover:bg-surface-hover transition-colors duration-200"
-            title="NSFWモード解除（開いている記事は閉じません）"
-          >
-            NSFWモード解除
-          </button>
-        </div>
-      )}
     </div>
   );
 }

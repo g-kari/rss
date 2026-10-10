@@ -123,7 +123,9 @@ export function resolveImmersiveText(
   article: Article,
   cachedSummary?: CachedSummary | null,
 ): ImmersiveTextPresentation {
-  const plain = cachedSummary?.url === article.link ? summaryDisplayText(cachedSummary) : "";
+  // A missing article link must not make an absent summary's optional URL look like a match.
+  const plain =
+    cachedSummary && cachedSummary.url === article.link ? summaryDisplayText(cachedSummary) : "";
   if (plain && cachedSummary) {
     const text = sentenceExcerpt(plain);
     const modelLabel =

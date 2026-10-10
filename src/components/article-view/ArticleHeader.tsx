@@ -260,7 +260,7 @@ export default function ArticleHeader({
       />
 
       <div data-print="hide" className="flex flex-col items-end gap-2">
-        <div className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5 lg:flex-nowrap">
+        <div className="flex flex-wrap justify-end items-center gap-2 lg:gap-1.5">
           <QuickReadingSettings key={article.id} />
           <ArticleHeaderAiTts section="primary" {...aiTtsProps} />
           <ArticleHeaderShare section="primary" {...shareProps} />

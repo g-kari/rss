@@ -123,7 +123,7 @@ describe("ArticleList recommendation wiring", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(document.querySelectorAll(".immersive-slide")).toHaveLength(1);
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-    expect(entry).toHaveFocus();
+    expect(document.querySelector("summary")).toHaveFocus();
     expect(localStorage.getItem(STORAGE_KEYS.BOOKMARK_ONLY)).toBe("1");
     expect(localStorage.getItem(STORAGE_KEYS.READING_LIST_ONLY)).toBe("1");
     expect(onSelectArticle).not.toHaveBeenCalled();

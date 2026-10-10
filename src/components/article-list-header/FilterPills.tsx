@@ -105,6 +105,7 @@ export default function FilterPills({
             <path d="M1 6s2-3.5 5-3.5S11 6 11 6s-2 3.5-5 3.5S1 6 1 6z" />
             <circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none" />
           </svg>
+          <span className="ml-1">未読</span>
         </FilterPillButton>
         <FilterPillButton
           active={bookmarkOnly}
@@ -155,7 +156,7 @@ export default function FilterPills({
             onClick={() => setAuthorFilter(null)}
             title={`著者「${authorFilter}」フィルターを解除`}
             aria-label={`著者「${authorFilter}」フィルターを解除`}
-            className="flex items-center gap-1 px-2 py-0.5 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-meta font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
+            className="flex items-center gap-1 px-2 py-0.5 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 rounded text-control font-medium bg-ink text-ink-text transition-colors duration-150 hover:bg-ink-hover max-w-[120px]"
           >
             <span className="truncate">{authorFilter}</span>
             <svg
@@ -178,7 +179,7 @@ export default function FilterPills({
             onClick={resetAllFilters}
             title="すべてのフィルターをクリア"
             aria-label="すべてのフィルターをクリア"
-            className="flex items-center gap-1 px-2 h-6 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-meta text-text-faint hover:text-text-strong hover:bg-surface-subtle transition-all duration-200"
+            className="flex items-center gap-1 px-2 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 rounded text-control text-text-faint hover:text-text-strong hover:bg-surface-subtle transition-all duration-200"
           >
             <svg
               aria-hidden="true"
@@ -209,7 +210,7 @@ export default function FilterPills({
               ? "適用中の詳細フィルターがあるため表示しています"
               : "詳細フィルター（ダイジェスト・日付・読了時間・カテゴリ・全体キーワード）"
           }
-          aria-label="詳細フィルター"
+          aria-label="絞り込み（詳細フィルター）"
           className={`${PILL_BASE_CLASS} gap-1 ${
             detailShown ? PILL_ACTIVE_CLASSES.default : PILL_INACTIVE_CLASS
           }`}
@@ -227,6 +228,7 @@ export default function FilterPills({
           >
             <path d="M1 2.5h10M3 6h6M5 9.5h2" />
           </svg>
+          <span>絞り込み</span>
         </button>
       </div>
       {detailShown && (
@@ -302,7 +304,7 @@ export default function FilterPills({
             onClick={onOpenGlobalFilter}
             title="すべてのフィードにキーワードフィルターを設定"
             aria-label="グローバルフィルター設定"
-            className={`flex items-center gap-1 px-2 h-6 max-md:min-w-10 max-md:min-h-[44px] lg:min-w-[24px] lg:min-h-[24px] rounded-full text-meta transition-all duration-200 ${
+            className={`flex items-center gap-1 px-2 min-w-10 min-h-[44px] [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:min-h-8 rounded text-control transition-all duration-200 ${
               globalFilterActive
                 ? "text-text-strong bg-surface-subtle"
                 : "text-text-faint hover:text-text-muted hover:bg-surface-subtle"

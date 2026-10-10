@@ -2,6 +2,7 @@
 
 import { type RefObject } from "react";
 import { useSyncedRef } from "./useSyncedRef";
+import { hasReaderFocusOverlay } from "./useArticleViewShortcuts";
 import { useEventListener } from "./useEventListener";
 import type {
   Article,
@@ -14,7 +15,7 @@ import type {
   ReadingTimeRange,
 } from "../types";
 import { getShortcutDef, type ShortcutContext } from "../config/shortcuts";
-import { isEditableShortcutTarget } from "../lib/keyboard-target";
+import { isEditableShortcutTarget, isSpaceActivationTarget } from "../lib/keyboard-target";
 
 interface KeyboardNavOptions {
   filteredArticles: Article[];
@@ -108,7 +109,12 @@ export function useKeyboardNav(options: KeyboardNavOptions): void {
 
   function handleKeyDown(e: KeyboardEvent) {
     const target = e.target;
-    if (isEditableShortcutTarget(target)) return;
+    if (
+      e.defaultPrevented ||
+      isEditableShortcutTarget(target) ||
+      (e.key === " " && (isSpaceActivationTarget(target) || hasReaderFocusOverlay()))
+    )
+      return;
 
     const comboKey = e.ctrlKey ? `Control+${e.key}` : e.metaKey ? `Meta+${e.key}` : e.key;
     const def = getShortcutDef(comboKey);
