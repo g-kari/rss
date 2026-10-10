@@ -8,6 +8,7 @@ import { useTtsAdapter } from "../contexts/TtsAdapterContext";
 import { useToast } from "../contexts/ToastContext";
 import { useEventListener } from "./useEventListener";
 import { isEditableShortcutTarget } from "../lib/keyboard-target";
+import { cycleTtsVolume } from "../lib/tts-volume";
 
 interface ArticleViewTtsResult {
   ttsSupported: boolean;
@@ -72,10 +73,9 @@ export function useArticleViewTts(
     }
   }, [ttsErrorCount, ttsLastError, toast]);
 
-  // #727: TTS 音量 3 段階 cycle (1.0 = full / 0.5 = half / 0.0 = muted)
+  // #727: 本人指定の10ポイント刻み。0%の次は100%へ戻す。
   const ttsCycleVolume = useCallback(() => {
-    const next = ttsVolume >= 0.99 ? 0.5 : ttsVolume >= 0.49 ? 0 : 1;
-    setTtsVolume(next);
+    setTtsVolume(cycleTtsVolume(ttsVolume));
   }, [ttsVolume, setTtsVolume]);
 
   // 記事切り替え時にTTSを停止

@@ -122,6 +122,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   // 進行中の AudioBufferSourceNode を保持 (#766)。stop() / resetPlaybackState() で
   // source.stop() を呼んで piper-plus 内の再生を確実に停止する。
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioGainRef = useRef<GainNode | null>(null);
 
   // voice 一覧は static (PIPER_PLUS_VOICES から導出)
   const voices = useMemo<TtsVoice[]>(() => PIPER_PLUS_VOICES.map(piperPlusVoiceToTtsVoice), []);
@@ -143,24 +144,34 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
   }, []);
 
   /**
-   * 進行中の AudioBufferSourceNode を停止して ref をクリアする (#766)。
-   * onended は null に差し替えて natural-end 経路を発火させず、stop による無音化のみを担保する。
+   * 現在のsourceとgainを解放する (#766)。自然完了時はsourceを再停止しない。
+   * onended は null に差し替え、手動停止とunmountを自然完了扱いにしない。
    * stop() 後の `source.start()` 再呼出は不可なので必ず使い捨て (next speak で新 source 生成)。
    */
-  const releaseAudioSource = useCallback(() => {
+  const releaseAudioSource = useCallback((stopSource = true) => {
     const source = audioSourceRef.current;
-    if (!source) return;
+    const gain = audioGainRef.current;
     audioSourceRef.current = null;
-    source.onended = null;
-    try {
-      source.stop();
-    } catch {
-      /* already stopped / not started */
+    audioGainRef.current = null;
+    if (source) {
+      source.onended = null;
+      if (stopSource) {
+        try {
+          source.stop();
+        } catch {
+          /* already stopped / not started */
+        }
+      }
+      try {
+        source.disconnect();
+      } catch {
+        /* */
+      }
     }
     try {
-      source.disconnect();
-    } catch {
-      /* */
+      gain?.disconnect();
+    } catch (err) {
+      devError("[usePiperTts] gain disconnect failed", err);
     }
   }, []);
 
@@ -254,7 +265,10 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
       const text = currentTextRef.current;
       if (text) speakRef.current(text, onBoundaryRef.current ?? undefined);
     },
-    // onVolumeChange も指定しない (volume 変化で再 speak しない usePiperTts 仕様)
+    // 音量は現在のchunkへ反映する。再合成・再生位置・一時停止状態は変えない。
+    onVolumeChange: () => {
+      if (audioGainRef.current) audioGainRef.current.gain.value = volumeRef.current;
+    },
   });
 
   /**
@@ -403,10 +417,11 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
             gain.connect(ctx.destination);
             releaseAudioSource();
             audioSourceRef.current = source;
+            audioGainRef.current = gain;
             await new Promise<void>((resolve, reject) => {
               source.onended = () => {
                 if (audioSourceRef.current === source) {
-                  audioSourceRef.current = null;
+                  releaseAudioSource(false);
                 }
                 resolve();
               };
@@ -496,6 +511,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
     return () => {
       playTokenRef.current += 1;
       clearBoundaryTimer();
+      releaseAudioSource();
       if (ttsInstanceRef.current) {
         try {
           ttsInstanceRef.current.dispose();
@@ -507,7 +523,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
         ttsVoiceIdRef.current = null;
       }
     };
-  }, [clearBoundaryTimer]);
+  }, [clearBoundaryTimer, releaseAudioSource]);
 
   return useMemo<TtsAdapter>(
     () => ({

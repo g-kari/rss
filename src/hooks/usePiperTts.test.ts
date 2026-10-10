@@ -42,6 +42,8 @@ type MockSource = {
 
 let createdSources: MockSource[] = [];
 let createdContexts: MockAudioContext[] = [];
+type MockGain = { gain: { value: number }; disconnect: ReturnType<typeof vi.fn> };
+let createdGains: MockGain[] = [];
 let startErrorOnce: Error | null = null;
 /**
  * true なら start() は natural-end (`source.onended`) を発火させない。
@@ -94,11 +96,13 @@ class MockAudioContext {
   }
 
   createGain(): GainNode {
-    return {
+    const gain = {
       gain: { value: 1 },
       connect: vi.fn(),
       disconnect: vi.fn(),
-    } as unknown as GainNode;
+    };
+    createdGains.push(gain);
+    return gain as unknown as GainNode;
   }
 
   resume() {
@@ -124,6 +128,7 @@ function resetMocks() {
   disposeMock.mockReset();
   createdSources = [];
   createdContexts = [];
+  createdGains = [];
   startErrorOnce = null;
   suppressNaturalEnd = false;
 
@@ -447,5 +452,136 @@ describe("usePiperTts (#761 piper-plus / #766 自前 BufferSource 再生)", () =
     act(() => result.current.speak("hello"));
     await new Promise((r) => setTimeout(r, 50));
     expect(initializeMock).not.toHaveBeenCalled();
+  });
+  it("再生中の音量・ミュートは今のgainだけへ反映し、再合成しない", async () => {
+    suppressNaturalEnd = true;
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    const boundary = vi.fn();
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.setVolume(1));
+    act(() => result.current.speak("長い文を読み上げ続けるテスト。", boundary));
+    await waitFor(() => expect(createdSources[0]?.start).toHaveBeenCalledTimes(1));
+    for (const volume of [0.9, 0.5, 0, 0.73, 1]) {
+      act(() => result.current.setVolume(volume));
+      expect(result.current.volume).toBe(volume);
+      expect(createdGains[0].gain.value).toBe(volume);
+      expect(result.current.isPlaying).toBe(true);
+      expect(result.current.isPaused).toBe(false);
+      expect(result.current.endedCount).toBe(0);
+    }
+    expect(synthesizeMock).toHaveBeenCalledTimes(1);
+    expect(initializeMock).toHaveBeenCalledTimes(1);
+    expect(createdSources).toHaveLength(1);
+    expect(createdSources[0].stop).not.toHaveBeenCalled();
+    expect(createdContexts[0].state).toBe("running");
+    act(() => result.current.stop());
+  });
+
+  it("一時停止中の音量はgainへ反映し、勝手に再開しない", async () => {
+    suppressNaturalEnd = true;
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.speak("一時停止の音量。"));
+    await waitFor(() => expect(createdSources[0]?.start).toHaveBeenCalledTimes(1));
+    act(() => result.current.pause());
+    act(() => result.current.setVolume(0.3));
+    expect(createdGains[0].gain.value).toBe(0.3);
+    expect(createdContexts[0].state).toBe("suspended");
+    expect(result.current.isPaused).toBe(true);
+    expect(synthesizeMock).toHaveBeenCalledTimes(1);
+    act(() => result.current.resume());
+    expect(createdContexts[0].state).toBe("running");
+    expect(createdGains[0].gain.value).toBe(0.3);
+    expect(createdSources[0].start).toHaveBeenCalledTimes(1);
+    act(() => result.current.stop());
+  });
+
+  it("合成を待つ間の音量変更は最初の再生から反映する", async () => {
+    suppressNaturalEnd = true;
+    let finish = () => {};
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    synthesizeMock.mockImplementationOnce(async () => {
+      await gate;
+      return { duration: 1, sampleRate: 22050, samples: new Float32Array(100) };
+    });
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.setVolume(1));
+    act(() => result.current.speak("合成待ち。"));
+    await waitFor(() => expect(synthesizeMock).toHaveBeenCalledTimes(1));
+    expect(createdGains).toHaveLength(0);
+    act(() => result.current.setVolume(0.37));
+    await act(async () => {
+      finish();
+    });
+    await waitFor(() => expect(createdSources[0]?.start).toHaveBeenCalledTimes(1));
+    expect(createdGains[0].gain.value).toBe(0.37);
+    expect(synthesizeMock).toHaveBeenCalledTimes(1);
+    act(() => result.current.stop());
+  });
+
+  it("停止したgainを音量変更や古い完了callbackが再利用しない", async () => {
+    suppressNaturalEnd = true;
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.setVolume(1));
+    act(() => result.current.speak("前の記事。"));
+    await waitFor(() => expect(createdSources[0]?.start).toHaveBeenCalledTimes(1));
+    const retiredEnd = createdSources[0].onended;
+    act(() => result.current.stop());
+    expect(createdGains[0].disconnect).toHaveBeenCalledTimes(1);
+    expect(createdSources[0].disconnect).toHaveBeenCalledTimes(1);
+    expect(createdSources[0].stop).toHaveBeenCalledTimes(1);
+    act(() => result.current.setVolume(0.4));
+    expect(createdGains[0].gain.value).toBe(1);
+    act(() => result.current.speak("次の記事。"));
+    await waitFor(() => expect(createdSources[1]?.start).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      retiredEnd?.();
+    });
+    act(() => result.current.setVolume(0));
+    expect(createdGains[1].gain.value).toBe(0);
+    expect(createdGains[0].gain.value).toBe(1);
+    expect(createdGains[1].disconnect).not.toHaveBeenCalled();
+    expect(result.current.isPlaying).toBe(true);
+    expect(result.current.endedCount).toBe(0);
+    expect(synthesizeMock).toHaveBeenCalledTimes(2);
+    act(() => result.current.stop());
+  });
+
+  it("自然完了したsourceとgainは接続を解放する", async () => {
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.speak("完了する文。"));
+    await waitFor(() => expect(result.current.endedCount).toBe(1));
+    expect(createdSources[0].disconnect).toHaveBeenCalledTimes(1);
+    expect(createdSources[0].stop).not.toHaveBeenCalled();
+    expect(createdGains[0].disconnect).toHaveBeenCalledTimes(1);
+    const oldVolume = createdGains[0].gain.value;
+    act(() => result.current.setVolume(0));
+    expect(createdGains[0].gain.value).toBe(oldVolume);
+  });
+
+  it("unmountで音声sourceとgainを解放し、完了扱いにしない", async () => {
+    suppressNaturalEnd = true;
+    const { usePiperTts } = await import("./usePiperTts");
+    const { result, unmount } = renderHook(() => usePiperTts());
+    act(() => result.current.setVoiceUri("piper:css10-ja"));
+    act(() => result.current.speak("画面を閉じる文。"));
+    await waitFor(() => expect(createdSources[0]?.start).toHaveBeenCalledTimes(1));
+    unmount();
+    expect(createdSources[0].stop).toHaveBeenCalledTimes(1);
+    expect(createdSources[0].disconnect).toHaveBeenCalledTimes(1);
+    expect(createdSources[0].onended).toBeNull();
+    expect(createdGains[0].disconnect).toHaveBeenCalledTimes(1);
+    expect(disposeMock).toHaveBeenCalledTimes(1);
+    expect(result.current.endedCount).toBe(0);
   });
 });
