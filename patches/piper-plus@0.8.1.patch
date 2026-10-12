@@ -1,0 +1,28 @@
+diff --git a/src/index.js b/src/index.js
+index 3ad73141973d01b1ca68d8e287ccb6272a614fb3..28866cf3773621d57ab7ebae2bdf1f8c4d142c07 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -947,6 +947,7 @@ export class PiperPlus {
+           wasmAdapter = await RustWasmAdapter.create(JSON.stringify(this._config), {
+             wasmUrl: options.wasmG2pUrl || "../../dist/rust-wasm/piper_plus_wasm.js",
+             wasmLoader: options.wasmLoader,
++            zhDictBaseUrl: options.zhDictBaseUrl,
+           });
+           // Route all languages through WASM
+           const wasmLangs = wasmAdapter.supportedLanguages;
+diff --git a/src/phonemizer/rust-wasm-adapter.js b/src/phonemizer/rust-wasm-adapter.js
+index 643158e804e48dd2ebf336393e6b80cd8ddc773c..47ab562930f4d796d4ec2824b07bcf0b3c53bdba 100644
+--- a/src/phonemizer/rust-wasm-adapter.js
++++ b/src/phonemizer/rust-wasm-adapter.js
+@@ -69,7 +69,10 @@ export class RustWasmAdapter {
+       if (!url) {
+         throw new Error("Either wasmUrl or wasmLoader must be provided");
+       }
+-      wasmModule = await import(url);
++      // PATCHED: Next.js 16.3 Turbopack cannot statically resolve a runtime URL
++      // and fails the production build with `Can't resolve <dynamic>`.
++      const importFn = new Function("url", "return import(url)");
++      wasmModule = await importFn(url);
+       await wasmModule.default(); // init() — load WASM binary
+     }
+     const wasm = new wasmModule.WasmPhonemizer(configJson);
