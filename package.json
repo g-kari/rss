@@ -62,7 +62,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260702.3",
     "esbuild": "^0.28.2",
     "happy-dom": "^20.14.6",
-    "next": "~16.4.0",
+    "next": "~16.3.8",
     "postcss": "^8.5.29",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
@@ -93,7 +93,7 @@
       "sharp": ">=0.35.0"
     },
     "patchedDependencies": {
-      "piper-plus": "patches/piper-plus.patch"
+      "piper-plus@0.8.1": "patches/piper-plus@0.8.1.patch"
     }
   }
 }

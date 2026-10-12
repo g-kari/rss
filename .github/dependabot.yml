@@ -64,6 +64,11 @@ updates:
           - "@mozilla/readability"
     labels:
       - "dependencies"
+    # Next 16.4.x reads .next/server/preview-props.json, which OpenNext
+    # Cloudflare does not bundle (opennextjs-cloudflare#1355, #1473).
+    ignore:
+      - dependency-name: "next"
+        versions: [">=16.4.0 <16.5.0"]
 
   # GitHub Actions の依存関係
   - package-ecosystem: "github-actions"

@@ -52,7 +52,7 @@ function buildCsp(nonce: string): string {
   //   onnxruntime-web + Rust phonemizer 用。
   //
   // - `'unsafe-eval'`: 任意の JS eval (`new Function()` / `eval()` 等) を許可。
-  //   patches/piper-plus.patch で書き換えた `new Function("u", "return import(u)")` (Turbopack の
+  //   patches/piper-plus@0.8.1.patch で書き換えた `new Function("u", "return import(u)")` (Turbopack の
   //   static analyzer が library 内部の `await import(url)` を解決できない問題への bypass) が
   //   CSP `'unsafe-eval'` を要求するため、本緩和が必須。
   //
@@ -62,7 +62,7 @@ function buildCsp(nonce: string): string {
   //   interceptor / piper-plus library の upstream resolve で本緩和を撤回する余地あり。
   //   TODO(#943): ルート別 CSP 出し分け (案 A) は SPA では request 時に Piper 使用有無を
   //   判定できず不可。piper-plus が `new Function` bypass を不要にする upstream 解決 (案 B) が
-  //   実現したら patches/piper-plus.patch ごと撤回して 'unsafe-eval' を削除すること。
+  //   実現したら patches/piper-plus@0.8.1.patch ごと撤回して 'unsafe-eval' を削除すること。
   return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' 'unsafe-eval' https://static.cloudflareinsights.com; ${STATIC_CSP_SUFFIX}`;
 }
 

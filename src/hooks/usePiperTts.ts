@@ -218,7 +218,7 @@ export function usePiperTts(options?: UsePiperTtsOptions): TtsAdapter {
           message: info.message,
         });
       },
-      // patched piper-plus (patches/piper-plus.patch) で `new Function` 経由に書き換え済の
+      // patched piper-plus (patches/piper-plus@0.8.1.patch) で `new Function` 経由に書き換え済の
       // `import(url)` 経路を通すため wasmG2pUrl で URL を渡す。同 URL は wasm-bindgen の
       // `__wbg_init` が `new URL(bg.wasm, import.meta.url)` で相対解決するため、絶対 URL
       // (= window.location.origin + path) に変換しておく必要がある。
