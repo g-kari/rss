@@ -11,7 +11,7 @@
  * - 許可 MIME: `ALLOWED_IMAGE_CONTENT_TYPES`、magic byte: `detectImageMimeType`
  * - declared vs detected 整合性: `isContentTypeConsistent` (キャッシュ汚染防止)
  * - Qiita imgix Referer 上書き: `.imgix.net` かつホスト名に "qiita" を含む場合 `https://qiita.com/`
- * - error response: SVG body 200 (`errorImageSvg`)
+ * - error response: SVG body 200 by default; `error=empty` opts into an empty 502
  */
 import { withBinarySession } from "@/lib/server-auth";
 import { handleBinaryProxy } from "@/lib/binary-proxy-handler";
@@ -51,6 +51,9 @@ function qiitaImgixRefererOverride(url: string): string | null {
 }
 
 export async function GET(request: Request) {
+  // Thumbnail consumers need an actual image error event, not a decodable placeholder.
+  // A distinct browser URL also avoids reusing a cached legacy SVG error response.
+  const emptyErrors = new URL(request.url).searchParams.get("error") === "empty";
   return withBinarySession(request, ({ ctx }) =>
     handleBinaryProxy<ImageErrorReason>(request, ctx, {
       label: "image-proxy",
@@ -69,7 +72,16 @@ export async function GET(request: Request) {
       responseHeaders: (mime) => (mime === "image/svg+xml" ? SVG_IMAGE_RESPONSE_HEADERS : {}),
       isConsistentMime: isContentTypeConsistent,
       refererOverride: qiitaImgixRefererOverride,
-      errorResponse: (reason, details) => errorImageSvg(reason, details as ImageErrorDetails),
+      errorResponse: (reason, details) => {
+        const placeholder = errorImageSvg(reason, details as ImageErrorDetails);
+        if (!emptyErrors) return placeholder;
+        const headers = new Headers(placeholder.headers);
+        headers.delete("Content-Type");
+        headers.set("Cache-Control", "no-store");
+        headers.set("Cross-Origin-Resource-Policy", "same-origin");
+        headers.set("X-Content-Type-Options", "nosniff");
+        return new Response(null, { status: 502, headers });
+      },
       reasonMap: {
         notFound: "not_found",
         botBlocked: "bot_blocked",
