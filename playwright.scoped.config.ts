@@ -32,6 +32,7 @@ export default defineConfig({
     "mcp-consent-navigation.spec.ts",
     "ogp-queue.spec.ts",
     "thumbnail-candidates.spec.ts",
+    "image-proxy-errors.spec.ts",
     "push-test-feedback.spec.ts",
   ],
   timeout: 30_000,

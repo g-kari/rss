@@ -31,7 +31,9 @@ export async function serveReaderMotionFixture(
     if (
       !request.isNavigation &&
       request.resourceType === "image" &&
-      (request.url === READER_MOTION_IMAGE_URL || request.url === READER_MOTION_PROXY_URL)
+      (request.url === READER_MOTION_IMAGE_URL ||
+        request.url === READER_MOTION_PROXY_URL ||
+        request.url === `${READER_MOTION_PROXY_URL}&error=empty`)
     ) {
       await route.fulfill({
         contentType: "image/svg+xml",

@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeArticle } from "../../../e2e/helpers/article";
 import { useArticleListItemProps } from "../../hooks/useArticleListItemProps";
-import { buildImageProxyUrl } from "../../lib/image-proxy-url";
+import { buildImageProxyUrl, buildThumbnailProxyUrl } from "../../lib/image-proxy-url";
 import type { Article, Feed } from "../../types";
 import { CardArticleItem } from "./CardItem";
 import { ListArticleItem } from "./ListItem";
@@ -69,9 +69,15 @@ describe.each([
     const { container } = render(
       <Item Renderer={Renderer} article={article} ogpCache={{ [article.link!]: cachedImage }} />,
     );
-    expect(container.querySelector("img")).toHaveAttribute("src", buildImageProxyUrl(cachedImage));
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      buildThumbnailProxyUrl(cachedImage),
+    );
     fireEvent.error(container.querySelector("img")!);
-    expect(container.querySelector("img")).toHaveAttribute("src", buildImageProxyUrl(feedImage));
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      buildThumbnailProxyUrl(feedImage),
+    );
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -85,7 +91,10 @@ describe.each([
       <Item Renderer={Renderer} article={article} ogpCache={cache} />,
     );
     for (const candidate of [cachedImage, feedImage, youtubeImage]) {
-      expect(container.querySelector("img")).toHaveAttribute("src", buildImageProxyUrl(candidate));
+      expect(container.querySelector("img")).toHaveAttribute(
+        "src",
+        buildThumbnailProxyUrl(candidate),
+      );
       fireEvent.error(container.querySelector("img")!);
     }
     expect(container.querySelector("img")).toBeNull();
@@ -104,7 +113,10 @@ describe.each([
       <Item Renderer={Renderer} article={article} ogpCache={{ [article.link!]: cachedImage }} />,
     );
     fireEvent.error(container.querySelector("img")!);
-    expect(container.querySelector("img")).toHaveAttribute("src", buildImageProxyUrl(youtubeImage));
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      buildThumbnailProxyUrl(youtubeImage),
+    );
     fireEvent.error(container.querySelector("img")!);
     expect(container.querySelector("img")).toBeNull();
     rerender(
@@ -124,13 +136,13 @@ describe.each([
       <Item Renderer={Renderer} article={article} ogpCache={{}} />,
     );
     const loadedImage = container.querySelector("img")!;
-    expect(loadedImage).toHaveAttribute("src", buildImageProxyUrl(feedImage));
+    expect(loadedImage).toHaveAttribute("src", buildThumbnailProxyUrl(feedImage));
     fireEvent.load(loadedImage);
     rerender(
       <Item Renderer={Renderer} article={article} ogpCache={{ [article.link!]: lateImage }} />,
     );
     expect(container.querySelector("img")).toBe(loadedImage);
-    expect(loadedImage).toHaveAttribute("src", buildImageProxyUrl(feedImage));
+    expect(loadedImage).toHaveAttribute("src", buildThumbnailProxyUrl(feedImage));
     expect(fetch).not.toHaveBeenCalled();
   });
 });

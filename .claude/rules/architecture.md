@@ -108,7 +108,7 @@ app/
       translate/route.ts     # POST /api/ai/translate (Workers AI)
     content/route.ts         # GET /api/content?url=... (フルテキストプロキシ) / DELETE /api/content?url=... (自分の clip Cache のみクリア、#691 で shared cache 削除を撤廃)
     engagement/route.ts      # GET / POST /api/engagement — エンゲージメント記録
-    image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ)
+    image-proxy/route.ts     # GET /api/image-proxy?url=... (外部画像プロキシ、サムネイル用 error=empty は空502失敗通知)
     video-proxy/route.ts     # GET /api/video-proxy?url=... (外部動画プロキシ、handleBinaryProxy 共通 handler 経由)
     ogp/route.ts             # GET /api/ogp?url=... (OGP 画像 URL 取得)
     read-state/route.ts      # GET / POST /api/read-state (既読・ブックマーク・後で読む)
@@ -512,7 +512,7 @@ src/
     full-text-search.ts      # 記事全文検索クエリパーサー（フィールド検索・トークン化・正規表現対応）
     read-state-merge.ts      # 読み取り状態マージ純粋関数（local ∪ server / snoozed は遅い方優先 / notes はサーバー優先）
     feed-group-drop.ts       # フィードグループへのドラッグ&ドロップ時の競合解決ロジック
-    image-proxy-url.ts       # 画像プロキシ URL ビルダー / プロキシ済み判定
+    image-proxy-url.ts       # 画像プロキシ URL ビルダー / プロキシ済み判定 / サムネイル専用empty-error URL（正規source keyは維持）
     svg-image.ts             # 外部SVGをサイズ・複雑度制限付きの静的画像サブセットに再構成。実行要素・外部参照を除去しimage-only CSPを適用
     image-proxy-security.ts  # 画像プロキシリクエストの MIME / Content-Type / オリジン検証
     browser-ai-common.ts     # Summarizer / Translator 等 Chrome 組み込みブラウザ AI 共通ユーティリティ（BrowserAiAvailability 型・共通判定ロジックを集約、browser-summarizer.ts / browser-translator.ts から参照）

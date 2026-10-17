@@ -116,7 +116,7 @@ describe("body image to shared gallery thumbnail", () => {
     expect(screen.getByText(/no image/i)).toBeInTheDocument();
     act(() => screen.getByRole("button", { name: "Resolve OGP image" }).click());
     expect(screen.queryByText(/no image/i)).not.toBeInTheDocument();
-    expect(document.querySelector("img")).toHaveAttribute("src", image);
+    expect(document.querySelector("img")).toHaveAttribute("src", `${image}&error=empty`);
   });
 
   it("repairs an OGP miss from fetched body content without another request or selection", async () => {
@@ -138,7 +138,7 @@ describe("body image to shared gallery thumbnail", () => {
       </Provider>,
     );
     expect(screen.queryByText(/no image/i)).not.toBeInTheDocument();
-    expect(document.querySelector("img")).toHaveAttribute("src", image);
+    expect(document.querySelector("img")).toHaveAttribute("src", `${image}&error=empty`);
     await act(() => vi.advanceTimersByTimeAsync(500));
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.OGP_CACHE)!)[article.link!].image).toBe(
       image,
