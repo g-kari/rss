@@ -34,6 +34,7 @@ export default defineConfig({
     "thumbnail-candidates.spec.ts",
     "image-proxy-errors.spec.ts",
     "push-test-feedback.spec.ts",
+    "opml-import-result.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,

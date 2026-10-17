@@ -6,8 +6,9 @@ import { useFullTextSearch } from "../../hooks/useFullTextSearch";
 import { downloadBlob } from "../../lib/download";
 import { buildSavedSearchesJsonFile, parseSavedSearchesJson } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
+import { describeOpmlImportResult } from "../../lib/opml-import-result";
 import { devError } from "../../lib/dev-log";
-import type { Article, Collection } from "../../types";
+import type { Article, Collection, OpmlImportResult } from "../../types";
 import JsonRestoreControls from "./JsonRestoreControls";
 
 import SingleFileSettings from "./SingleFileSettings";
@@ -81,11 +82,13 @@ export default function ImportExportTabPanel({
         headers: { "Content-Type": "text/xml" },
         body: text,
       });
-      const data = (await res.json()) as { added?: number; skipped?: number; error?: string };
+      const data = (await res.json()) as OpmlImportResult & { error?: string };
       if (!res.ok) {
         toast.error(data.error ?? "インポートに失敗しました");
       } else {
-        toast.success(`${data.added ?? 0}件追加、${data.skipped ?? 0}件スキップ`);
+        const message = describeOpmlImportResult(data);
+        if (message.isError) toast.error(message.text);
+        else toast.success(message.text);
       }
     } catch (err) {
       devError("[ImportExportTabPanel] handleImport failed", err);

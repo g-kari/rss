@@ -652,3 +652,7 @@ OAuthで本人が許可すると、MCP clientが購読一覧と現在購読中�
 トークンは保存だけを許可し、30日で期限切れになります。設定を開いただけでは発行しません。再発行/失効は即時に以後の認証へ反映され、既に認証された処理は取り消しません。生トークンは発行レスポンスと開いている画面だけに保持し、サーバーではハッシュのみ保存します。既存Cookie APIのCSRF保護は変更せず、クロスオリジンのCookie利用を許可しません。失効しても保存済み記事は残ります。
 
 公式仕様: [SingleFile REST Form API](https://github.com/gildas-lormeau/SingleFile/blob/master/src/lib/rest-form-api/index.js)、[設定ヘルプ](https://github.com/gildas-lormeau/SingleFile/blob/master/src/ui/pages/help.html)
+
+### OPML インポートの結果
+
+OPML の取り込みは、追加・スキップ・フィードメタデータの取得・保存失敗を分けて表示します。一部のメタデータを準備できなかった場合も、追加できたフィードと既存の購読は保持されます。スキップには重複以外の無効URLや購読枠不足も含まれます。購読一覧の更新や後続のキャッシュ処理の失敗処理は従来どおりです。

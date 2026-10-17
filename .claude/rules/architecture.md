@@ -455,6 +455,7 @@ src/
     bulk-selection.ts        # Shift+click による記事範囲選択の計算ユーティリティ
     booth-fallback.ts        # x.com / twitter.com 系フィードで summary 内の booth.pm URL を thumbnail fallback として抽出する純粋関数（extractBoothFallbackUrl — #750 Phase 1）
     opml.ts                  # OPML ビルド・パース純粋関数（buildOpml / extractFeeds）
+    opml-import-result.ts    # OPML インポート結果の追加・スキップ・失敗をサイドバーと設定で共通表示
     recommendation.ts        # フィード推薦ロジック
     push-config.ts          # PushConfig ETag CAS更新・失効endpointだけを削除
     recommendation-push.ts  # タイムゾーン日付・通知候補/feedbackの安全な純粋関数
