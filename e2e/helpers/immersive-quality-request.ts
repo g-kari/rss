@@ -29,7 +29,9 @@ export function classifyQualityRequest(
     QUALITY_IMAGES.some(
       (image) =>
         request.url === image ||
-        request.url === `https://quality.test/api/image-proxy?url=${encodeURIComponent(image)}`,
+        request.url === `https://quality.test/api/image-proxy?url=${encodeURIComponent(image)}` ||
+        request.url ===
+          `https://quality.test/api/image-proxy?url=${encodeURIComponent(image)}&error=empty`,
     )
   )
     return "image";

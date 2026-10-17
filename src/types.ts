@@ -181,6 +181,15 @@ export interface Feed {
   digestLimit?: number;
 }
 
+/** OPML import counts: failed metadata preparation is separate from ordinary skips. */
+export interface OpmlImportResult {
+  added: number;
+  skipped: number;
+  /** Optional only for compatibility with responses from an older server. */
+  failed?: number;
+  feeds: Feed[];
+}
+
 export interface Article {
   id: string; // sha256Hex(feedUrl + "|" + guid).slice(0, 16) — 決定論的
   feedHash: string; // SharedFeedMeta.feedHash を参照（旧 feedId）

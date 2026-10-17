@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent } from "react";
-import type { Feed } from "../types";
+import type { Feed, OpmlImportResult } from "../types";
+import { describeOpmlImportResult } from "../lib/opml-import-result";
 import { apiFetch, apiFetchJson, tryParseErrorBody } from "../lib/api-fetch";
 import { devError } from "../lib/dev-log";
 import { invalidateSwCache } from "../lib/sw-cache";
@@ -131,15 +132,12 @@ export function useFeedOperations({
         showImportMessage({ text: data.error ?? "インポートに失敗しました", isError: true });
         return;
       }
-      const data = (await res.json()) as { added: number; skipped: number; feeds: Feed[] };
+      const data = (await res.json()) as OpmlImportResult;
       if (data.added > 0) {
         invalidateSwCache(["/api/feeds", "/api/articles"]);
         onFeedsImported(data.feeds);
       }
-      showImportMessage({
-        text: data.added > 0 ? `${data.added}件インポートしました` : "すべて登録済みです",
-        isError: false,
-      });
+      showImportMessage(describeOpmlImportResult(data));
     } catch (err) {
       devError("[useFeedOperations] handleImportFile failed", err);
       showImportMessage({ text: "インポートに失敗しました", isError: true });
