@@ -179,7 +179,7 @@ describe("ArticleRecommendations thumbnails", () => {
     const image = read.querySelector("img");
     expect(image).toHaveAttribute(
       "src",
-      "/api/image-proxy?url=https%3A%2F%2Fimages.example%2Farticle.jpg",
+      "/api/image-proxy?url=https%3A%2F%2Fimages.example%2Farticle.jpg&error=empty",
     );
     expect(image).toHaveAttribute("alt", "");
     expect(image).toHaveAttribute("loading", "lazy");
@@ -257,7 +257,7 @@ describe("ArticleRecommendations thumbnail resolution", () => {
     );
     const proxied = "/api/image-proxy?url=https%3A%2F%2Fimages.example%2Fcached.jpg";
     rerender(withCache(article, proxied));
-    expect(read.querySelector("img")).toHaveAttribute("src", proxied);
+    expect(read.querySelector("img")).toHaveAttribute("src", `${proxied}&error=empty`);
     rerender(withCache(article, "/api/image-proxy?url=javascript%3Aalert(1)"));
     expect(read.querySelector("img")).toBeNull();
   });
