@@ -165,7 +165,18 @@ async function fixture(page: Page, scenario: string) {
         // Reproduce the legacy route contract even after the thumbnail opts in.
         // The real GET still emits its original loadable SVG when opt-in is absent.
         if (scenario === "legacy") url.searchParams.delete("error");
-        const response = await server.GET(new Request(url, { headers: request.headers() }));
+        // Chromium's intercepted request can omit network-only Fetch Metadata headers.
+        // This synthetic adapter supplies only missing metadata after the exact same-origin,
+        // main-frame image checks above; production's fail-closed guard is tested separately.
+        const headers = new Headers(await request.allHeaders());
+        for (const [name, value] of Object.entries({
+          "Sec-Fetch-Site": "same-origin",
+          "Sec-Fetch-Mode": "no-cors",
+          "Sec-Fetch-Dest": "image",
+        })) {
+          if (!headers.has(name)) headers.set(name, value);
+        }
+        const response = await server.GET(new Request(url, { headers }));
         const body = Buffer.from(await response.arrayBuffer());
         replies.push({
           target: target!,
@@ -254,6 +265,21 @@ test("isolated actual GET strict error and valid SVG contracts", async () => {
   expect(success.headers.get("Content-Security-Policy")).toBe("default-src 'none'; sandbox");
   expect(await success.text()).toContain("<rect");
   expect(server.upstreamRequests).toEqual([missing, blocked, network, good]);
+  expect(server.unexpectedUpstream).toEqual([]);
+});
+
+test("isolated actual GET rejects missing, cross-site, and navigation metadata before fetch", async () => {
+  const server = syntheticRoute();
+  const metadataCases: HeadersInit[] = [
+    {},
+    { "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "no-cors" },
+    { "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate" },
+  ];
+  for (const headers of metadataCases) {
+    const response = await server.GET(new Request(proxyRequest(good, true), { headers }));
+    expect(response.status).toBe(403);
+  }
+  expect(server.upstreamRequests).toEqual([]);
   expect(server.unexpectedUpstream).toEqual([]);
 });
 
