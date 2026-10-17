@@ -28,6 +28,12 @@ it("accepts only exact synthetic document/image/content reads", () => {
       url: `https://quality.test/api/image-proxy?url=${encodeURIComponent(QUALITY_IMAGES[0])}`,
     }),
   ).toBe("image");
+  expect(
+    classifyQualityRequest({
+      ...image,
+      url: `https://quality.test/api/image-proxy?url=${encodeURIComponent(QUALITY_IMAGES[0])}&error=empty`,
+    }),
+  ).toBe("image");
   expect(classifyQualityRequest(content)).toBe("content");
 });
 it.each([
@@ -50,6 +56,14 @@ it.each([
   {
     ...image,
     url: `https://quality.test/api/image-proxy?url=${encodeURIComponent(QUALITY_IMAGES[0])}&other=1`,
+  },
+  {
+    ...image,
+    url: `https://quality.test/api/image-proxy?url=${encodeURIComponent(QUALITY_IMAGES[0])}&error=empty&other=1`,
+  },
+  {
+    ...image,
+    url: `https://quality.test/api/image-proxy?url=${encodeURIComponent(QUALITY_IMAGES[0])}&error=svg`,
   },
   { ...content, url: `${QUALITY_CONTENT_URL}&other=1` },
   { ...content, url: QUALITY_CONTENT_URL.replace("https:", "http:") },

@@ -66,7 +66,7 @@ test.beforeEach(async ({ page }) => {
         return;
       if (
         url.href ===
-          "https://rss-preview.test/api/image-proxy?url=https%3A%2F%2Frss-preview.test%2Fimage.svg" &&
+          "https://rss-preview.test/api/image-proxy?url=https%3A%2F%2Frss-preview.test%2Fimage.svg&error=empty" &&
         request.resourceType() === "image"
       )
         return route.fulfill({
