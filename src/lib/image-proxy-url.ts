@@ -26,6 +26,15 @@ export function buildImageProxyUrl(url: unknown): string {
   return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
+/** Opt into real image error events while retaining legacy URLs as canonical source keys. */
+export function buildThumbnailProxyUrl(url: unknown): string {
+  const proxied = buildImageProxyUrl(url);
+  if (!isProxiedImageUrl(proxied)) return proxied;
+  const parsed = new URL(proxied, "https://thumbnail.invalid");
+  parsed.searchParams.set("error", "empty");
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
 /** 与えられた文字列が image-proxy 経由の相対 URL かどうかを判定する */
 export function isProxiedImageUrl(url: unknown): boolean {
   if (typeof url !== "string") return false;

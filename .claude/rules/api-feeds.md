@@ -182,18 +182,16 @@ OPML ファイルから複数フィードを一括インポートする。
 
 ### リクエスト
 
-`Content-Type: multipart/form-data` または `application/json`
-
-```json
-{ "opml": "<opml xml string>" }
-```
+`Content-Type: text/xml` / `application/xml` / `text/plain`。本文は OPML XML 文字列。
 
 ### 成功レスポンス
 
 ```json
 // 200 OK
-{ "imported": 5, "skipped": 2, "errors": [] }
+{ "added": 0, "skipped": 0, "failed": 1, "feeds": [] }
 ```
+
+`feeds` は保存済みの追加フィードを返す。`failed` は候補メタデータの準備に失敗した件数（reject または利用できるメタデータなし）。`skipped` はそれ以外の非追加件数で、重複・無効URL・枠不足を含む。`added + skipped + failed` は抽出されたエントリ数に一致する。部分成功・全候補失敗でも HTTP 200 の集計結果を返すため、表示側は `failed > 0` を失敗ありとして扱う。生の保存エラーやフィードURLは失敗結果に含めない。
 
 ### エラー一覧
 

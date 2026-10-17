@@ -4,7 +4,7 @@ import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildImageProxyUrl } from "../src/lib/image-proxy-url";
+import { buildThumbnailProxyUrl } from "../src/lib/image-proxy-url";
 
 const origin = "https://rss-thumbnail-candidates.test";
 const cachedImage = "https://images.example.test/broken-ogp.png";
@@ -93,7 +93,7 @@ for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       const state = await fixture(page, renderer);
       const image = page.getByRole("article").locator("img");
-      await expect(image).toHaveAttribute("src", buildImageProxyUrl(feedImage));
+      await expect(image).toHaveAttribute("src", buildThumbnailProxyUrl(feedImage));
       await expect(image).toBeVisible();
       await expect
         .poll(() =>
@@ -105,7 +105,7 @@ for (const width of [390, 1280]) {
       const loadedImage = await image.elementHandle();
       await page.getByRole("button", { name: "Publish late OGP cache entry" }).click();
       await expect(page.getByLabel("Cached image")).toHaveText(lateImage);
-      await expect(image).toHaveAttribute("src", buildImageProxyUrl(feedImage));
+      await expect(image).toHaveAttribute("src", buildThumbnailProxyUrl(feedImage));
       expect(await image.evaluate((node, loaded) => node === loaded, loadedImage)).toBe(true);
       await page.clock.runFor(1000);
       expect(state.imageRequests).toEqual([cachedImage, feedImage]);

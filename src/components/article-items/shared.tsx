@@ -13,7 +13,7 @@ import {
 } from "react";
 import type { Article } from "../../types";
 import { readingTime } from "../../lib/article-utils";
-import { buildImageProxyUrl } from "../../lib/image-proxy-url";
+import { buildImageProxyUrl, buildThumbnailProxyUrl } from "../../lib/image-proxy-url";
 
 // ── 共通キーボードハンドラ ──────────────────────────────────────────────
 
@@ -373,7 +373,7 @@ export function ArticleThumbnail({
   return (
     <img
       key={source}
-      src={source}
+      src={buildThumbnailProxyUrl(source)}
       alt=""
       className={className}
       loading="lazy"
