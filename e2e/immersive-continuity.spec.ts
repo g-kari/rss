@@ -77,11 +77,13 @@ test.beforeEach(async ({ page }) => {
       request.resourceType() === "image" &&
       url.origin === "https://rss-preview.test" &&
       url.pathname === "/api/image-proxy" &&
-      [...url.searchParams.keys()].every((key) => key === "url") &&
+      url.searchParams.getAll("url").length === 1 &&
+      ([...url.searchParams.keys()].length === 1 ||
+        ([...url.searchParams.keys()].length === 2 && url.searchParams.get("error") === "empty")) &&
       imageSources.has(source)
     ) {
       state.images.push(source);
-      if (brokenSources.has(source)) return route.fulfill({ status: 404, body: "" });
+      if (brokenSources.has(source)) return route.fulfill({ status: 502, body: "" });
       return route.fulfill({
         contentType: "image/svg+xml",
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="#176774"/></svg>',
@@ -331,14 +333,14 @@ test("missing/broken OGP uses loaded body or YouTube then placeholder, with boun
   ];
   await expect(current.locator("img")).toHaveAttribute(
     "src",
-    `/api/image-proxy?url=${encodeURIComponent(expected[0])}`,
+    `/api/image-proxy?url=${encodeURIComponent(expected[0])}&error=empty`,
   );
   await painted(page);
   expect(await ids(page)).toEqual(["0"]);
   // The neighbor can load an image without being shown/read. Its failed OGP survives reopening.
   await expect(
     page.locator(".immersive-slide").nth(1).locator(".cinematic-image img"),
-  ).toHaveAttribute("src", `/api/image-proxy?url=${encodeURIComponent(expected[1])}`);
+  ).toHaveAttribute("src", `/api/image-proxy?url=${encodeURIComponent(expected[1])}&error=empty`);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "ドパガキモードを開く" }).click();
   await expect(page.getByRole("heading", { name: /^記事 2：/ })).toBeVisible();
@@ -346,7 +348,7 @@ test("missing/broken OGP uses loaded body or YouTube then placeholder, with boun
     if (index > 1) await next(page).click();
     await expect(current.locator("img")).toHaveAttribute(
       "src",
-      `/api/image-proxy?url=${encodeURIComponent(expected[index])}`,
+      `/api/image-proxy?url=${encodeURIComponent(expected[index])}&error=empty`,
     );
     await expect
       .poll(() =>
@@ -370,7 +372,7 @@ test("missing/broken OGP uses loaded body or YouTube then placeholder, with boun
   await page.getByRole("button", { name: "前の記事", exact: true }).click();
   await expect(current.locator("img")).toHaveAttribute(
     "src",
-    `/api/image-proxy?url=${encodeURIComponent(expected[3])}`,
+    `/api/image-proxy?url=${encodeURIComponent(expected[3])}&error=empty`,
   );
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "ドパガキモードを開く" }).click();

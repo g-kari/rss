@@ -144,6 +144,8 @@ export async function POST(request: Request) {
         }> => r.status === "fulfilled" && r.value.meta !== null,
       )
       .map((r) => r.value);
+    // Rejected or unusable metadata must not be reported as ordinary skips.
+    const failedCount = settled.length - succeeded.length;
     const succeededMetas = succeeded.map((s) => s.meta);
     const succeededCandidates = succeeded.map((s) => s.candidate);
 
@@ -230,7 +232,8 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       added: addedCount,
-      skipped: feedEntries.length - addedCount,
+      skipped: feedEntries.length - addedCount - failedCount,
+      failed: failedCount,
       feeds,
     });
   });

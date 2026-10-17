@@ -103,7 +103,10 @@ test.beforeEach(async ({ page }) => {
     ) {
       await route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
     } else if (
-      request.url() === fixtureUrl + "api/image-proxy?url=synthetic-keyboard-image" &&
+      [
+        fixtureUrl + "api/image-proxy?url=synthetic-keyboard-image",
+        fixtureUrl + "api/image-proxy?url=synthetic-keyboard-image&error=empty",
+      ].includes(request.url()) &&
       request.method() === "GET"
     ) {
       await route.fulfill({

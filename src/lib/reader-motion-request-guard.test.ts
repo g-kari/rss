@@ -29,6 +29,11 @@ describe("reader-motion browser fixture request guard", () => {
     ["main document", document, "text/html; charset=utf-8"],
     ["direct local image", image, "image/svg+xml"],
     ["exact local proxy image", { ...image, url: READER_MOTION_PROXY_URL }, "image/svg+xml"],
+    [
+      "exact strict local proxy image",
+      { ...image, url: `${READER_MOTION_PROXY_URL}&error=empty` },
+      "image/svg+xml",
+    ],
   ] as const)("fulfills only the expected %s", async (_name, request, contentType) => {
     const target = route();
     const errors: string[] = [];
@@ -82,6 +87,11 @@ describe("reader-motion browser fixture request guard", () => {
       },
     ],
     ["extra proxy parameter", { ...image, url: `${READER_MOTION_PROXY_URL}&unexpected=1` }],
+    [
+      "extra strict parameter",
+      { ...image, url: `${READER_MOTION_PROXY_URL}&error=empty&unexpected=1` },
+    ],
+    ["unknown error mode", { ...image, url: `${READER_MOTION_PROXY_URL}&error=svg` }],
     [
       "duplicate proxy parameter",
       {
