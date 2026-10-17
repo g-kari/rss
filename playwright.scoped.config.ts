@@ -33,6 +33,7 @@ export default defineConfig({
     "ogp-queue.spec.ts",
     "thumbnail-candidates.spec.ts",
     "push-test-feedback.spec.ts",
+    "opml-import-result.spec.ts",
   ],
   timeout: 30_000,
   forbidOnly: !!process.env.CI,
