@@ -338,7 +338,9 @@ describe("availability and cache-only controls", () => {
         props.onUseExcerpt,
       ])
         expect(callback).not.toHaveBeenCalled();
-      expect(container.textContent).not.toMatch(/稼働中|予算に到達しました|38件|0\.996170|ai-cache\//);
+      expect(container.textContent).not.toMatch(
+        /稼働中|予算に到達しました|38件|0\.996170|ai-cache\//,
+      );
       rerender(<ImmersiveSummaryReader {...props} model={undefined} />);
       expect(explanation).not.toHaveTextContent("選択中モデルは自動事前要約の対象モデル");
       fireEvent.click(help);
