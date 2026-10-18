@@ -116,6 +116,13 @@ test.beforeEach(async ({ page }) => {
       request.frame() === page.mainFrame()
     ) {
       await route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+    } else if (request.url() === `${fixtureUrl}api/clip/token` && request.method() === "GET") {
+      // The real settings panel also mounts SingleFileSettings. Supply only
+      // synthetic empty metadata; token mutation and every other request stay blocked.
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ token: null }),
+      });
     } else {
       collected.push(`unexpected ${request.method()} ${request.url()}`);
       await route.abort();
