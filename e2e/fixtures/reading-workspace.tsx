@@ -36,6 +36,40 @@ const collections = Array.from({ length: params.get("stress") === "1" ? 20 : 1 }
 window.fetch = async (input, init) => {
   const path = String(input);
   const method = init?.method ?? "GET";
+  if (
+    params.get("mobileReturnFocus") === "1" &&
+    path.split("?")[0] === "/api/articles" &&
+    method === "GET"
+  ) {
+    const articles: unknown = await (await demoFetch(input, init)).json();
+    if (!Array.isArray(articles)) throw new Error("Synthetic article list must be an array");
+    const template: unknown = articles[0];
+    if (
+      typeof template !== "object" ||
+      template === null ||
+      !("feedHash" in template) ||
+      typeof template.feedHash !== "string"
+    )
+      throw new Error("Synthetic article template must belong to an existing demo feed");
+    // Only the return-focus tests need a real, long virtualized scroll range.
+    // Older unique identities preserve the original demo rows and their leading order.
+    const olderArticles = Array.from({ length: 40 }, (_, index) => {
+      const id = `mobile-return-${index + 1}`;
+      const link = `https://example.com/${id}`;
+      const publishedAt = new Date(Date.now() - (7 + index) * 86400000).toISOString();
+      return {
+        ...template,
+        id,
+        guid: id,
+        link,
+        url: link,
+        title: `モバイル復帰確認の過去記事 ${index + 1}`,
+        publishedAt,
+        createdAt: publishedAt,
+      };
+    });
+    return Response.json([...articles, ...olderArticles]);
+  }
   if (params.get("nsfw") === "1" && path === "/api/feeds" && method === "GET") {
     const feeds: unknown = await (await demoFetch(input, init)).json();
     if (!Array.isArray(feeds)) throw new Error("Synthetic feed list must be an array");
