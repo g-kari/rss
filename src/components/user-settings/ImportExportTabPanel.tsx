@@ -3,6 +3,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { useFullTextSearch } from "../../hooks/useFullTextSearch";
+import { SAVED_SEARCH_STORAGE_ERROR } from "../../lib/saved-search-store";
 import { downloadBlob } from "../../lib/download";
 import { buildSavedSearchesJsonFile, parseSavedSearchesJson } from "../../lib/export-json";
 import { apiFetch } from "../../lib/api-fetch";
@@ -125,7 +126,10 @@ export default function ImportExportTabPanel({
         toast.error("有効な検索条件が見つかりません");
         return;
       }
-      importSaved(entries);
+      if (importSaved(entries) === false) {
+        toast.error(SAVED_SEARCH_STORAGE_ERROR);
+        return;
+      }
       toast.success(`${entries.length}件の検索条件を取り込みました`);
     } catch (err) {
       devError("[ImportExportTabPanel] saved searches import failed", err);

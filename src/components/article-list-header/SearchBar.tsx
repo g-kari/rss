@@ -32,7 +32,7 @@ export default function SearchBar() {
   const saveNameInputRef = useRef<HTMLInputElement>(null);
   const [cursor, setCursor] = useState(0);
 
-  const { savedSearches, save: saveSearch, removeSaved } = useFullTextSearch();
+  const { savedSearches, save: saveSearch, removeSaved, storageError } = useFullTextSearch();
   const isSavingSearch = savingSearch !== null;
   // The naming editor owns Escape before capture-phase reader focus shortcuts.
   usePopupLock(isSavingSearch);
@@ -253,8 +253,8 @@ export default function SearchBar() {
           onSubmit={(e) => {
             e.preventDefault();
             if (!savingSearch.name.trim() || savingSearch.query !== rawQuery.trim()) return;
-            saveSearch(savingSearch.name.trim(), savingSearch.query);
-            closeSaveEditor();
+            if (saveSearch(savingSearch.name.trim(), savingSearch.query) !== false)
+              closeSaveEditor();
           }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node)) setSavingSearch(null);
@@ -300,6 +300,11 @@ export default function SearchBar() {
             キャンセル
           </button>
         </form>
+      )}
+      {storageError && (
+        <p role="alert" className="mt-1 text-meta text-text-muted">
+          {storageError}
+        </p>
       )}
       {listboxOpen && (
         // WAI-ARIA listbox: option は listbox の直接子である必要がある (ui-rendering.md 規範)。
