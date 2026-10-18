@@ -146,9 +146,17 @@ test.afterEach(({ page }) => {
   expect(external.get(page)).toEqual([]);
 });
 
-async function open(page: Page, stage: string, theme: string, list = 360, sidebar = 240) {
+async function open(
+  page: Page,
+  stage: string,
+  theme: string,
+  list = 360,
+  sidebar = 240,
+  mobileReturnFocus = false,
+) {
+  const focusQuery = mobileReturnFocus ? "&mobileReturnFocus=1" : "";
   await page.goto(
-    `https://rss-workspace.test/demo?stage=${stage}&theme=${theme}&list=${list}&sidebar=${sidebar}`,
+    `https://rss-workspace.test/demo?stage=${stage}&theme=${theme}&list=${list}&sidebar=${sidebar}${focusQuery}`,
   );
   await expect(page.getByRole("navigation", { name: "フィード一覧" })).toBeVisible();
   await expect(page.getByRole("button", { name: "すべて", exact: true })).toBeVisible();
@@ -330,6 +338,121 @@ for (const width of [1440, 1024, 390, 320])
         });
       });
     }
+test.describe("390px complete workspace controls: ordinary mobile reader return focus", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    contextOptions: { reducedMotion: "reduce" },
+  });
+
+  async function prepareList(page: Page) {
+    await open(page, "after", "light", 360, 240, true);
+    await page
+      .getByRole("navigation", { name: "フィード一覧" })
+      .getByRole("button", { name: "すべて", exact: true })
+      .click();
+    const list = page.getByRole("region", { name: "記事一覧", exact: true });
+    await list.getByRole("button", { name: "リスト表示", exact: true }).click();
+    const feed = list.getByRole("feed", { name: "記事", exact: true });
+    await expect(feed).toHaveAttribute("aria-busy", "false");
+    await expect(feed).toHaveAttribute("data-reader-layout", "list");
+    await expect
+      .poll(() => feed.evaluate((element) => element.scrollHeight - element.clientHeight))
+      .toBeGreaterThan(0);
+    // art-2 is a later row in both demo-source and production date-sorted order,
+    // still within the initial virtualizer overscan. Recommendations are not in this scroller.
+    const title = "Next.js 16 への移行で気をつけたこと";
+    const row = feed.getByRole("article", { name: title, exact: true });
+    await row.scrollIntoViewIfNeeded();
+    // Use actual layout and its real scroll range, not a synthetic scroll property.
+    await row.evaluate((element) => {
+      const scroller = element.closest<HTMLElement>('[role="feed"]')!;
+      scroller.scrollTo({
+        top:
+          scroller.scrollTop +
+          element.getBoundingClientRect().top -
+          scroller.getBoundingClientRect().top -
+          24,
+        behavior: "instant",
+      });
+    });
+    await expect(row).toBeInViewport({ ratio: 1 });
+    const scrollTop = await feed.evaluate((element) => element.scrollTop);
+    expect(scrollTop).toBeGreaterThan(0);
+    const reader = page.getByRole("article", { name: "記事本文", exact: true });
+    const back = reader.getByRole("button", { name: "記事一覧に戻る", exact: true });
+    return { page, list, feed, row, title, reader, back, scrollTop };
+  }
+
+  async function openReader(fixture: Awaited<ReturnType<typeof prepareList>>) {
+    const { page, row, reader, title, back } = fixture;
+    await row.focus();
+    await expect(row).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(reader.getByRole("heading", { name: title, exact: true })).toBeVisible();
+    await expect(page.locator('[data-pane="list"]')).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator('[data-pane="list"]')).toHaveAttribute("inert", "");
+    await back.focus();
+    await expect(back).toBeFocused();
+    await expect.poll(() => page.evaluate(() => window.history.state?.mobilePane)).toBe("view");
+  }
+
+  async function expectListReturn(fixture: Awaited<ReturnType<typeof prepareList>>) {
+    const { page, list, feed, row, scrollTop } = fixture;
+    await expect(list).toBeVisible();
+    await expect(page.locator('[data-pane="list"]')).not.toHaveAttribute("aria-hidden");
+    await expect(page.locator('[data-pane="list"]')).not.toHaveAttribute("inert");
+    await expect(page.locator('[data-pane="view"]')).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator('[data-pane="view"]')).toHaveAttribute("inert", "");
+    await expect(row).toHaveAttribute("aria-current", "true");
+    await expect(row).toHaveAttribute("tabindex", "0");
+    await expect(row).toBeFocused();
+    expect(
+      await page.evaluate(() => document.activeElement?.closest('[aria-hidden="true"], [inert]')),
+    ).toBeNull();
+    const returnedScroll = await feed.evaluate((element) => ({
+      top: element.scrollTop,
+      overflow: element.scrollHeight - element.clientHeight,
+    }));
+    expect(returnedScroll.overflow).toBeGreaterThan(0);
+    expect(returnedScroll.top).toBeGreaterThan(0);
+    expect(returnedScroll.top).toBe(scrollTop);
+    expect(await page.evaluate(() => window.history.state?.mobilePane)).toBe("list");
+  }
+
+  test("keyboard Enter and UI Back repeatedly restore the selected row without scrolling", async ({
+    page,
+  }) => {
+    const fixture = await prepareList(page);
+    // The second open starts from the retained, keyboard-reachable current row.
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      await openReader(fixture);
+      await fixture.back.click();
+      await expectListReturn(fixture);
+    }
+  });
+
+  test("native Back, Forward and Back repeatedly restore visible selected-row focus", async ({
+    page,
+  }) => {
+    const fixture = await prepareList(page);
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      await openReader(fixture);
+      // Native browser traversal is intentional: no synthetic popstate or state replacement.
+      await page.goBack();
+      await expectListReturn(fixture);
+      await page.goForward();
+      await expect(
+        fixture.reader.getByRole("heading", { name: fixture.title, exact: true }),
+      ).toBeVisible();
+      await fixture.back.focus();
+      await expect(fixture.back).toBeFocused();
+      await page.goBack();
+      await expectListReturn(fixture);
+    }
+  });
+});
+
 for (const width of [1440, 320])
   test.describe(`${width}px complete workspace controls`, () => {
     test.use({

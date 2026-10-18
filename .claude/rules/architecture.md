@@ -310,6 +310,7 @@ src/
     useSearchHistory.ts      # 検索履歴管理 (localStorage)
     useOnlineStatus.ts       # オンライン/オフライン状態
     useMobilePane.ts         # モバイル向けペイン切り替え (sidebar/list/view)
+    useMobileArticleReturnFocus.ts # 通常モバイル本文→一覧で可視の現在記事か一覧へpreventScrollでフォーカス復元（既存スクロール・履歴・overlay所有権は維持）
     useNSFWMode.ts           # NSFW モード（連打で活性化）
     useStoredSetting.ts      # localStorage 永続化 enum 設定の共通ユーティリティ
     useSidebarFeeds.ts       # サイドバーのフィード集計・フィルタ・グループ化（タグ集計・ピン留め・グループ・カテゴリ）— 未読数 / lastPublished は UnreadStatsContext から取得

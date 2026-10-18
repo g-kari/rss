@@ -40,6 +40,7 @@ import { useEngagement } from "../hooks/useEngagement";
 import { useRecommendations } from "../hooks/useRecommendations";
 import { useColumnResize } from "../hooks/useColumnResize";
 import { useArticleSelection } from "../hooks/useArticleSelection";
+import { useMobileArticleReturnFocus } from "../hooks/useMobileArticleReturnFocus";
 import { useAppModalState } from "../hooks/useAppModalState";
 import { useSaveArticleUrl } from "../hooks/useSaveArticleUrl";
 import { useSnoozeHandler } from "../hooks/useSnoozeHandler";
@@ -693,6 +694,14 @@ export default function AppShell({
       isDesktop,
       listFocusMode,
     });
+
+  useMobileArticleReturnFocus({
+    mobilePane,
+    isDesktop,
+    selectedArticleId: selectedArticle?.id ?? null,
+    visibleArticles: filterState.visible,
+    blocked: focusMode || listFocusMode || articleDetailOverlayOpen || hasOpenPopup,
+  });
 
   const { handleToggleBookmark, handleToggleReadingList, handleToggleLike } = useEngagementToggles(
     articles,
