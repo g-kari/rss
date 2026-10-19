@@ -25,7 +25,7 @@ function getStore() {
   return store;
 }
 
-/** Shared browser-local saved searches; no server state or cross-tab transaction. */
+/** Shared browser-local saved searches, including other tabs; no server state or atomic transaction. */
 export function useFullTextSearch() {
   const store = getStore();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, getServerSnapshot);
