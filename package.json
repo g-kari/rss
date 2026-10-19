@@ -48,7 +48,7 @@
     "piper-plus": "^0.8.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261015.1",
