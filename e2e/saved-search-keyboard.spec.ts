@@ -23,12 +23,17 @@ test.beforeAll(async () => {
           import { useRef, useState } from "react";
           import { createRoot } from "react-dom/client";
           import SearchBar from "./src/components/article-list-header/SearchBar";
+          import ImportExportTabPanel from "./src/components/user-settings/ImportExportTabPanel";
+          import { ToastProvider } from "./src/contexts/ToastContext";
           import { ArticleFilterProvider } from "./src/contexts/ArticleFilterContext";
           import { useKeyboardNav } from "./src/hooks/useKeyboardNav";
           import { makeArticle } from "./e2e/helpers/article";
           function Fixture() {
             const [rawQuery, updateQuery] = useState("");
             const [mounted, setMounted] = useState(true);
+            const [settingsOpen, setSettingsOpen] = useState(false);
+            const [notice, setNotice] = useState("");
+            const toast = { toasts: [], success: setNotice, error: setNotice, info: setNotice, undo: () => {}, dismiss: () => {} };
             const searchRef = useRef(null);
             const articles = ["current", "next"].map((id) => makeArticle({ id, title: id }));
             const [selected, setSelected] = useState(articles[0]);
@@ -57,13 +62,16 @@ test.beforeAll(async () => {
               confirm: async () => true, autoMode: false, toggleAutoMode: action,
               ttsSupported: false, cycleTtsRate: () => 1,
             });
-            return <section className="fixture-controls">
+            return <ToastProvider value={toast}><section className="fixture-controls">
               {mounted && <ArticleFilterProvider value={{ rawQuery, updateQuery, searchRef }}>
                 <SearchBar />
               </ArticleFilterProvider>}
               <button onClick={() => updateQuery("title:newer")}>外から検索を変更</button>
               <button onClick={() => setMounted((value) => !value)}>検索を表示・非表示</button>
               <button>次の操作</button>
+              <button onClick={() => setSettingsOpen(value => !value)}>取り込み設定</button>
+              {settingsOpen && <ImportExportTabPanel userId="synthetic" hidden={false} articles={[]} notes={{}} setNote={() => {}} bookmarkIds={new Set()} readingListIds={new Set()} toggleBookmark={() => {}} toggleReadingList={() => {}} collections={[]} addArticlesToCollection={async () => {}} />}
+              <output aria-label="取り込み結果">{notice}</output>
               <output aria-label="現在の検索">{rawQuery}</output>
               <output aria-label="選択中の記事">{selected.id}</output>
               <output aria-label="既読の記事">{[...readIds].join(",")}</output>
@@ -71,7 +79,7 @@ test.beforeAll(async () => {
               <main aria-label="記事本文" tabIndex={0} style={{ height: 120, overflow: "auto" }}>
                 <div style={{ height: 2000 }}>Synthetic article content</div>
               </main>
-            </section>;
+            </section></ToastProvider>;
           }
           // Match Next App Router's document-level React event delegation.
           createRoot(document).render(<html lang="ja"><head>
@@ -108,6 +116,13 @@ test.beforeEach(async ({ page }) => {
       request.frame() === page.mainFrame()
     ) {
       await route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+    } else if (request.url() === `${fixtureUrl}api/clip/token` && request.method() === "GET") {
+      // The real settings panel also mounts SingleFileSettings. Supply only
+      // synthetic empty metadata; token mutation and every other request stay blocked.
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ token: null }),
+      });
     } else {
       collected.push(`unexpected ${request.method()} ${request.url()}`);
       await route.abort();
@@ -429,3 +444,87 @@ for (const marker of [{ isComposing: true }, { keyCode: 229 }]) {
     ).toEqual(["日本語の検索"]);
   });
 }
+
+for (const width of [390, 1280]) {
+  test(`imported searches survive a later save and remount at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByRole("button", { name: "取り込み設定", exact: true }).click();
+    const entry = {
+      id: "synthetic-import",
+      name: "Imported",
+      query: "title:imported",
+      createdAt: "2026-10-18",
+    };
+    await page.locator('[data-setting-id="saved-searches"] input[type="file"]').setInputFiles({
+      name: "saved-searches.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ searches: [entry] })),
+    });
+    await expect(page.getByLabel("取り込み結果")).toHaveText("1件の検索条件を取り込みました");
+    await page.getByRole("button", { name: "取り込み設定", exact: true }).click();
+    await page.getByRole("combobox").focus();
+    await expect(page.getByRole("option", { name: /Imported/ })).toBeVisible();
+    await openWithPointer(page, "title:new");
+    await page.getByLabel("検索を保存するための名前").fill("New");
+    await page.getByLabel("検索を保存するための名前").press("Enter");
+    expect(await saved(page)).toMatchObject([{ name: "New" }, entry]);
+    await page.reload();
+    await page.getByRole("combobox").focus();
+    await expect(page.getByRole("option", { name: /Imported/ })).toBeVisible();
+    await expect(page.getByRole("option", { name: /New/ })).toBeVisible();
+    await page.screenshot({
+      path: test.info().outputPath(`import-retained-${width}.png`),
+      fullPage: true,
+    });
+  });
+}
+
+test("quota failure does not claim import success or close a save draft, and retry retains prior entries", async ({
+  page,
+}) => {
+  await openWithPointer(page);
+  await page.getByLabel("検索を保存するための名前").fill("Existing");
+  await page.getByLabel("検索を保存するための名前").press("Enter");
+  const before = await saved(page);
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    (
+      globalThis as typeof globalThis & { restoreSyntheticStorage: () => void }
+    ).restoreSyntheticStorage = () => {
+      Storage.prototype.setItem = original;
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "rss-saved-searches")
+        throw new DOMException("Synthetic quota", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+  });
+  await page.getByRole("button", { name: "取り込み設定", exact: true }).click();
+  await page.locator('[data-setting-id="saved-searches"] input[type="file"]').setInputFiles({
+    name: "synthetic.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        searches: [{ id: "new", name: "Imported", query: "q", createdAt: "2026-10-18" }],
+      }),
+    ),
+  });
+  await expect(page.getByLabel("取り込み結果")).toContainText("保存できませんでした");
+  expect(await saved(page)).toEqual(before);
+  await page.getByRole("button", { name: "取り込み設定", exact: true }).click();
+  await openWithPointer(page, "title:retry");
+  await page.getByLabel("検索を保存するための名前").fill("Retry");
+  await page.getByLabel("検索を保存するための名前").press("Enter");
+  await expect(page.getByLabel("検索を保存するための名前")).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("保存できませんでした");
+  expect(await saved(page)).toEqual(before);
+  await page.evaluate(() =>
+    (
+      globalThis as typeof globalThis & { restoreSyntheticStorage: () => void }
+    ).restoreSyntheticStorage(),
+  );
+  await page.getByLabel("検索を保存するための名前").press("Enter");
+  await expect(page.getByLabel("検索を保存するための名前")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(await saved(page)).toMatchObject([{ name: "Retry" }, ...before]);
+});

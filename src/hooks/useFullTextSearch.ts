@@ -1,89 +1,40 @@
-import { useCallback } from "react";
-import { STORAGE_KEYS } from "../lib/storage";
-import { useLocalStorageHistory } from "./useLocalStorageHistory";
-import type { SavedSearchJsonEntry } from "../lib/export-json";
+import { useSyncExternalStore } from "react";
+import {
+  createSavedSearchStore,
+  type SavedSearchStore,
+  type SavedSearchSnapshot,
+} from "../lib/saved-search-store";
 
-const MAX_SAVED = 20;
+export type { SavedSearch } from "../lib/saved-search-store";
 
-export interface SavedSearch {
-  /** 安定 ID (crypto.randomUUID) */
-  id: string;
-  /** 表示名（ユーザー入力） */
-  name: string;
-  /** 検索クエリ文字列（高度クエリ構文を含む） */
-  query: string;
-  /** 保存日時 (ISO 8601) */
-  createdAt: string;
+const EMPTY: SavedSearchSnapshot = Object.freeze({ items: Object.freeze([]), error: null });
+const getServerSnapshot = () => EMPTY;
+const serverStore = createSavedSearchStore(
+  () => [],
+  () => false,
+);
+const stores = new WeakMap<Window, SavedSearchStore>();
+
+function getStore() {
+  if (typeof window === "undefined") return serverStore;
+  let store = stores.get(window);
+  if (!store) {
+    store = createSavedSearchStore();
+    stores.set(window, store);
+  }
+  return store;
 }
 
-/**
- * 全フィード横断のフルテキスト検索 — 保存検索条件管理 (Issue #102)。
- *
- * - localStorage に保存して再ログイン後も維持
- * - 同名で保存すると上書き（先頭に移動）
- * - 上限 MAX_SAVED 件
- *
- * 検索式自体のパース・評価は `src/lib/full-text-search.ts` を参照。
- */
+/** Shared browser-local saved searches; no server state or cross-tab transaction. */
 export function useFullTextSearch() {
-  const {
-    items: savedSearches,
-    prepend,
-    remove,
-    clear,
-    replace,
-  } = useLocalStorageHistory<SavedSearch>(
-    STORAGE_KEYS.SAVED_SEARCHES,
-    MAX_SAVED,
-    [],
-    (v): v is SavedSearch => {
-      if (typeof v !== "object" || v === null) return false;
-      const s = v as Record<string, unknown>;
-      return (
-        typeof s.id === "string" &&
-        typeof s.name === "string" &&
-        typeof s.query === "string" &&
-        typeof s.createdAt === "string"
-      );
-    },
-  );
-
-  const save = useCallback(
-    (name: string, query: string) => {
-      const trimmedName = name.trim();
-      const trimmedQuery = query.trim();
-      if (!trimmedName || !trimmedQuery) return;
-      const entry: SavedSearch = {
-        id: crypto.randomUUID(),
-        name: trimmedName,
-        query: trimmedQuery,
-        createdAt: new Date().toISOString(),
-      };
-      // 同名は上書き (= 既存を消して先頭に追加)
-      prepend(entry, (s) => s.name);
-    },
-    [prepend],
-  );
-
-  const removeSaved = useCallback(
-    (id: string) => {
-      remove((s) => s.id === id);
-    },
-    [remove],
-  );
-
-  const importSaved = useCallback(
-    (entries: readonly SavedSearchJsonEntry[]) => {
-      const names = new Set<string>();
-      const merged = [...entries, ...savedSearches].filter((entry) => {
-        if (names.has(entry.name)) return false;
-        names.add(entry.name);
-        return true;
-      });
-      replace(merged);
-    },
-    [replace, savedSearches],
-  );
-
-  return { savedSearches, save, removeSaved, importSaved, clearSaved: clear };
+  const store = getStore();
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, getServerSnapshot);
+  return {
+    savedSearches: snapshot.items,
+    storageError: snapshot.error,
+    save: store.save,
+    removeSaved: store.removeSaved,
+    importSaved: store.importSaved,
+    clearSaved: store.clearSaved,
+  };
 }

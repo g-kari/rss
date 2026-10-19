@@ -133,12 +133,14 @@ export function storageGet(key: string): string | null {
   }
 }
 
-/** localStorage.setItem の安全なラッパー（容量超過時は無視） */
-export function storageSet(key: string, value: string): void {
+/** localStorage.setItem の安全なラッパー。書き込めた場合だけ true を返す。 */
+export function storageSet(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value);
+    return true;
   } catch (err) {
     devError("[storage] localStorage.setItem failed (storage quota / permission)", { key, err });
+    return false;
   }
 }
 
@@ -181,8 +183,8 @@ export function loadJson<T>(key: string, fallback: T): T {
 }
 
 /** 値を JSON シリアライズして localStorage に保存する */
-export function saveJson<T>(key: string, value: T): void {
-  storageSet(key, JSON.stringify(value));
+export function saveJson<T>(key: string, value: T): boolean {
+  return storageSet(key, JSON.stringify(value));
 }
 
 /**
