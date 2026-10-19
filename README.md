@@ -224,10 +224,10 @@ npx wrangler secret put RSSHUB_ACCESS_KEY     # RSSHub のアクセスキー（�
 
 ```toml
 [vars]
-AUTH_BASE_URL     = "https://id.0g0.xyz"        # 0g0 ID エンドポイント
-APP_BASE_URL      = "https://your-domain.com"   # アプリのドメイン（Callback URL のプレフィックス）
-VAPID_SUBJECT     = "mailto:admin@example.com"  # Web Push 送信元メール
-BETA_ALLOWED_SUBS = ""                          # ベータ制限: カンマ区切り sub リスト。空文字で制限なし
+AUTH_BASE_URL = "https://id.0g0.xyz" # 0g0 ID エンドポイント
+APP_BASE_URL = "https://your-domain.com" # アプリのドメイン（Callback URL のプレフィックス）
+VAPID_SUBJECT = "mailto:admin@example.com" # Web Push 送信元メール
+BETA_ALLOWED_SUBS = "" # ベータ制限: カンマ区切り sub リスト。空文字で制限なし
 # 任意: 0g0-id への Worker-to-Worker fetch で Cloudflare WAF / Bot Fight Mode 判定を回避したい場合
 # INTERNAL_SERVICE_USER_AGENT = "my-app/1.0"
 ```

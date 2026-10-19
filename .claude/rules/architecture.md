@@ -310,6 +310,7 @@ src/
     useSearchHistory.ts      # 検索履歴管理 (localStorage)
     useOnlineStatus.ts       # オンライン/オフライン状態
     useMobilePane.ts         # モバイル向けペイン切り替え (sidebar/list/view)
+    useMobileArticleReturnFocus.ts # 通常モバイル本文→一覧で可視の現在記事か一覧へpreventScrollでフォーカス復元（既存スクロール・履歴・overlay所有権は維持）
     useNSFWMode.ts           # NSFW モード（連打で活性化）
     useStoredSetting.ts      # localStorage 永続化 enum 設定の共通ユーティリティ
     useSidebarFeeds.ts       # サイドバーのフィード集計・フィルタ・グループ化（タグ集計・ピン留め・グループ・カテゴリ）— 未読数 / lastPublished は UnreadStatsContext から取得
@@ -343,7 +344,7 @@ src/
     useArticleViewShortcuts.ts # 記事ビューキーボードショートカット（v/a/z/space）+ 自動翻訳トリガー
     useArticleViewProgress.ts  # 読書進捗バー・自動既読・スクロールハンドラー
     useTtsHighlight.ts         # TTS 読み上げハイライト hook (#672 Phase 2 — boundary + 100ms interval 推定融合で activeSentenceIndex を計算)
-    useFullTextSearch.ts     # 記事全文検索（クエリパース・フィールド絞り込み・正規表現対応）
+    useFullTextSearch.ts     # 同一タブで共有する保存検索の購読・保存・削除・取り込み
     usePrefetchGalleryContents.ts # ギャラリー表示時の本文・画像事前フェッチ
     useSliderGallery.ts      # スライダー型ギャラリー UI 状態管理（ページング・キーボードナビ）
     useSyntaxHighlight.ts    # 記事本文 <pre><code> のシンタックスハイライト適用
@@ -473,6 +474,7 @@ src/
     concurrency.ts           # 並行度制限付き非同期マッピング（pMap / pMapSettled）
     download.ts              # Blob ダウンロードヘルパー（createObjectURL → <a> クリック → revoke）
     storage.ts               # localStorage キー定数・安全なラッパー
+    saved-search-store.ts    # 保存検索のimmutable共有スナップショット・最新状態更新・永続化失敗の保持
     url.ts                   # URL バリデーションヘルパー
     validation.ts            # 各種入力バリデーションユーティリティ
     image-constants.ts       # 画像処理の共有定数（IMAGE_MIN_DIMENSION）
@@ -749,8 +751,8 @@ ai-cache/translation/{sha256}           # AI 翻訳キャッシュ（永続）
 ```toml
 [vars]
 AUTH_BASE_URL = "https://id.0g0.xyz"
-APP_BASE_URL  = "https://rss.0g0.xyz"
-VAPID_SUBJECT = "mailto:admin@0g0.xyz"  # Web Push 送信元メール
+APP_BASE_URL = "https://rss.0g0.xyz"
+VAPID_SUBJECT = "mailto:admin@0g0.xyz" # Web Push 送信元メール
 ```
 
 ### Cloudflare Workers シークレット
