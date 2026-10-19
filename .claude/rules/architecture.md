@@ -474,7 +474,7 @@ src/
     concurrency.ts           # 並行度制限付き非同期マッピング（pMap / pMapSettled）
     download.ts              # Blob ダウンロードヘルパー（createObjectURL → <a> クリック → revoke）
     storage.ts               # localStorage キー定数・安全なラッパー
-    saved-search-store.ts    # 保存検索のimmutable共有スナップショット・最新状態更新・永続化失敗の保持
+    saved-search-store.ts    # 保存検索のimmutable共有スナップショット・別タブ通知・操作前の保存内容照合・読取/永続化失敗の保持
     url.ts                   # URL バリデーションヘルパー
     validation.ts            # 各種入力バリデーションユーティリティ
     image-constants.ts       # 画像処理の共有定数（IMAGE_MIN_DIMENSION）
