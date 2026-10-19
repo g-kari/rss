@@ -37,7 +37,7 @@
     "@cloudflare/workers-oauth-provider": "1.2.3",
     "@modelcontextprotocol/server": "2.3.1",
     "@mozilla/readability": "^0.6.0",
-    "@tanstack/react-virtual": "^3.14.13",
+    "@tanstack/react-virtual": "^3.14.20",
     "animejs": "4.5.0",
     "fast-xml-parser": "^5.11.2",
     "highlight.js": "^11.12.0",
