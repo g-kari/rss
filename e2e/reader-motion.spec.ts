@@ -668,11 +668,17 @@ test.describe("production readers own focused V requests", () => {
       await dialog.getByRole("button", { name: "全文を取得", exact: true }).focus();
       await page.keyboard.press("v");
       await expect(dialog.getByRole("button", { name: /取得中/ })).toBeDisabled();
+      // Native Chromium drops focus to <body> when the source control disables; wait for
+      // that blur instead of sampling after unrelated pane state (see ArticleView.shortcuts).
+      await expect
+        .poll(() => page.evaluate(() => document.activeElement === document.body))
+        .toBe(true);
       await expect.poll(() => requests.get(page)?.length).toBe(1);
-      await expect(pane.getByRole("button", { name: "全文を取得", exact: true })).toBeEnabled();
       await page.keyboard.press("v");
       expect(requests.get(page)).toHaveLength(1);
-      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+      await expect
+        .poll(() => page.evaluate(() => document.activeElement === document.body))
+        .toBe(true);
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(trigger).toBeFocused();
