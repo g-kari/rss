@@ -104,6 +104,21 @@ export function useArticleContent(
     articleId: string | undefined;
     articleLink: string | undefined;
   } | null>(null);
+
+  const readerMountedRef = useRef(true);
+  useEffect(() => {
+    readerMountedRef.current = true;
+    return () => {
+      // Block publication synchronously, but let StrictMode's same-turn effect
+      // replay retain a one-shot request that its intent has already consumed.
+      readerMountedRef.current = false;
+      queueMicrotask(() => {
+        if (readerMountedRef.current) return;
+        fetchAbortControllerRef.current?.controller.abort();
+        fetchAbortControllerRef.current = null;
+      });
+    };
+  }, []);
   const previousArticleIdRef = useRef(articleId);
   const previousArticleLinkRef = useRef(articleLink);
 
@@ -179,11 +194,15 @@ export function useArticleContent(
     const timerId = setTimeout(() => {
       apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
         .then((r) => {
+          if (!readerMountedRef.current || controller.signal.aborted) return null;
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<OgpData>;
         })
-        .then(({ image }) => {
-          if (!image) return;
+        .then((data) => {
+          // Aborting fetch cannot retract a response whose JSON decoding already
+          // started. Do not publish/cache an obsolete article's late result.
+          if (!readerMountedRef.current || controller.signal.aborted || !data?.image) return;
+          const { image } = data;
           setResolvedOgImage(image);
           // OgpCacheContext に書き戻す。useOgpCache 側の cacheOgpEntry が:
           //  - 内部 state を更新 (list view の Context consumer へ即座に反映)
@@ -193,7 +212,7 @@ export function useArticleContent(
           cacheOgpEntry(articleLink, { image });
         })
         .catch((err: unknown) => {
-          if (isAbortError(err)) return;
+          if (!readerMountedRef.current || controller.signal.aborted || isAbortError(err)) return;
           devError("[useArticleContent] OGP fetch failed", articleLink, err);
         });
     }, delay);
@@ -237,7 +256,7 @@ export function useArticleContent(
         // 旧記事の fetchError を setFetchError して新記事に leak する。各 await 後に abort recheck
         // する (#1115 useArticleAi と同じ sibling pattern、fetchedState は id-tag 済だが
         // fetchError は未 keyed のため本 guard が必要)。
-        if (controller.signal.aborted) return;
+        if (!readerMountedRef.current || controller.signal.aborted) return;
         // #688 / #869: 非 2xx を `buildFetchErrorMessage` で集約整形 (useArticleAi と統合)。
         // #693 (#688 後追い): JSON parse 失敗 (Cloudflare HTML エラーページ等) を捕捉して
         // onParseError callback で debug log を出す。これがないと本番で「fallback メッセージ
@@ -255,7 +274,7 @@ export function useArticleContent(
                 }),
             },
           );
-          if (controller.signal.aborted) return;
+          if (!readerMountedRef.current || controller.signal.aborted) return;
           setFetchError(message);
           setFetchRetryable(retryable);
           autoReadDebug("useArticleContent.fetch-http-error", {
@@ -266,7 +285,7 @@ export function useArticleContent(
           return;
         }
         const data = (await res.json()) as { content?: string; error?: string };
-        if (controller.signal.aborted) return;
+        if (!readerMountedRef.current || controller.signal.aborted) return;
         if (data.content) {
           if (articleId)
             contentLruCache.set(getProviderContentCacheId(articleId, articleLink), data.content);
@@ -286,7 +305,7 @@ export function useArticleContent(
           });
         }
       } catch (err) {
-        if (isAbortError(err)) {
+        if (!readerMountedRef.current || controller.signal.aborted || isAbortError(err)) {
           autoReadDebug("useArticleContent.fetch-aborted", {
             articleId,
             // この時点での ref の状態。null なら useEffect[articleId] が abort した、
@@ -305,7 +324,7 @@ export function useArticleContent(
       } finally {
         if (fetchAbortControllerRef.current?.controller === controller) {
           fetchAbortControllerRef.current = null;
-          setFetching(false);
+          if (readerMountedRef.current) setFetching(false);
         }
       }
     },
