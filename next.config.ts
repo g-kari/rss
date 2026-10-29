@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+import { relative, sep } from "node:path";
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
@@ -5,6 +7,16 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 // playwright e2e の web server が wrangler login 不要で起動できる。本番 R2 / AI へのリモート接続が
 // 必要な dev 検証時のみ option を一時的に変えれば良い。
 initOpenNextCloudflareForDev({ remoteBindings: false });
+
+// pnpm の推移依存は project root に公開されないため、linkedom 自身から実体を解決する。
+const requireFromConfig = createRequire(import.meta.url);
+const cssomParserPath = createRequire(requireFromConfig.resolve("linkedom")).resolve(
+  "@acemir/cssom/lib/index.js",
+);
+// Turbopack の alias は絶対パスでなく config からの相対パスを使う。
+const cssomBrowserEntry = `./${relative(import.meta.dirname, cssomParserPath)
+  .split(sep)
+  .join("/")}`;
 
 const securityHeaders = [
   {
@@ -103,7 +115,7 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       // linkedom 0.18.14 の CSSOM browser entry は global script で named export がない。
       // ブラウザーの bundle でも実 parser を持つ CommonJS entry を解決する (Refs #1503)。
-      "@acemir/cssom": { browser: "@acemir/cssom/lib/index.js" },
+      "@acemir/cssom": { browser: cssomBrowserEntry },
       fs: { browser: "./src/lib/empty-module.js" },
       path: { browser: "./src/lib/empty-module.js" },
     },
