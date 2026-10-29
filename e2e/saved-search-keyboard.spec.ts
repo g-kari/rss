@@ -528,3 +528,239 @@ test("quota failure does not claim import success or close a save draft, and ret
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect(await saved(page)).toMatchObject([{ name: "Retry" }, ...before]);
 });
+
+async function sibling(page: Page) {
+  const other = await page.context().newPage();
+  const collected: string[] = [];
+  errors.set(other, collected);
+  other.on("pageerror", (error) => collected.push(error.message));
+  await other.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.url() === fixtureUrl &&
+      request.method() === "GET" &&
+      request.isNavigationRequest() &&
+      request.frame() === other.mainFrame()
+    ) {
+      await route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+    } else if (request.url() === `${fixtureUrl}api/clip/token` && request.method() === "GET") {
+      await route.fulfill({ contentType: "application/json", body: '{"token":null}' });
+    } else {
+      collected.push(`unexpected ${request.method()} ${request.url()}`);
+      await route.abort();
+    }
+  });
+  await other.goto(fixtureUrl);
+  return other;
+}
+async function saveNamed(page: Page, name: string) {
+  await openWithPointer(page, `title:${name}`);
+  await page.getByLabel("検索を保存するための名前").fill(name);
+  await page.getByLabel("検索を保存するための名前").press("Enter");
+  await expect(page.getByLabel("検索を保存するための名前")).toHaveCount(0);
+}
+async function armStorageBarrier(page: Page) {
+  await page.evaluate(() => {
+    (
+      globalThis as typeof globalThis & { savedSearchStorageEvent: Promise<void> }
+    ).savedSearchStorageEvent = new Promise((resolve) => {
+      const received = (event: StorageEvent) => {
+        if (event.key !== "rss-saved-searches" || event.storageArea !== localStorage) return;
+        window.removeEventListener("storage", received);
+        // Let the production subscriber publish and React commit before testing
+        // the draft/focus that must survive that event, rather than racing it.
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      };
+      window.addEventListener("storage", received);
+    });
+  });
+}
+async function waitForStorageBarrier(page: Page) {
+  await page.evaluate(
+    () =>
+      (globalThis as typeof globalThis & { savedSearchStorageEvent: Promise<void> })
+        .savedSearchStorageEvent,
+  );
+}
+async function assertSiblingIdle(page: Page) {
+  expect(errors.get(page)).toEqual([]);
+  await expect(page.getByLabel("選択中の記事")).toHaveText("current");
+  await expect(page.getByLabel("既読の記事")).toBeEmpty();
+  await expect(page.getByLabel("背景の操作回数")).toHaveText("0");
+}
+
+for (const width of [390, 1280]) {
+  test(`other-tab saves preserve the open naming draft and its later save at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await saveNamed(page, "Initial");
+    const other = await sibling(page);
+    await other.setViewportSize({ width, height: 900 });
+    await openWithPointer(other, "title:second");
+    const name = other.getByLabel("検索を保存するための名前");
+    await name.fill("Second draft");
+    await armStorageBarrier(other);
+    await saveNamed(page, "First tab");
+    await waitForStorageBarrier(other);
+    await expect(name).toHaveValue("Second draft");
+    await expect(name).toBeFocused();
+    await expect(other.getByRole("combobox")).toHaveValue("title:second");
+    await name.press("Enter");
+    expect(await saved(other)).toMatchObject([
+      { name: "Second draft" },
+      { name: "First tab" },
+      { name: "Initial" },
+    ]);
+    await other.getByRole("combobox").blur();
+    await other.getByRole("combobox").focus();
+    await expect(other.getByRole("option", { name: /First tab/ })).toBeVisible();
+    await expect(page.getByRole("combobox")).toHaveValue("title:First tab");
+    await other.screenshot({
+      path: test.info().outputPath(`cross-tab-${width}.png`),
+      fullPage: true,
+    });
+    await assertSiblingIdle(other);
+    await other.close();
+  });
+}
+
+test("other-tab removal and clear update candidates without resurrecting removed searches", async ({
+  page,
+}) => {
+  await saveNamed(page, "Initial");
+  const other = await sibling(page);
+  await other.getByRole("combobox").focus();
+  await expect(other.getByRole("option", { name: /Initial/ })).toBeVisible();
+  await page.getByRole("combobox").blur();
+  await page.getByRole("combobox").focus();
+  await page.getByRole("combobox").press("Shift+Delete");
+  await expect(other.getByRole("option", { name: /Initial/ })).toHaveCount(0);
+  await saveNamed(other, "New");
+  expect(await saved(page)).toMatchObject([{ name: "New" }]);
+  await page.getByRole("combobox").blur();
+  await page.getByRole("combobox").focus();
+  await expect(page.getByRole("option", { name: /New/ })).toBeVisible();
+  await other.evaluate(() => localStorage.clear());
+  await expect(page.getByRole("option", { name: /New/ })).toHaveCount(0);
+  await saveNamed(page, "After clear");
+  expect(await saved(other)).toMatchObject([{ name: "After clear" }]);
+  await assertSiblingIdle(other);
+  await other.close();
+});
+
+test("an import from another tab is retained when the current tab subsequently saves", async ({
+  page,
+}) => {
+  await saveNamed(page, "Initial");
+  const other = await sibling(page);
+  await openWithPointer(other, "title:second");
+  await other.getByLabel("検索を保存するための名前").fill("Second");
+  await armStorageBarrier(other);
+  await page.getByRole("button", { name: "取り込み設定", exact: true }).click();
+  await page.locator('[data-setting-id="saved-searches"] input[type="file"]').setInputFiles({
+    name: "synthetic.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        searches: [
+          {
+            id: "external-import",
+            name: "Imported from first tab",
+            query: "title:imported",
+            createdAt: "2026-10-19",
+          },
+        ],
+      }),
+    ),
+  });
+  await expect(page.getByLabel("取り込み結果")).toHaveText("1件の検索条件を取り込みました");
+  await waitForStorageBarrier(other);
+  await expect(other.getByLabel("検索を保存するための名前")).toHaveValue("Second");
+  await expect(other.getByLabel("検索を保存するための名前")).toBeFocused();
+  await other.getByLabel("検索を保存するための名前").press("Enter");
+  expect(await saved(page)).toMatchObject([
+    { name: "Second" },
+    { name: "Imported from first tab" },
+    { name: "Initial" },
+  ]);
+  await assertSiblingIdle(other);
+  await other.close();
+});
+
+test("malformed other-tab data is not overwritten by an open draft, and recovery retains current entries", async ({
+  page,
+}) => {
+  await saveNamed(page, "Initial");
+  const valid = await saved(page);
+  const other = await sibling(page);
+  await openWithPointer(other, "title:recover");
+  const name = other.getByLabel("検索を保存するための名前");
+  await name.fill("Recovery");
+  await page.evaluate(() => localStorage.setItem("rss-saved-searches", '[{"name":"partial"}]'));
+  await expect(other.getByRole("alert")).toContainText("上書きはしていません");
+  await name.press("Enter");
+  await expect(name).toBeVisible();
+  await expect(name).toBeFocused();
+  expect(await page.evaluate(() => localStorage.getItem("rss-saved-searches"))).toBe(
+    '[{"name":"partial"}]',
+  );
+  await page.evaluate(
+    (initial) =>
+      localStorage.setItem(
+        "rss-saved-searches",
+        JSON.stringify([
+          { id: "newer", name: "Newer external", query: "title:newer", createdAt: "2026-10-19" },
+          ...initial,
+        ]),
+      ),
+    valid,
+  );
+  await expect(other.getByRole("alert")).toHaveCount(0);
+  await name.press("Enter");
+  expect(await saved(page)).toMatchObject([
+    { name: "Recovery" },
+    { name: "Newer external" },
+    { name: "Initial" },
+  ]);
+  await assertSiblingIdle(other);
+  await other.close();
+});
+
+test("a denied fresh read leaves the naming draft open and never overwrites current storage", async ({
+  page,
+}) => {
+  await saveNamed(page, "Initial");
+  const before = await saved(page);
+  const other = await sibling(page);
+  await openWithPointer(other, "title:recover");
+  const name = other.getByLabel("検索を保存するための名前");
+  await name.fill("Recovery");
+  await other.evaluate(() => {
+    const original = Storage.prototype.getItem;
+    (globalThis as typeof globalThis & { restoreRead: () => void }).restoreRead = () => {
+      Storage.prototype.getItem = original;
+    };
+    Storage.prototype.getItem = function (key) {
+      if (key === "rss-saved-searches")
+        throw new DOMException("Synthetic denied read", "SecurityError");
+      return original.call(this, key);
+    };
+  });
+  await name.press("Enter");
+  await expect(name).toBeVisible();
+  await expect(other.getByRole("alert")).toContainText("上書きはしていません");
+  expect(await saved(page)).toEqual(before);
+  await saveNamed(page, "External");
+  await other.evaluate(() =>
+    (globalThis as typeof globalThis & { restoreRead: () => void }).restoreRead(),
+  );
+  await name.press("Enter");
+  expect(await saved(page)).toMatchObject([
+    { name: "Recovery" },
+    { name: "External" },
+    { name: "Initial" },
+  ]);
+  await assertSiblingIdle(other);
+  await other.close();
+});
