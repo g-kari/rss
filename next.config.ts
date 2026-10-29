@@ -101,6 +101,9 @@ const nextConfig: NextConfig = {
     // 明示指定で dev / CI / Cloudflare CI/CD のどこでも同じ root に固定する。
     root: import.meta.dirname,
     resolveAlias: {
+      // linkedom 0.18.14 の CSSOM browser entry は global script で named export がない。
+      // ブラウザーの bundle でも実 parser を持つ CommonJS entry を解決する (Refs #1503)。
+      "@acemir/cssom": { browser: "@acemir/cssom/lib/index.js" },
       fs: { browser: "./src/lib/empty-module.js" },
       path: { browser: "./src/lib/empty-module.js" },
     },

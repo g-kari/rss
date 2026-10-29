@@ -123,6 +123,15 @@ export function getFeedViewStorageKey(baseKey: string, feedView: FeedView): stri
 
 // ── 低レベルラッパー ──────────────────────────────────────────
 
+/** Missing data is distinct from a denied/unavailable read before a read-modify-write. */
+export function storageRead(key: string): { ok: true; value: string | null } | { ok: false } {
+  try {
+    return { ok: true, value: localStorage.getItem(key) };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** localStorage.getItem の安全なラッパー（例外を null に変換） */
 export function storageGet(key: string): string | null {
   try {
