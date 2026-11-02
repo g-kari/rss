@@ -13,6 +13,9 @@ import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { usePopupLock } from "../hooks/usePopupLock";
 import { useSyncedRef } from "../hooks/useSyncedRef";
 import ImmersiveInlineReader from "./ImmersiveInlineReader";
+import { useArticleContent } from "../hooks/useArticleContent";
+import { extractEmbedInfo } from "../lib/embed-utils";
+import { isValidPublicUrl } from "../lib/url";
 import { immersiveThumbnailSources } from "../lib/immersive-articles";
 import CinematicArticle from "./CinematicArticle";
 import { useImmersiveNarration } from "../hooks/useImmersiveNarration";
@@ -149,6 +152,25 @@ export default function ImmersiveArticleMode(props: Props) {
   const activeArticle = current
     ? (eligible.get(current.article.id) ?? displayed.get(current.article.id))
     : undefined;
+  const { storedContent, fetching, fetchFullContentOnce } = useArticleContent(
+    activeArticle?.id,
+    activeArticle?.link,
+    activeArticle?.ogImage,
+  );
+  const attemptedContent = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeArticle || !pageVisible || inlineOpen || fetching) return;
+    const key = JSON.stringify([activeArticle.id, activeArticle.link]);
+    if (attemptedContent.current === key) return;
+    attemptedContent.current = key;
+    const embed = extractEmbedInfo(activeArticle.link);
+    if (
+      !storedContent &&
+      isValidPublicUrl(activeArticle.link) &&
+      (!embed || embed.type === "slides")
+    )
+      void fetchFullContentOnce();
+  }, [activeArticle, pageVisible, inlineOpen, fetching, storedContent, fetchFullContentOnce]);
   const activeArticleRef = useSyncedRef(activeArticle);
   const pageVisibleRef = useSyncedRef(pageVisible);
   const markReadRef = useSyncedRef(onMarkRead);
@@ -445,7 +467,11 @@ export default function ImmersiveArticleMode(props: Props) {
       >
         {batch.map((item, itemIndex) => {
           const article = eligible.get(item.article.id) ?? displayed.get(item.article.id);
-          const thumbnails = article ? immersiveThumbnailSources(article, ogpCache) : [];
+          const mediaArticle =
+            article && itemIndex === index && storedContent
+              ? { ...article, content: storedContent }
+              : article;
+          const thumbnails = mediaArticle ? immersiveThumbnailSources(mediaArticle, ogpCache) : [];
           const thumb = thumbnails[0];
           return (
             <div
@@ -460,7 +486,7 @@ export default function ImmersiveArticleMode(props: Props) {
                     {Math.abs(itemIndex - index) <= 1 && (
                       <CinematicArticle
                         key={`${article.id}:${itemIndex === index}:${itemIndex === index ? `${presentationKey}:${presentationState.revision}` : 0}`}
-                        article={article}
+                        article={mediaArticle!}
                         textPresentation={itemIndex === index ? textPresentation : undefined}
                         thumb={thumb}
                         thumbnailFallbacks={thumbnails.slice(1)}
