@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import ImmersiveArticleMode from "./ImmersiveArticleMode";
 import ArticleRecommendations from "./ArticleRecommendations";
@@ -89,15 +89,35 @@ function advance(count: number) {
 }
 
 describe("ImmersiveArticleMode", () => {
-  it("shows one accessible article with only neighboring media and no generated-content requests", () => {
+  it("shows one accessible article with only neighboring media and extracts only the active article", async () => {
     render(<ImmersiveArticleMode {...props} />);
     expect(screen.getByRole("heading", { name: "記事 0" })).toBeInTheDocument();
     expect(screen.getAllByRole("article")).toHaveLength(1);
     expect(screen.getAllByText("既存の説明 & 要点", { exact: false })).toHaveLength(2);
     expect(document.querySelector("audio, video, iframe")).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("/api/content?url=");
     expect(props.onSelectArticle).not.toHaveBeenCalled();
     expect(getPopupOpenCount()).toBe(1);
+  });
+  it("shows extracted body images without opening the inline reader", async () => {
+    vi.mocked(fetch).mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            content: '<p>取得した記事本文</p><img src="https://example.com/extracted.jpg">',
+          }),
+        ),
+    );
+    const source = { ...articles[0], id: "extracted", ogImage: undefined };
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+    await waitFor(() => {
+      expect(document.querySelector('img[src*="extracted.jpg"]')).not.toBeNull();
+    });
+    expect(screen.queryByRole("dialog", { name: "ここで記事の本文を読む" })).toBeNull();
+    expect(
+      vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes("/api/content?")),
+    ).toHaveLength(1);
   });
   it("continues through all loaded articles without a next-batch confirmation", () => {
     render(<ImmersiveArticleMode {...props} />);
