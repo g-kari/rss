@@ -163,13 +163,9 @@ export default function ImmersiveArticleMode(props: Props) {
     const key = JSON.stringify([activeArticle.id, activeArticle.link]);
     if (attemptedContent.current === key) return;
     attemptedContent.current = key;
+    if (!isValidPublicUrl(activeArticle.link)) return;
     const embed = extractEmbedInfo(activeArticle.link);
-    if (
-      !storedContent &&
-      isValidPublicUrl(activeArticle.link) &&
-      (!embed || embed.type === "slides")
-    )
-      void fetchFullContentOnce();
+    if (!storedContent && (!embed || embed.type === "slides")) void fetchFullContentOnce();
   }, [activeArticle, pageVisible, inlineOpen, fetching, storedContent, fetchFullContentOnce]);
   const activeArticleRef = useSyncedRef(activeArticle);
   const pageVisibleRef = useSyncedRef(pageVisible);
