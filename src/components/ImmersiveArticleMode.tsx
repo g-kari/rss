@@ -467,7 +467,13 @@ export default function ImmersiveArticleMode(props: Props) {
             article && itemIndex === index && storedContent
               ? { ...article, content: storedContent }
               : article;
-          const thumbnails = mediaArticle ? immersiveThumbnailSources(mediaArticle, ogpCache) : [];
+          const thumbnails = article
+            ? immersiveThumbnailSources(
+                article,
+                ogpCache,
+                itemIndex === index ? storedContent : null,
+              )
+            : [];
           const thumb = thumbnails[0];
           return (
             <div

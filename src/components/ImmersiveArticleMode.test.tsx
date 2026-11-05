@@ -4,6 +4,8 @@ import { useState } from "react";
 import ImmersiveArticleMode from "./ImmersiveArticleMode";
 import ArticleRecommendations from "./ArticleRecommendations";
 import { getPopupOpenCount } from "../lib/popup-lock";
+import { contentLruCache } from "../lib/lru-cache";
+import { getProviderContentCacheId } from "../lib/slide-providers";
 import type { Article, Feed } from "../types";
 
 const now = Date.parse("2026-09-30T12:00:00Z");
@@ -118,6 +120,121 @@ describe("ImmersiveArticleMode", () => {
     expect(
       vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes("/api/content?")),
     ).toHaveLength(1);
+  });
+  it("retains supplied responsive feed images when cached fulltext has no images", () => {
+    const small = "https://example.com/preserved-cover-300x168.webp";
+    const large = "https://example.com/preserved-cover-1600x900.webp";
+    const source = {
+      ...articles[0],
+      id: "preserve-responsive-feed-image",
+      ogImage: small,
+      content: `<img src="${small}" srcset="${large} 1600w, ${small} 300w">`,
+    };
+    contentLruCache.set(
+      getProviderContentCacheId(source.id, source.link),
+      "<p>取得済み全文には画像がありません。</p>",
+    );
+
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(large)),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps the loaded feed body image after OGP fails with image-free cached fulltext", () => {
+    const body = "https://example.com/preserved-body.svg";
+    const source = {
+      ...articles[0],
+      id: "preserve-feed-body-fallback",
+      ogImage: "https://example.com/broken-preserved-ogp.jpg",
+      content: `<img src="/api/image-proxy?url=%ZZ.jpg"><img src="${body}" width="800" height="450">`,
+    };
+    contentLruCache.set(
+      getProviderContentCacheId(source.id, source.link),
+      "<p>取得済み全文には画像がありません。</p>",
+    );
+
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(body)),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps cached-body then feed-body image order without admitting unsafe candidates", () => {
+    const cached = "https://example.com/preserved-cached-body.jpg";
+    const feed = "https://example.com/preserved-feed-body.jpg";
+    const source = {
+      ...articles[0],
+      id: "preserve-cached-and-feed-image-order",
+      ogImage: "https://example.com/broken-order-ogp.jpg",
+      content: `<img src="/api/image-proxy?url=%ZZ.jpg"><img src="${feed}" width="800" height="450">`,
+      summary: "",
+    };
+    contentLruCache.set(
+      getProviderContentCacheId(source.id, source.link),
+      `<img src="http://127.0.0.1/private.jpg"><img src="${cached}" width="800" height="450">`,
+    );
+
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(source.ogImage)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(cached)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(feed)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("retains the current loaded body image after the shared content cache evicts it", () => {
+    const loaded = "https://example.com/preserved-retained-body.jpg";
+    const feed = "https://example.com/preserved-feed-after-eviction.jpg";
+    const source = {
+      ...articles[0],
+      id: "preserve-loaded-body-after-eviction",
+      ogImage: "https://example.com/broken-eviction-ogp.jpg",
+      content: `<img src="${feed}" width="800" height="450">`,
+    };
+    const cacheKey = getProviderContentCacheId(source.id, source.link);
+    contentLruCache.set(cacheKey, `<img src="${loaded}" width="800" height="450">`);
+
+    const view = render(
+      <ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />,
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(loaded)),
+    );
+
+    for (let i = 0; i < 15; i++)
+      contentLruCache.set(`image-preservation-eviction-${i}`, "<p>別の記事</p>");
+    expect(contentLruCache.get(cacheKey)).toBeNull();
+    view.rerender(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(loaded)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(feed)),
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
   it("continues through all loaded articles without a next-batch confirmation", () => {
     render(<ImmersiveArticleMode {...props} />);
