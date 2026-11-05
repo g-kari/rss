@@ -17,7 +17,7 @@
       "automerge": false
     },
     {
-      "description": "Automerge reviewed official Actions in read-only CI after age and test checks pass.",
+      "description": "Review official CI Actions until required CI enforcement is verified.",
       "matchManagers": ["github-actions"],
       "matchPackageNames": [
         "actions/checkout",
@@ -31,7 +31,7 @@
       "minimumReleaseAgeBehaviour": "timestamp-required",
       "internalChecksFilter": "strict",
       "ignoreTests": false,
-      "automerge": true,
+      "automerge": false,
       "automergeType": "pr",
       "platformAutomerge": false,
       "ignoreScripts": true,
@@ -40,6 +40,11 @@
     {
       "description": "Review pre-1.0 dependency changes explicitly.",
       "matchCurrentVersion": "/^v?0\\./",
+      "automerge": false
+    },
+    {
+      "description": "Keep all updates manual until required CI enforcement is verified.",
+      "matchPackageNames": ["*"],
       "automerge": false
     }
   ],
