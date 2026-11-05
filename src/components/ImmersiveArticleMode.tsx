@@ -152,21 +152,33 @@ export default function ImmersiveArticleMode(props: Props) {
   const activeArticle = current
     ? (eligible.get(current.article.id) ?? displayed.get(current.article.id))
     : undefined;
-  const { storedContent, fetching, fetchFullContentOnce } = useArticleContent(
+  const requestAllowed =
+    !!activeArticle &&
+    pageVisible &&
+    (typeof document === "undefined" || document.visibilityState !== "hidden") &&
+    isValidPublicUrl(activeArticle.link);
+  const activeContent = useArticleContent(
     activeArticle?.id,
     activeArticle?.link,
     activeArticle?.ogImage,
+    requestAllowed,
   );
+  const { storedContent, fetching, fetchFullContentOnce } = activeContent;
   const attemptedContent = useRef<string | null>(null);
   useEffect(() => {
-    if (!activeArticle || !pageVisible || inlineOpen || fetching) return;
+    if (!requestAllowed) {
+      // An aborted request has not consumed the visible article's one-shot intent.
+      if (fetching) attemptedContent.current = null;
+      return;
+    }
+    if (!activeArticle || fetching) return;
     const key = JSON.stringify([activeArticle.id, activeArticle.link]);
     if (attemptedContent.current === key) return;
     attemptedContent.current = key;
     if (!isValidPublicUrl(activeArticle.link)) return;
     const embed = extractEmbedInfo(activeArticle.link);
     if (!storedContent && (!embed || embed.type === "slides")) void fetchFullContentOnce();
-  }, [activeArticle, pageVisible, inlineOpen, fetching, storedContent, fetchFullContentOnce]);
+  }, [activeArticle, requestAllowed, fetching, storedContent, fetchFullContentOnce]);
   const activeArticleRef = useSyncedRef(activeArticle);
   const pageVisibleRef = useSyncedRef(pageVisible);
   const markReadRef = useSyncedRef(onMarkRead);
@@ -479,6 +491,7 @@ export default function ImmersiveArticleMode(props: Props) {
             <div
               key={item.article.id}
               aria-hidden={itemIndex !== index}
+              data-article-id={article?.id}
               inert={itemIndex !== index || undefined}
               className="immersive-slide h-full snap-start snap-always overflow-hidden"
             >
@@ -724,6 +737,7 @@ export default function ImmersiveArticleMode(props: Props) {
       )}
       <ImmersiveInlineReader
         article={inlineView === "body" ? (activeArticle ?? null) : null}
+        contentState={activeContent}
         onClose={closeInline}
       />
     </div>,

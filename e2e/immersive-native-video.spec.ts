@@ -1,3 +1,8 @@
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+  previewArticles,
+} from "./helpers/active-article-request";
 import { test, expect } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
@@ -25,9 +30,10 @@ test.beforeAll(async () => {
       { from: resolve(root, "app/globals.css") },
     ),
   ]);
-  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css.css}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css.css}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   unexpected = [];
   errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -48,7 +54,7 @@ test.beforeEach(async ({ page }) => {
       return new Promise<void>(() => {});
     };
   });
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     if (
@@ -87,6 +93,27 @@ test.beforeEach(async ({ page }) => {
       ].includes(url.href)
     )
       return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+    const active = await matchActiveArticleRequest(
+      page,
+      route.request(),
+      "https://rss-preview.test",
+      previewArticles,
+    );
+    if (active?.aborted) return route.abort();
+    if (active)
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(
+          active.kind === "ogp"
+            ? {}
+            : {
+                content:
+                  active.articleUrl === previewArticles["0"]
+                    ? '<video src="https://rss-preview.test/movie.mp4"></video>'
+                    : "<p>合成記事の全文です。</p>",
+              },
+        ),
+      });
     unexpected.push(`${request.method()} ${url.href}`);
     return route.abort();
   });

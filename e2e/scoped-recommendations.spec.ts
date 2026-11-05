@@ -1,3 +1,7 @@
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+} from "./helpers/active-article-request";
 import { test, expect, type Page } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
@@ -37,16 +41,19 @@ test.beforeAll(async () => {
 });
 
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   const requests: string[] = [];
   const errors: string[] = [];
   const result = { requests, errors, configReads: 0 };
   diagnostics.set(page, result);
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     if (
       route.request().url() === "https://rss-preview.test/" &&
       route.request().method() === "GET" &&
-      route.request().isNavigationRequest()
+      route.request().isNavigationRequest() &&
+      route.request().frame() === page.mainFrame() &&
+      route.request().resourceType() === "document"
     )
       return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
     // Existing dismissal hook reads opt-in state on mount; never enable sync in this fixture.
@@ -54,6 +61,8 @@ test.beforeEach(async ({ page }) => {
       route.request().url() === "https://rss-preview.test/api/push/config" &&
       route.request().method() === "GET" &&
       !route.request().isNavigationRequest() &&
+      route.request().frame() === page.mainFrame() &&
+      route.request().resourceType() === "fetch" &&
       route.request().headers()["x-rss-account-id"] === "list-test"
     ) {
       result.configReads++;
@@ -61,6 +70,27 @@ test.beforeEach(async ({ page }) => {
         json: { recommendationEnabled: false, recommendationDismissals: [] },
       });
     }
+    const active = await matchActiveArticleRequest(
+      page,
+      route.request(),
+      "https://rss-preview.test",
+      Object.fromEntries([
+        ["in-scope", "https://example.com/a"],
+        ["second", "https://example.com/second"],
+        ["retained", "https://example.com/retained"],
+        ["outside", "https://example.com/b"],
+        ...Array.from({ length: 5 }, (_, index) => [
+          `digest-${index}`,
+          `https://example.com/digest-${index}`,
+        ]),
+      ]),
+    );
+    if (active?.aborted) return route.abort();
+    if (active)
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" }),
+      });
     requests.push(`${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
