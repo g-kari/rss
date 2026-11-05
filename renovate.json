@@ -1,0 +1,60 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "automerge": false,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "ignoreTests": false,
+  "ignoreScripts": true,
+  "rebaseWhen": "behind-base-branch",
+  "minimumReleaseAge": "14 days",
+  "minimumReleaseAgeBehaviour": "timestamp-required",
+  "internalChecksFilter": "strict",
+  "packageRules": [
+    {
+      "description": "Keep every dependency review-first unless explicitly allowed below.",
+      "matchPackageNames": ["*"],
+      "automerge": false
+    },
+    {
+      "description": "Review official CI Actions until required CI enforcement is verified.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": [
+        "actions/checkout",
+        "actions/setup-node",
+        "actions/upload-artifact",
+        "actions/download-artifact"
+      ],
+      "matchFileNames": [".github/workflows/ci.yml"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pinDigest"],
+      "minimumReleaseAge": "14 days",
+      "minimumReleaseAgeBehaviour": "timestamp-required",
+      "internalChecksFilter": "strict",
+      "ignoreTests": false,
+      "automerge": false,
+      "automergeType": "pr",
+      "platformAutomerge": false,
+      "ignoreScripts": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "description": "Review pre-1.0 dependency changes explicitly.",
+      "matchCurrentVersion": "/^v?0\\./",
+      "automerge": false
+    },
+    {
+      "description": "Keep all updates manual until required CI enforcement is verified.",
+      "matchPackageNames": ["*"],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "minimumReleaseAge": null,
+    "automerge": false
+  },
+  "lockFileMaintenance": {
+    "enabled": false,
+    "automerge": false
+  }
+}
