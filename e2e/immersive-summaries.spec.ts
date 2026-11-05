@@ -1,3 +1,8 @@
+import { summaryFixtureDescription } from "./helpers/immersive-article-data";
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+} from "./helpers/active-article-request";
 import { test, expect, type Locator, type Page, type Route } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
@@ -44,7 +49,6 @@ interface Diagnostics {
   requests: CacheRequest[];
   pending: PendingCache[];
   behavior: "hit" | "mixed" | "error" | "deferred";
-  allowedContent: Set<string>;
   content: string[];
   ogp: string[];
   makeHit: (url: string, model: WorkersAiModelId) => CachedSummary;
@@ -125,13 +129,13 @@ test.beforeAll(async () => {
 });
 
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   const state: Diagnostics = {
     rejected: [],
     errors: [],
     requests: [],
     pending: [],
     behavior: "hit",
-    allowedContent: new Set(),
     content: [],
     ogp: [],
     makeHit,
@@ -139,7 +143,7 @@ test.beforeEach(async ({ page }) => {
   diagnostics.set(page, state);
   page.on("pageerror", (error) => state.errors.push(error.message));
   // This allowlist is intentionally fail-closed. Cache reads are the only permitted AI endpoint.
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const mainFrame = request.frame() === page.mainFrame();
@@ -162,6 +166,8 @@ test.beforeEach(async ({ page }) => {
       url.origin === origin &&
       url.pathname === "/" &&
       [...url.searchParams.keys()].every((key) => key === "case" || key === "theme") &&
+      url.searchParams.getAll("case").length <= 1 &&
+      url.searchParams.getAll("theme").length <= 1 &&
       allowedCases.includes(url.searchParams.get("case")) &&
       [null, "light", "dark"].includes(url.searchParams.get("theme"))
     )
@@ -215,32 +221,29 @@ test.beforeEach(async ({ page }) => {
         body: JSON.stringify(response(state, cacheRequest)),
       });
     }
-    if (
-      state.allowedContent.has(url.searchParams.get("url") || "") &&
-      request.method() === "GET" &&
-      !request.isNavigationRequest() &&
-      mainFrame &&
-      ["fetch", "xhr"].includes(request.resourceType()) &&
-      url.origin === origin &&
-      (url.pathname === "/api/content" || url.pathname === "/api/ogp") &&
-      [...url.searchParams.keys()].length === 1 &&
-      url.searchParams.has("url") &&
-      knownUrls.has(url.searchParams.get("url")!)
-    ) {
-      if (url.pathname === "/api/ogp") {
-        const article = url.searchParams.get("url")!;
-        if (state.ogp.includes(article)) {
-          state.rejected.push(`Repeated explicit-body OGP: ${article}`);
-          return route.abort();
-        }
-        state.ogp.push(article);
+    const active = await matchActiveArticleRequest(
+      page,
+      request,
+      origin,
+      Object.fromEntries(
+        Array.from({ length: 23 }, (_, index) => [String(index), articleUrl(index)]),
+      ),
+    );
+    if (active?.aborted) return route.abort();
+    if (active) {
+      if (active.kind === "ogp") {
+        state.ogp.push(active.articleUrl);
         return route.fulfill({ contentType: "application/json", body: "{}" });
       }
-      state.content.push(url.searchParams.get("url")!);
+      state.content.push(active.articleUrl);
+      const description = summaryFixtureDescription(
+        Number(active.articleUrl.split("/").at(-1)),
+        new URL(page.url()).searchParams.get("case") === "long-fallback",
+      );
       return route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
-          content: "<p>明示操作で取得した本文です。合成記事だけを表示します。</p>",
+          content: `<p>${description}</p><p>表示中の記事から取得した本文です。合成記事だけを表示します。</p>`,
         }),
       });
     }
@@ -332,7 +335,7 @@ test.afterEach(async ({ page }) => {
   const state = diagnostics.get(page)!;
   expect(
     state.rejected,
-    "No generation, translation, browser AI, auth mutation, media or external requests; content/OGP require explicit matching body action",
+    "No generation, translation, browser AI, auth mutation, media or external requests; content/OGP require the exact visible active article at dispatch",
   ).toEqual([]);
   expect(state.errors, "Production-component JavaScript exceptions must remain visible").toEqual(
     [],
@@ -342,6 +345,13 @@ test.afterEach(async ({ page }) => {
     "Cache-only UI must never probe/create browser AI",
   ).toBe(0);
 });
+
+async function expectBodyReads(page: Page, indices: number[]) {
+  const state = diagnostics.get(page)!;
+  const urls = indices.map(articleUrl);
+  await expect.poll(() => state.content).toEqual(urls);
+  await expect.poll(() => state.ogp).toEqual(urls);
+}
 
 async function open(page: Page, fixtureCase?: string, theme = "dark") {
   const parameters = new URLSearchParams({ theme });
@@ -538,8 +548,8 @@ for (const viewport of [
         await expect(explanation).not.toContainText("対象モデルと異なります");
         await expect(dialog.getByTestId("summary-source")).toContainText("Gemma 4");
         await closeSummary(page);
-        expect(state.content).toEqual([]);
-        expect(state.ogp).toEqual([]);
+        await expectBodyReads(page, [0]);
+        expect(state.ogp).toEqual([articleUrl(0)]);
       });
 
       test("prefetched hit becomes a labeled short only on activation; dialog controls and focus remain usable", async ({
@@ -638,7 +648,7 @@ for (const theme of ["light", "dark"]) {
       await expect(position(page)).toHaveText("2 / 10件");
       await expect(information).toContainText("本文全体の取得状況不明");
       expect(await ids(page)).toEqual(["0", "1"]);
-      expect(state.content).toEqual([]);
+      await expectBodyReads(page, [0, 1]);
     });
     test("long feed/body fallback keeps two readable caption lines alongside its shortening and reduced-motion notices", async ({
       page,
@@ -667,7 +677,7 @@ for (const theme of ["light", "dark"]) {
       );
       await captionReadability(page);
       expect(await ids(page)).toEqual(["0", "1"]);
-      expect(state.content).toEqual([]);
+      await expectBodyReads(page, [0, 1]);
     });
   });
 }
@@ -736,7 +746,7 @@ test("model boundary resets an automatically selected prefetched presentation on
   ).toBe(fallbackProgress);
   await expect(position(page)).toHaveText("2 / 10件");
   expect(await ids(page)).toEqual(["0", "1"]);
-  expect(state.content).toEqual([]);
+  await expectBodyReads(page, [0, 1]);
 });
 
 test("late hit during synthetic local TTS and clock playback changes only availability, never text/progress/narration", async ({
@@ -766,7 +776,7 @@ test("late hit during synthetic local TTS and clock playback changes only availa
   await page.clock.runFor(1000);
   expect(await progressPercent(page)).toBeGreaterThan(beforeProgress);
   await expect(position(page)).toHaveText("1 / 10件");
-  expect(state.content).toEqual([]);
+  await expectBodyReads(page, [0]);
 });
 
 test("late paused hit is inspectable without adoption; explicit source switches pause and reset once", async ({
@@ -816,18 +826,16 @@ test("body reader interruption keeps a late hit separate and restores queue, spe
   await open(page);
   await page.getByRole("combobox", { name: "再生速度" }).selectOption("2");
   const here = page.getByRole("button", { name: "ここで読む", exact: true });
-  state.allowedContent.add(articleUrl(0));
   await here.click();
   const body = page.getByRole("dialog", { name: "ここで記事の本文を読む" });
   await expect(body).toBeVisible();
-  await expect(body).toContainText("明示操作で取得した本文です");
+  await expect(body).toContainText("表示中の記事から取得した本文です");
   await expect.poll(() => state.pending.length).toBeGreaterThan(0);
   await release(page);
   await page.clock.runFor(8000);
   await expect(position(page)).toHaveText("1 / 10件");
   await page.keyboard.press("Escape");
   await expect(body).toHaveCount(0);
-  state.allowedContent.delete(articleUrl(0));
   await expect(position(page)).toBeVisible();
   await page.clock.runFor(40);
   await expect(here).toBeFocused();
@@ -880,20 +888,17 @@ test("mixed hit/miss cache inspection offers an explicit cache-only retry and bo
   await expect(summaryDialog(page).getByTestId("summary-availability")).toContainText(
     /未保存|ありません|見つかりません/,
   );
-  state.allowedContent.add(articleUrl(2));
   await summaryDialog(page).getByRole("button", { name: "本文を読む", exact: true }).click();
   await expect(summaryDialog(page)).toHaveCount(0);
   const body = page.getByRole("dialog", { name: "ここで記事の本文を読む" });
-  await expect(body).toContainText("明示操作で取得した本文です");
+  await expect(body).toContainText("表示中の記事から取得した本文です");
   await page.clock.runFor(80);
   await page.keyboard.press("Escape");
   await expect(body).toHaveCount(0);
-  state.allowedContent.delete(articleUrl(2));
   await expect(position(page)).toBeVisible();
   await page.clock.runFor(40);
   await expect(summaryButton(page)).toBeFocused();
-  expect(state.content).toEqual([articleUrl(2)]);
-  expect(state.ogp).toEqual([articleUrl(2)]);
+  await expectBodyReads(page, [0, 1, 2]);
   expect(await ids(page)).toEqual(["0", "1", "2"]);
 });
 
@@ -929,7 +934,7 @@ test("cache error stays an honest fallback and manual retry never calls generati
   expect(state.requests.at(-1)).toEqual({ urls: [articleUrl(0)], model: DEFAULT_AI_MODEL });
   await closeSummary(page);
   await expect(transcript(page)).toContainText(feedText(0));
-  expect(state.content).toEqual([]);
+  await expectBodyReads(page, [0]);
 });
 
 test("exact selected model wins over a deferred older-model response", async ({ page }) => {
@@ -1004,7 +1009,7 @@ for (const change of ["account", "scope"] as const) {
     await expect(summaryDialog(page)).not.toContainText("古い権限の保存済み要約");
     await closeSummary(page);
     await expect(transcript(page)).toContainText(feedText(0));
-    expect(state.content).toEqual([]);
+    await expectBodyReads(page, [0]);
   });
 }
 
@@ -1059,7 +1064,7 @@ for (const change of ["account", "scope", "auth"] as const) {
     await expect(transcript(page)).toContainText(feedText(0));
     await expect(page.getByRole("button", { name: "自動再生を再開" })).toBeVisible();
     expect(await ids(page)).toEqual(["0"]);
-    expect(state.content).toEqual([]);
+    await expectBodyReads(page, [0]);
   });
 }
 
@@ -1088,7 +1093,7 @@ for (const fixtureCase of [
     await committedArticle(page, 1, 10);
     await page.clock.runFor(15_000);
     expect(diagnostics.get(page)!.requests).toEqual([]);
-    expect(diagnostics.get(page)!.content).toEqual([]);
+    await expectBodyReads(page, [0, 1]);
     expect(await ids(page)).toEqual(["0", "1"]);
   });
 }
@@ -1103,21 +1108,26 @@ test("auto provider remains cache-only and opening hidden schedules no cache/rea
   await page.clock.runFor(15_000);
   expect(diagnostics.get(page)!.requests).toEqual([]);
   expect(await ids(page)).toEqual([]);
+  expect(diagnostics.get(page)!.content).toEqual([]);
+  expect(diagnostics.get(page)!.ogp).toEqual([]);
   await setVisible(page, true);
   await committedArticle(page, 0, 10);
   await inspect(page);
   await requireHit(summaryDialog(page), 0);
   await closeSummary(page);
   expect(await ids(page)).toEqual(["0"]);
+  await expectBodyReads(page, [0]);
   await setVisible(page, false);
   const count = diagnostics.get(page)!.requests.length;
   await next(page).click();
   await expect(position(page)).toHaveText("2 / 10件");
   await page.clock.runFor(15_000);
   expect(diagnostics.get(page)!.requests.length).toBe(count);
+  await expectBodyReads(page, [0]);
   expect(await ids(page)).toEqual(["0"]);
   await setVisible(page, true);
   await committedArticle(page, 1, 10);
+  await expectBodyReads(page, [0, 1]);
   expect(await ids(page)).toEqual(["0", "1"]);
 });
 
@@ -1154,7 +1164,7 @@ test("hostile cached HTML/markdown stay inert; thinking never enters display or 
   const spoken = (await speechState(page)).spoken.join("");
   expect(spoken).toContain("安全な保存済み要約");
   expect(spoken).not.toContain("内部思考は表示しない");
-  expect(state.content).toEqual([]);
+  await expectBodyReads(page, [0]);
 });
 
 test("legacy/unknown provenance never claims complete source input", async ({ page }) => {
@@ -1279,4 +1289,36 @@ test("23-card replenishment requests each URL/model once and reads only acknowle
   await committedArticle(page, 22, 23);
   expect(await ids(page)).toEqual(seen);
   expect(diagnostics.get(page)!.requests).toHaveLength(requests.length);
+});
+
+test("summary and inline panels do not repeat active body or OGP reads", async ({ page }) => {
+  const state = diagnostics.get(page)!;
+  await open(page);
+  await expectBodyReads(page, [0]);
+  for (let repeat = 0; repeat < 3; repeat++) {
+    await inspect(page);
+    await requireHit(summaryDialog(page), 0);
+    await closeSummary(page);
+    await page.getByRole("button", { name: "ここで読む", exact: true }).click();
+    const body = page.getByRole("dialog", { name: "ここで記事の本文を読む" });
+    await expect(body).toContainText("表示中の記事から取得した本文です");
+    await page.keyboard.press("Escape");
+    await expect(body).toHaveCount(0);
+    await page.clock.runFor(80);
+    await expectBodyReads(page, [0]);
+  }
+  await page.clock.runFor(15_000);
+  await expectBodyReads(page, [0]);
+  await setVisible(page, false);
+  await page.clock.runFor(15_000);
+  await expectBodyReads(page, [0]);
+  await setVisible(page, true);
+  // Successful body stays cached. An empty OGP result may be tried once in the
+  // new visible period, but must not loop while this article stays active.
+  await page.clock.runFor(80);
+  await expect.poll(() => state.ogp).toEqual([articleUrl(0), articleUrl(0)]);
+  expect(state.content).toEqual([articleUrl(0)]);
+  await page.clock.runFor(15_000);
+  expect(state.ogp).toEqual([articleUrl(0), articleUrl(0)]);
+  expect(state.content).toEqual([articleUrl(0)]);
 });

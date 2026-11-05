@@ -138,3 +138,34 @@ it("applies shared reading settings to inline body without remounting it or fetc
   expect(onClose).not.toHaveBeenCalled();
   expect(state.fetchFullContent).not.toHaveBeenCalled();
 });
+
+it.each(["id", "link"])(
+  "standalone %s changes do not consume the new article attempt behind a previous error",
+  (change) => {
+    const first = {
+      ...article,
+      id: "standalone-first",
+      link: "https://example.com/standalone-first",
+    };
+    const next = {
+      ...first,
+      id: change === "id" ? "standalone-next" : first.id,
+      link: change === "link" ? "https://example.com/standalone-next" : first.link,
+    };
+    const onClose = vi.fn();
+    const { rerender } = render(<ImmersiveInlineReader article={first} onClose={onClose} />);
+    expect(state.fetchFullContent).toHaveBeenCalledOnce();
+    state.fetchError = "前の記事の通信エラー";
+    rerender(<ImmersiveInlineReader article={first} onClose={onClose} />);
+    expect(state.fetchFullContent).toHaveBeenCalledOnce();
+    // The identity-change render can still expose the previous hook error before
+    // its reset effect commits. That render must not consume the new identity.
+    rerender(<ImmersiveInlineReader article={next} onClose={onClose} />);
+    expect(state.fetchFullContent).toHaveBeenCalledOnce();
+    state.fetchError = "";
+    rerender(<ImmersiveInlineReader article={next} onClose={onClose} />);
+    expect(state.fetchFullContent).toHaveBeenCalledTimes(2);
+    rerender(<ImmersiveInlineReader article={next} onClose={onClose} />);
+    expect(state.fetchFullContent).toHaveBeenCalledTimes(2);
+  },
+);

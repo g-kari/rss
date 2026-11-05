@@ -9,8 +9,8 @@
  * 2. cache miss + RSS ogImage なしのとき /api/ogp を fetch し cacheOgpEntry で Context に書き戻す
  * 3. articleLink が空のとき何もしない
  */
-import { act, renderHook } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { act, render, renderHook } from "@testing-library/react";
+import { StrictMode, useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api-fetch", () => ({
@@ -29,6 +29,7 @@ vi.mock("../lib/lru-cache", () => ({
 }));
 
 import { apiFetch } from "../lib/api-fetch";
+import { contentLruCache } from "../lib/lru-cache";
 import { OgpCacheProvider, type OgpCacheStore } from "../contexts/OgpCacheContext";
 import type { OgpCacheEntry } from "../lib/ogp-cache-schema";
 import { useArticleContent } from "./useArticleContent";
@@ -354,3 +355,283 @@ describe("useArticleContent — 記事切替後の fetchError leak 防止 (#abor
     expect(result.current.fetchError).toBe("");
   });
 });
+
+describe("useArticleContent request suspension", () => {
+  it("blocks content and OGP while suspended and resolves OGP after resuming", async () => {
+    mockApiFetch.mockImplementation(async () => new Response("{}"));
+    const { store } = makeStore();
+    const { result, rerender } = renderHook(
+      ({ allowed }) =>
+        useArticleContent("suspended", "https://example.com/suspended", undefined, allowed),
+      { initialProps: { allowed: false }, wrapper: wrapWith(store) },
+    );
+    await act(async () => {
+      await result.current.fetchFullContentOnce();
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    rerender({ allowed: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    expect(mockApiFetch.mock.calls[0][0]).toContain("/api/ogp?");
+  });
+
+  it("saved callbacks cannot start hidden/stale requests or abort newer work", async () => {
+    const pending = new Promise<Response>(() => {});
+    mockApiFetch.mockReturnValue(pending);
+    const { store } = makeStore();
+    const { result, rerender } = renderHook(
+      ({ id, allowed }) =>
+        useArticleContent(id, `https://example.com/${id}`, "supplied.jpg", allowed),
+      { initialProps: { id: "old", allowed: true }, wrapper: wrapWith(store) },
+    );
+    const oldFetch = result.current.fetchFullContent;
+    rerender({ id: "old", allowed: false });
+    await act(async () => {
+      await oldFetch();
+    });
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    rerender({ id: "new", allowed: true });
+    act(() => {
+      void result.current.fetchFullContentOnce();
+    });
+    const signal = mockApiFetch.mock.calls[0][1]?.signal;
+    await act(async () => {
+      await oldFetch();
+    });
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    expect(signal?.aborted).toBe(false);
+  });
+
+  it("aborts hidden body JSON and accepts one resumed request", async () => {
+    let resolveJson!: (value: { content: string }) => void;
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        new Promise((resolve) => {
+          resolveJson = resolve;
+        }),
+    } as Response);
+    const { store } = makeStore();
+    const { result, rerender } = renderHook(
+      ({ allowed }) =>
+        useArticleContent(
+          "body-hidden",
+          "https://example.com/body-hidden",
+          "supplied.jpg",
+          allowed,
+        ),
+      { initialProps: { allowed: true }, wrapper: wrapWith(store) },
+    );
+    act(() => {
+      void result.current.fetchFullContentOnce();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const oldSignal = mockApiFetch.mock.calls[0][1]?.signal;
+    rerender({ allowed: false });
+    expect(oldSignal?.aborted).toBe(true);
+    expect(result.current.fetching).toBe(false);
+    await act(async () => {
+      resolveJson({ content: "hidden obsolete body" });
+      await Promise.resolve();
+    });
+    expect(result.current.storedContent).toBeNull();
+    expect(contentLruCache.set).not.toHaveBeenCalledWith(expect.anything(), "hidden obsolete body");
+    mockApiFetch.mockResolvedValueOnce(new Response(JSON.stringify({ content: "resumed body" })));
+    rerender({ allowed: true });
+    await act(async () => {
+      await result.current.fetchFullContentOnce();
+    });
+    expect(result.current.storedContent).toBe("resumed body");
+    expect(mockApiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects late hidden OGP and resolves it on resume", async () => {
+    let resolveJson!: (value: { image: string }) => void;
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        new Promise((resolve) => {
+          resolveJson = resolve;
+        }),
+    } as Response);
+    const { store, cacheCalls } = makeStore();
+    const { result, rerender } = renderHook(
+      ({ allowed }) =>
+        useArticleContent("ogp-hidden", "https://example.com/ogp-hidden", undefined, allowed),
+      { initialProps: { allowed: true }, wrapper: wrapWith(store) },
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    const oldSignal = mockApiFetch.mock.calls[0][1]?.signal;
+    rerender({ allowed: false });
+    expect(oldSignal?.aborted).toBe(true);
+    await act(async () => {
+      resolveJson({ image: "https://example.com/stale.jpg" });
+      await Promise.resolve();
+    });
+    expect(result.current.resolvedOgImage).toBeNull();
+    expect(cacheCalls).toEqual([]);
+    mockApiFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ image: "https://example.com/current.jpg" })),
+    );
+    rerender({ allowed: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(result.current.resolvedOgImage).toBe("https://example.com/current.jpg");
+    expect(cacheCalls).toEqual([
+      {
+        url: "https://example.com/ogp-hidden",
+        partial: { image: "https://example.com/current.jpg" },
+      },
+    ]);
+  });
+});
+
+it("a saved body callback cannot start a request after its reader unmounts", async () => {
+  const { store } = makeStore();
+  const { result, unmount } = renderHook(
+    () => useArticleContent("closed-reader", "https://example.com/closed-reader", "supplied.jpg"),
+    { wrapper: wrapWith(store) },
+  );
+  const fetchAfterClose = result.current.fetchFullContent;
+  unmount();
+  await act(async () => {
+    await fetchAfterClose();
+  });
+  expect(mockApiFetch).not.toHaveBeenCalled();
+});
+
+it("StrictMode child-first replay keeps one request across same-turn cleanup", async () => {
+  let resolveFetch!: (response: Response) => void;
+  mockApiFetch.mockReturnValue(
+    new Promise((resolve) => {
+      resolveFetch = resolve;
+    }),
+  );
+  const latest: { value?: ReturnType<typeof useArticleContent> } = {};
+  function ChildIntent({ fetchOnce }: { fetchOnce: () => Promise<void> }) {
+    useEffect(() => {
+      void fetchOnce();
+    }, [fetchOnce]);
+    return null;
+  }
+  function Owner() {
+    const content = useArticleContent(
+      "strict-replay",
+      "https://example.com/strict-replay",
+      "supplied.jpg",
+    );
+    latest.value = content;
+    return <ChildIntent fetchOnce={content.fetchFullContentOnce} />;
+  }
+  const { store } = makeStore();
+  const Wrapper = wrapWith(store);
+  render(
+    <StrictMode>
+      <Wrapper>
+        <Owner />
+      </Wrapper>
+    </StrictMode>,
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(mockApiFetch).toHaveBeenCalledTimes(1);
+  expect(mockApiFetch.mock.calls[0][1]?.signal?.aborted).toBe(false);
+  await act(async () => {
+    resolveFetch(new Response(JSON.stringify({ content: "strict replay body" })));
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(latest.value?.storedContent).toBe("strict replay body");
+  expect(mockApiFetch).toHaveBeenCalledTimes(1);
+});
+
+it.each(["id", "link", "unmount"])(
+  "discarding %s while body JSON is pending cannot populate the old cache",
+  async (transition) => {
+    let resolveJson!: (value: { content: string }) => void;
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        new Promise((resolve) => {
+          resolveJson = resolve;
+        }),
+    } as Response);
+    const { store } = makeStore();
+    const { result, rerender, unmount } = renderHook(
+      ({ id, link }) => useArticleContent(id, link, "supplied.jpg"),
+      {
+        initialProps: { id: "old-json", link: "https://example.com/old-json" },
+        wrapper: wrapWith(store),
+      },
+    );
+    act(() => {
+      void result.current.fetchFullContentOnce();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    if (transition === "unmount") unmount();
+    else
+      rerender({
+        id: transition === "id" ? "new-json" : "old-json",
+        link:
+          transition === "link" ? "https://example.com/new-json" : "https://example.com/old-json",
+      });
+    const obsolete = `obsolete body after ${transition}`;
+    await act(async () => {
+      resolveJson({ content: obsolete });
+      await Promise.resolve();
+    });
+    expect(contentLruCache.set).not.toHaveBeenCalledWith(expect.anything(), obsolete);
+    if (transition !== "unmount") expect(result.current.storedContent).toBeNull();
+  },
+);
+
+it.each(["id", "link", "unmount"])(
+  "discarding %s while OGP JSON is pending cannot populate the old cache",
+  async (transition) => {
+    let resolveJson!: (value: { image: string }) => void;
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        new Promise((resolve) => {
+          resolveJson = resolve;
+        }),
+    } as Response);
+    const { store, cacheCalls } = makeStore();
+    const { result, rerender, unmount } = renderHook(
+      ({ id, link }) => useArticleContent(id, link, undefined),
+      {
+        initialProps: { id: "old-ogp-json", link: "https://example.com/old-ogp-json" },
+        wrapper: wrapWith(store),
+      },
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    if (transition === "unmount") unmount();
+    else
+      rerender({
+        id: transition === "id" ? "new-ogp-json" : "old-ogp-json",
+        link:
+          transition === "link"
+            ? "https://example.com/new-ogp-json"
+            : "https://example.com/old-ogp-json",
+      });
+    await act(async () => {
+      resolveJson({ image: "https://example.com/obsolete-ogp.jpg" });
+      await Promise.resolve();
+    });
+    expect(cacheCalls).toEqual([]);
+    if (transition !== "unmount") expect(result.current.resolvedOgImage).toBeNull();
+  },
+);

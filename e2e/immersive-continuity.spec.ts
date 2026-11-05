@@ -1,3 +1,8 @@
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+  previewArticles,
+} from "./helpers/active-article-request";
 import { test, expect, type Page } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
@@ -52,10 +57,11 @@ test.beforeAll(async () => {
 });
 
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   const state: Diagnostics = { rejected: [], errors: [], images: [] };
   diagnostics.set(page, state);
   page.on("pageerror", (error) => state.errors.push(error.message));
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     if (
@@ -66,6 +72,7 @@ test.beforeEach(async ({ page }) => {
       url.origin === "https://rss-preview.test" &&
       url.pathname === "/" &&
       [...url.searchParams.keys()].every((key) => key === "case") &&
+      url.searchParams.getAll("case").length <= 1 &&
       [null, "empty", "dynamic", "thumbnails"].includes(url.searchParams.get("case"))
     )
       return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
@@ -89,6 +96,24 @@ test.beforeEach(async ({ page }) => {
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="#176774"/></svg>',
       });
     }
+    const active = await matchActiveArticleRequest(
+      page,
+      request,
+      "https://rss-preview.test",
+      new URL(page.url()).searchParams.get("case") === "thumbnails"
+        ? {
+            ...previewArticles,
+            "2": "https://www.youtube.com/watch?v=missingog01",
+            "3": "https://www.youtube.com/watch?v=brokenog001",
+          }
+        : previewArticles,
+    );
+    if (active?.aborted) return route.abort();
+    if (active)
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" }),
+      });
     state.rejected.push(`${request.method()} ${url.href}`);
     return route.abort();
   });
@@ -99,7 +124,7 @@ test.afterEach(({ page }) => {
   const state = diagnostics.get(page)!;
   expect(
     state.rejected,
-    "No body extraction, OGP, AI, live data, media or mutation requests",
+    "Only exact visible-active body/OGP reads; no AI, live data, unexpected media or mutations",
   ).toEqual([]);
   expect(state.errors, "Do not hide production-component exceptions").toEqual([]);
 });
