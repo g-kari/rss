@@ -60,7 +60,7 @@ const settings = {
   autoSummarize: false,
   autoAiBrowserOnly: false,
   aiProvider: "workers",
-  aiModel: "@cf/meta/llama-3.1-8b-instruct",
+  aiModel: "@cf/google/gemma-4-26b-a4b-it",
   aiUserId: null,
   imageDlFolder: "",
   imageDlFolderNsfw: "",

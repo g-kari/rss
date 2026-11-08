@@ -11,7 +11,6 @@ import {
 import { getAiSummaryByUrl, setAiSummaryByUrl } from "./ai-cache";
 import { claimSummaryGeneration } from "./ai-generation-lease";
 import { matchCfCache } from "./cache-helper";
-import { DEFAULT_AI_MODEL } from "./ai-models";
 import { SUMMARY_PRECOMPUTE_LEASE_KEY } from "./summary-precompute-lease";
 import { readFileSync } from "node:fs";
 
@@ -25,7 +24,8 @@ vi.mock("./server-auth", () => ({
   parseJsonBody: async (request: Request) => ({ ok: true, data: await request.json() }),
 }));
 vi.mock("./rate-limit", () => ({ checkSlidingWindow: async () => null }));
-const model = "@cf/qwen/qwen3-30b-a3b-fp8";
+const model = "@cf/google/gemma-4-26b-a4b-it";
+const otherModel = "@cf/mistralai/mistral-small-3.1-24b-instruct";
 const now = Date.parse("2026-10-02T04:00:00Z");
 const url = "https://example.com/article";
 const body = "記事の本文の主要な事実です。".repeat(50);
@@ -124,7 +124,7 @@ describe("summary precompute fail-closed gates", () => {
     expect(summaryPrecomputeConfig(env, now)).toBeNull();
   });
   it("unsupported or stale price bounds prevent any generation", async () => {
-    env.RSS_SUMMARY_PRECOMPUTE_MODEL = DEFAULT_AI_MODEL;
+    env.RSS_SUMMARY_PRECOMPUTE_MODEL = "@cf/qwen/qwen3.8-27b";
     expect(await execute()).toBe(0);
     env.RSS_SUMMARY_PRECOMPUTE_MODEL = model;
     expect(
@@ -132,12 +132,24 @@ describe("summary precompute fail-closed gates", () => {
     ).toBe(0);
     expect(run).not.toHaveBeenCalled();
   });
-  it("supports freshly priced Gemma4, Mistral and Qwen conservatively", () => {
+  it("supports the unchanged historical Gemma4 and Mistral bounds conservatively", () => {
     expect(precomputeReservationMicros("@cf/google/gemma-4-26b-a4b-it", now)).toBe(26215);
     expect(precomputeReservationMicros("@cf/mistralai/mistral-small-3.1-24b-instruct", now)).toBe(
       46065,
     );
-    expect(precomputeReservationMicros(model, now)).toBe(2354);
+    expect(precomputeReservationMicros(model, now)).toBe(26215);
+  });
+  it.each([
+    "@cf/meta/llama-3.1-8b-instruct",
+    "@cf/meta/llama-3.1-70b-instruct",
+    "@cf/meta/llama-3.2-3b-instruct",
+    "@cf/qwen/qwen3-30b-a3b-fp8",
+  ])("never aliases retired scheduled configuration %s", async (retired) => {
+    env.RSS_SUMMARY_PRECOMPUTE_MODEL = retired;
+    expect(await execute()).toBe(0);
+    expect(bucket.get).not.toHaveBeenCalled();
+    expect(bucket.put).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
   });
   it.each([
     null,
@@ -177,7 +189,7 @@ describe("summary reservations and R2 generation CAS", () => {
     expect([...store.values()].map((entry) => entry.value).join("")).not.toContain("private");
     expect(await execute()).toBe(0);
     expect(run).toHaveBeenCalledOnce();
-    expect(ledger().micros).toBe(2354);
+    expect(ledger().micros).toBe(26215);
   });
   it("records input truncation without claiming complete body coverage", async () => {
     vi.mocked(matchCfCache).mockResolvedValue(Response.json({ content: "本文".repeat(5000) }));
@@ -198,9 +210,7 @@ describe("summary reservations and R2 generation CAS", () => {
       claimSummaryGeneration(bucket, url, model),
     ]);
     expect(claims.filter(Boolean)).toHaveLength(1);
-    expect(
-      await claimSummaryGeneration(bucket, url, "@cf/mistralai/mistral-small-3.1-24b-instruct"),
-    ).not.toBeNull();
+    expect(await claimSummaryGeneration(bucket, url, otherModel)).not.toBeNull();
   });
   it("CAS conflicts produce zero inference", async () => {
     conditionalConflict = true;
@@ -215,7 +225,7 @@ describe("summary reservations and R2 generation CAS", () => {
   it("retains reservations and pending claim after an ambiguous AI failure", async () => {
     run.mockRejectedValue(new Error("upstream transport failure"));
     expect(await execute()).toBe(0);
-    expect(ledger().micros).toBe(2354);
+    expect(ledger().micros).toBe(26215);
     expect(await execute()).toBe(0);
     expect(run).toHaveBeenCalledOnce();
     expect(await getAiSummaryByUrl(bucket, url, model)).toBeNull();
@@ -233,10 +243,10 @@ describe("summary reservations and R2 generation CAS", () => {
   it("does not refund a failed reservation or retry unsupported usage", async () => {
     run.mockResolvedValue({
       choices: [{ message: { content: "要約" } }],
-      usage: { prompt_tokens: 32769, completion_tokens: 5 },
+      usage: { prompt_tokens: 256001, completion_tokens: 5 },
     });
     expect(await execute()).toBe(0);
-    expect(ledger().micros).toBe(2354);
+    expect(ledger().micros).toBe(26215);
     expect(await getAiSummaryByUrl(bucket, url, model)).toBeNull();
   });
   it("checks run, day and month budget before AI", async () => {
@@ -245,23 +255,23 @@ describe("summary reservations and R2 generation CAS", () => {
       "RSS_SUMMARY_PRECOMPUTE_DAY_USD",
       "RSS_SUMMARY_PRECOMPUTE_MONTH_USD",
     ] as const) {
-      env.RSS_SUMMARY_PRECOMPUTE_RUN_USD = "0.002353";
-      env.RSS_SUMMARY_PRECOMPUTE_DAY_USD = "0.002353";
-      env.RSS_SUMMARY_PRECOMPUTE_MONTH_USD = "0.002353";
-      env[key] = "0.002353";
+      env.RSS_SUMMARY_PRECOMPUTE_RUN_USD = "0.026214";
+      env.RSS_SUMMARY_PRECOMPUTE_DAY_USD = "0.026214";
+      env.RSS_SUMMARY_PRECOMPUTE_MONTH_USD = "0.026214";
+      env[key] = "0.026214";
       expect(await execute()).toBe(0);
     }
     expect(run).not.toHaveBeenCalled();
   });
   it("persists day/month totals across run IDs, and limits count per shared run", async () => {
     env.RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES = "1";
-    env.RSS_SUMMARY_PRECOMPUTE_DAY_USD = "0.004708";
-    env.RSS_SUMMARY_PRECOMPUTE_RUN_USD = "0.002354";
+    env.RSS_SUMMARY_PRECOMPUTE_DAY_USD = "0.052430";
+    env.RSS_SUMMARY_PRECOMPUTE_RUN_USD = "0.026215";
     expect(await execute()).toBe(1);
     expect(await execute([url + "/2"])).toBe(0);
     expect(await execute([url + "/2"], now + 1000)).toBe(1);
     expect(await execute([url + "/3"], now + 2000)).toBe(0);
-    expect(ledger().micros).toBe(4708);
+    expect(ledger().micros).toBe(52430);
     expect(run).toHaveBeenCalledTimes(2);
   });
   it("corrupted usage ledger is not reset to a free budget", async () => {
@@ -286,7 +296,7 @@ describe("summary reservations and R2 generation CAS", () => {
   it("cache results and generation remain isolated by model", async () => {
     await setAiSummaryByUrl(bucket, url, "other model", {
       version: 1,
-      model: DEFAULT_AI_MODEL,
+      model: otherModel,
       promptVersion: "v2",
       bodyHash: "a".repeat(64),
       generatedAt: new Date(now).toISOString(),
@@ -296,7 +306,7 @@ describe("summary reservations and R2 generation CAS", () => {
       usage: null,
     });
     expect(await execute()).toBe(1);
-    expect((await getAiSummaryByUrl(bucket, url, DEFAULT_AI_MODEL))!.result).toBe("other model");
+    expect((await getAiSummaryByUrl(bucket, url, otherModel))!.result).toBe("other model");
     expect((await getAiSummaryByUrl(bucket, url, model))!.result).toBe("要約です。");
   });
 });
@@ -364,29 +374,29 @@ describe("ledger and run integrity", () => {
       version: 1,
       month: "2026-10",
       micros: 0,
-      days: { "2026-10-01": 2354 },
-      runs: { "2026-10-01T04:00:00.000Z": { micros: 2354, calls: 1 } },
+      days: { "2026-10-01": 26215 },
+      runs: { "2026-10-01T04:00:00.000Z": { micros: 26215, calls: 1 } },
     },
     {
       version: 1,
       month: "2026-10",
-      micros: 2354,
-      days: { "2026-10-32": 2354 },
-      runs: { "2026-10-01T04:00:00.000Z": { micros: 2354, calls: 1 } },
+      micros: 26215,
+      days: { "2026-10-32": 26215 },
+      runs: { "2026-10-01T04:00:00.000Z": { micros: 26215, calls: 1 } },
     },
     {
       version: 1,
       month: "2026-10",
-      micros: 2354,
-      days: { "2026-10-01": 2354 },
-      runs: { "not-a-run": { micros: 2354, calls: 1 } },
+      micros: 26215,
+      days: { "2026-10-01": 26215 },
+      runs: { "not-a-run": { micros: 26215, calls: 1 } },
     },
     {
       version: 1,
       month: "2026-10",
-      micros: 2354,
-      days: { "2026-10-01": 2354 },
-      runs: { "2026-10-01T04:00:00.000Z": { micros: 2354, calls: 0 } },
+      micros: 26215,
+      days: { "2026-10-01": 26215 },
+      runs: { "2026-10-01T04:00:00.000Z": { micros: 26215, calls: 0 } },
     },
   ])("does not admit internally inconsistent accounting %j", async (entry) => {
     store.set("ai-cache/summary-budget/2026-10.json", {
@@ -452,7 +462,7 @@ describe("approved scheduled rollout", () => {
   it.each([
     ["RSS_SUMMARY_PRECOMPUTE_ENABLED", "false"],
     ["RSS_SUMMARY_PRECOMPUTE_MONTH_USD", undefined],
-    ["RSS_SUMMARY_PRECOMPUTE_MODEL", model],
+    ["RSS_SUMMARY_PRECOMPUTE_MODEL", "@cf/mistralai/mistral-small-3.1-24b-instruct"],
     ["RSS_SUMMARY_PRECOMPUTE_RUN_USD", "0.2"],
     ["RSS_SUMMARY_PRECOMPUTE_MONTH_USD", "1.000001"],
     ["RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES", "6"],
@@ -556,23 +566,24 @@ describe("daily article and clock boundaries", () => {
       await runSummaryPrecompute(env, [url], "https://rss.example.com", start, start, () => time),
     ).toBe(0);
     expect(run).not.toHaveBeenCalled();
-    expect(ledger().micros).toBe(2354);
+    expect(ledger().micros).toBe(26215);
     expect(await claimSummaryGeneration(bucket, url, model)).not.toBeNull();
   });
   it("daily 100 counts failed reservations across distinct runs", async () => {
+    env.RSS_SUMMARY_PRECOMPUTE_DAY_USD = "3";
     env.RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES = "1";
     const runs = Object.fromEntries(
       Array.from({ length: 99 }, (_, index) => [
         new Date(Date.parse("2026-10-02T00:00:00Z") + index * 1000).toISOString(),
-        { micros: 2354, calls: 1 },
+        { micros: 26215, calls: 1 },
       ]),
     );
     store.set("ai-cache/summary-budget/2026-10.json", {
       value: JSON.stringify({
         version: 1,
         month: "2026-10",
-        micros: 99 * 2354,
-        days: { "2026-10-02": 99 * 2354 },
+        micros: 99 * 26215,
+        days: { "2026-10-02": 99 * 26215 },
         runs,
       }),
       etag: "seed",
@@ -581,7 +592,7 @@ describe("daily article and clock boundaries", () => {
     expect(await execute()).toBe(0);
     expect(await execute([url + "/101"], now + 1000)).toBe(0);
     expect(run).toHaveBeenCalledOnce();
-    expect(ledger().micros).toBe(100 * 2354);
+    expect(ledger().micros).toBe(100 * 26215);
     const nextDay = Date.parse("2026-10-03T04:00:00Z");
     expect(await execute([url + "/next-day"], nextDay, nextDay)).toBe(1);
   });

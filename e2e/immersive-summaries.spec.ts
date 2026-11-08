@@ -16,8 +16,10 @@ import type { SummaryFixtureControls } from "./fixtures/immersive-summaries";
 const origin = "https://rss-summary.test";
 const articleUrl = (index: number) => `https://example.com/summary-fixture/${index}`;
 const knownUrls = new Set(Array.from({ length: 23 }, (_, index) => articleUrl(index)));
-const modelB: WorkersAiModelId = "@cf/google/gemma-4-26b-a4b-it";
-const cachedText = (url: string, model = DEFAULT_AI_MODEL) =>
+// Deliberately start with a non-scheduled model so cache/model isolation remains exercised.
+const modelA: WorkersAiModelId = "@cf/mistralai/mistral-small-3.1-24b-instruct";
+const modelB: WorkersAiModelId = DEFAULT_AI_MODEL;
+const cachedText = (url: string, model: WorkersAiModelId = modelA) =>
   `保存済み要約 ${Number(url.split("/").at(-1)) + 1}。${model === modelB ? "別モデルの" : "選択モデルの"}保存済み結果を表示します。新しい要約処理は行いません。`;
 const feedText = (index: number) => `フィード説明 ${index + 1}`;
 const summaryDialog = (page: Page) => page.getByRole("dialog", { name: "保存済みのAI要約" });
@@ -548,7 +550,7 @@ for (const viewport of [
         await open(page, undefined, theme);
         await inspect(page);
         await requireHit(summaryDialog(page), 0);
-        await expect(summaryDialog(page)).toContainText("Llama 3.1 8B");
+        await expect(summaryDialog(page)).toContainText("Mistral Small 3.1 24B");
         await expect(summaryDialog(page).getByTestId("summary-source")).toBeVisible();
         await closeSummary(page);
         // A hit arriving after the first activation does not replace its frozen explanation.
@@ -926,7 +928,7 @@ test("cache error stays an honest fallback and manual retry never calls generati
   await expect(
     summaryDialog(page).getByRole("heading", { name: /^要約テスト記事 1：/ }),
   ).toBeFocused();
-  expect(state.requests.at(-1)).toEqual({ urls: [articleUrl(0)], model: DEFAULT_AI_MODEL });
+  expect(state.requests.at(-1)).toEqual({ urls: [articleUrl(0)], model: modelA });
   await closeSummary(page);
   await expect(transcript(page)).toContainText(feedText(0));
   expect(state.content).toEqual([]);
@@ -949,16 +951,14 @@ test("exact selected model wins over a deferred older-model response", async ({ 
   await release(page, ({ model }) => model === modelB);
   await requireHit(summaryDialog(page), 0, cachedText(articleUrl(0), modelB));
   await expect(summaryDialog(page)).toContainText("Gemma 4 26B");
-  await release(page, ({ model }) => model === DEFAULT_AI_MODEL);
+  await release(page, ({ model }) => model === modelA);
   await expect(summaryDialog(page)).toContainText(cachedText(articleUrl(0), modelB));
   await expect(summaryDialog(page)).not.toContainText(cachedText(articleUrl(0)));
   await closeSummary(page);
   await next(page).click();
   await committedArticle(page, 1, 10);
   await expect(transcript(page)).toContainText(cachedText(articleUrl(1), modelB));
-  expect(new Set(state.requests.map(({ model }) => model))).toEqual(
-    new Set([DEFAULT_AI_MODEL, modelB]),
-  );
+  expect(new Set(state.requests.map(({ model }) => model))).toEqual(new Set([modelA, modelB]));
 });
 
 for (const change of ["account", "scope"] as const) {

@@ -69,8 +69,8 @@ test.describe("DEFAULT_AI_MODEL", () => {
     expect(isWorkersAiModelId(DEFAULT_AI_MODEL)).toBe(true);
   });
 
-  test("デフォルトモデルは Llama 3.1 8B", () => {
-    expect(DEFAULT_AI_MODEL).toBe("@cf/meta/llama-3.1-8b-instruct");
+  test("デフォルトモデルは Gemma 4", () => {
+    expect(DEFAULT_AI_MODEL).toBe("@cf/google/gemma-4-26b-a4b-it");
   });
 });
 

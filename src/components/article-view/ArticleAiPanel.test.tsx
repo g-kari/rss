@@ -142,7 +142,7 @@ describe("AI operation → Markdown display", () => {
       const cache = new LruCache(`markdown-${provider}`, 10);
       const preferences = {
         provider,
-        model: "@cf/meta/llama-3.1-8b-instruct" as const,
+        model: "@cf/google/gemma-4-26b-a4b-it" as const,
         userId: "test-user",
       };
       const local = vi.fn(async () => ({
@@ -192,7 +192,7 @@ describe("AI operation → Markdown display", () => {
     const cache = new LruCache("markdown-legacy", 10);
     const preferences = {
       provider: "auto" as const,
-      model: "@cf/meta/llama-3.1-8b-instruct" as const,
+      model: "@cf/google/gemma-4-26b-a4b-it" as const,
       userId: "test-user",
     };
     const text = "旧形式の本文\n次の行\n\n・ 要点";

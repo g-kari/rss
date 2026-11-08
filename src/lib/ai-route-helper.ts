@@ -17,6 +17,8 @@ import {
   type WorkersAiModelId,
   DEFAULT_AI_MODEL,
   LARGE_MODEL_IDS,
+  RETIRED_AI_MODEL_IDS,
+  UNAVAILABLE_AI_MODEL_IDS,
 } from "./ai-models";
 
 import {
@@ -39,7 +41,7 @@ const AI_MAX_CALLS = 20;
 // KV eventual consistency により ~1-3 req の burst 許容あり (architecture.md § KV burst 許容仕様)
 // 実効上限 = AI_MAX_CALLS_LARGE + burst ≈ 5+3 = 8 (#934 案 A)。
 // 旧値 3 は 8B の 20 と非対称に厳しく、burst 込み実効上限 6 + 正常リトライも阻害しうるため 5 に調整。
-// 70B / Qwen 3.8 / GLM 5.3 は課金コストが高いため、同じ保守的な制限を適用。
+// Qwen 3.8 / GLM 5.3 は課金コストが高いため、同じ保守的な制限を適用。
 // Cloudflare AI 課金計画に応じて調整可。
 const AI_MAX_CALLS_LARGE = 5;
 
@@ -89,7 +91,20 @@ export async function runAiJob(
   const url = body.url;
 
   if (body.model !== undefined && !isWorkersAiModelId(body.model)) {
-    return apiError("Unsupported AI model", 400, { code: "INVALID_MODEL" });
+    const retired = typeof body.model === "string" && RETIRED_AI_MODEL_IDS.has(body.model);
+    const unavailable = typeof body.model === "string" && UNAVAILABLE_AI_MODEL_IDS.has(body.model);
+    return apiError(
+      retired
+        ? "AI model retired; select a supported model"
+        : unavailable
+          ? "AI model unavailable; select a supported model"
+          : "Unsupported AI model",
+      400,
+      {
+        code: "INVALID_MODEL",
+        ...(retired || unavailable ? { retryable: false, replacementModel: DEFAULT_AI_MODEL } : {}),
+      },
+    );
   }
   const model: WorkersAiModelId = body.model ?? DEFAULT_AI_MODEL;
 

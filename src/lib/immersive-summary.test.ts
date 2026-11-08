@@ -93,7 +93,7 @@ describe("immersive cache contract", () => {
     {},
     { summaries: [] },
     { model: "@cf/not-a-model", summaries: [] },
-    { model: "@cf/meta/llama-3.2-3b-instruct", summaries: [] },
+    { model: "@cf/mistralai/mistral-small-3.1-24b-instruct", summaries: [] },
     { model: DEFAULT_AI_MODEL, summaries: {} },
     response(null),
     response({ ...summary, url: `${url}/unsolicited` }),
@@ -112,7 +112,7 @@ describe("immersive cache contract", () => {
 
   it.each([
     { version: 2 },
-    { model: "@cf/meta/llama-3.2-3b-instruct" },
+    { model: "@cf/mistralai/mistral-small-3.1-24b-instruct" },
     { promptVersion: 1 },
     { bodyHash: "bad" },
     { generatedAt: "not a date" },

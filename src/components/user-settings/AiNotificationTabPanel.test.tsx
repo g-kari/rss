@@ -24,7 +24,7 @@ const props = {
   toggleAutoAiBrowserOnly: vi.fn(),
   aiProvider: "auto" as const,
   onChangeAiProvider: vi.fn(),
-  aiModel: "@cf/meta/llama-3.1-8b-instruct" as const,
+  aiModel: "@cf/google/gemma-4-26b-a4b-it" as const,
   onChangeAiModel: vi.fn(),
 };
 beforeEach(() => {
