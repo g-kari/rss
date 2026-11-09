@@ -497,8 +497,12 @@ for (const viewport of [
         const state = diagnostics.get(page)!;
         state.behavior = "mixed";
         await open(page, undefined, theme);
+        // Only article 0 is active before navigation; article 1 must not be prefetched.
+        await expectBodyReads(page, [0]);
         await next(page).click();
         await committedArticle(page, 1, 10);
+        // Settle the active article reads before measuring explanation-only requests.
+        await expectBodyReads(page, [0, 1]);
         await inspect(page);
         const dialog = summaryDialog(page);
         await expect(dialog.getByTestId("summary-availability")).toContainText("ありません");
@@ -531,6 +535,7 @@ for (const viewport of [
         await expect(help).toHaveAttribute("aria-expanded", "false");
         await expect(explanation).toHaveCount(0);
         expect(state.requests).toHaveLength(requestCount);
+        await expectBodyReads(page, [0, 1]);
         await page.keyboard.press("Tab");
         await expect(
           dialog.getByRole("button", { name: "ショート表示に戻る", exact: true }),
@@ -543,13 +548,15 @@ for (const viewport of [
         await closeSummary(page);
         await control(page, "setModel", modelB);
         await inspect(page);
+        await expect(dialog.getByTestId("summary-source")).toContainText("Gemma 4");
+        await expect(dialog.getByTestId("summary-availability")).toContainText("ありません");
+        const modelRequestCount = state.requests.length;
         await help.click();
         await expect(explanation).toContainText("選択中モデルは自動事前要約の対象モデルです");
         await expect(explanation).not.toContainText("対象モデルと異なります");
-        await expect(dialog.getByTestId("summary-source")).toContainText("Gemma 4");
         await closeSummary(page);
-        await expectBodyReads(page, [0]);
-        expect(state.ogp).toEqual([articleUrl(0)]);
+        expect(state.requests).toHaveLength(modelRequestCount);
+        await expectBodyReads(page, [0, 1]);
       });
 
       test("prefetched hit becomes a labeled short only on activation; dialog controls and focus remain usable", async ({
