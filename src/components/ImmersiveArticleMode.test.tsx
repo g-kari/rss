@@ -488,8 +488,7 @@ describe("active-only automatic article requests", () => {
           <ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />
         </VisualModeProvider>,
       );
-      if (inlineOpen)
-        fireEvent.click(screen.getByRole("button", { name: "ここで読む", exact: true }));
+      if (inlineOpen) fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
       await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
       const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
       visibility.mockReturnValue("hidden");
@@ -499,8 +498,7 @@ describe("active-only automatic article requests", () => {
         resolveOld(
           new Response(
             JSON.stringify({
-              content:
-                '<p>obsolete hidden body</p><img src="https://example.com/obsolete.jpg">',
+              content: '<p>obsolete hidden body</p><img src="https://example.com/obsolete.jpg">',
             }),
           ),
         );
@@ -535,7 +533,7 @@ describe("active-only automatic article requests", () => {
       content: "<p>complete feed fallback</p>",
     };
     render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
-    fireEvent.click(screen.getByRole("button", { name: "ここで読む", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
     const reader = screen.getByRole("dialog", { name: "ここで記事の本文を読む" });
     await waitFor(() => expect(within(reader).getByRole("alert")).toBeInTheDocument());
     expect(within(reader).getByText("complete feed fallback")).toBeInTheDocument();
@@ -550,7 +548,7 @@ describe("active-only automatic article requests", () => {
     );
     expect(fetch).toHaveBeenCalledTimes(2);
     fireEvent.click(within(reader).getByRole("button", { name: "ショート表示に戻る" }));
-    fireEvent.click(screen.getByRole("button", { name: "ここで読む", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
     const reopened = screen.getByRole("dialog", { name: "ここで記事の本文を読む" });
     expect(within(reopened).getByText("explicit retry succeeded")).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(2);

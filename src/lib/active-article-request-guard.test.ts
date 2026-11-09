@@ -60,8 +60,6 @@ it.each([
   { ...dispatch, articleId: null },
   { ...dispatch, articleId: "unknown" },
   { ...dispatch, articleId: "queued" },
-])(
-  "rejects missing, closed, hidden, unknown and inactive dispatch snapshots %j",
-  (candidate) =>
-    expect(classifyActiveArticleRequest(request, candidate, origin, articles)).toBeNull(),
+])("rejects missing, closed, hidden, unknown and inactive dispatch snapshots %j", (candidate) =>
+  expect(classifyActiveArticleRequest(request, candidate, origin, articles)).toBeNull(),
 );

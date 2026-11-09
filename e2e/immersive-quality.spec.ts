@@ -119,7 +119,9 @@ for (const viewport of [
       await expect
         .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
         .toBe(1600);
-      await expect(page.locator(".cinematic-transcript")).toContainText("元記事から取得した本文をここで読みます。");
+      await expect(page.locator(".cinematic-transcript")).toContainText(
+        "元記事から取得した本文をここで読みます。",
+      );
       await expect.poll(() => diagnostics.get(page)!.content).toBe(1);
       await page.getByRole("button", { name: "次の説明" }).click();
       const caption = page.locator(".cinematic-caption");
@@ -272,7 +274,9 @@ test("hidden inline extraction aborts, resumes once, and rejects a late old body
   });
   await expect(body.getByText("表示再開後の現在の本文です。", { exact: true })).toBeVisible();
   expect(contentCalls).toBe(2);
-  await pending[0].fulfill({ json: { content: "<p>古い非表示の本文を反映してはいけません。</p>" } });
+  await pending[0].fulfill({
+    json: { content: "<p>古い非表示の本文を反映してはいけません。</p>" },
+  });
   await page.clock.runFor(80);
   await expect(body).not.toContainText("古い非表示の本文");
   await expect(body.getByText("表示再開後の現在の本文です。", { exact: true })).toBeVisible();

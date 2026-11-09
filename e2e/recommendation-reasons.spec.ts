@@ -66,7 +66,9 @@ test.beforeEach(async ({ page }) => {
     if (active)
       return route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify(active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" }),
+        body: JSON.stringify(
+          active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" },
+        ),
       });
     result.requests.push(`${request.method()} ${request.url()}`);
     return route.abort();

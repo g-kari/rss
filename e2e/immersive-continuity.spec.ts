@@ -112,7 +112,9 @@ test.beforeEach(async ({ page }) => {
     if (active)
       return route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify(active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" }),
+        body: JSON.stringify(
+          active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" },
+        ),
       });
     state.rejected.push(`${request.method()} ${url.href}`);
     return route.abort();

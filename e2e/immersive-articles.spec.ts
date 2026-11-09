@@ -190,12 +190,9 @@ test.describe("active article dispatch isolation", () => {
     });
     await page.goto(`${origin}/`);
     const read = async (url: string) =>
-      page.evaluate(
-        async (target) => {
-          await fetch(target).catch(() => undefined);
-        },
-        url,
-      );
+      page.evaluate(async (target) => {
+        await fetch(target).catch(() => undefined);
+      }, url);
     await read(contentUrl);
     await read(`${origin}/api/content?url=${encodeURIComponent(articles.queued)}`);
     await page.evaluate(() => {

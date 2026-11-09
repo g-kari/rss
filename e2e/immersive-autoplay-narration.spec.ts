@@ -270,7 +270,9 @@ test("synthetic local-voice callbacks coordinate narration and media without cla
   ).toBe(0);
   // Wait for the known automatic body before computing the narration watchdog.
   const active = page.locator('.immersive-slide[aria-hidden="false"]');
-  await expect(active.locator(".cinematic-transcript")).toContainText("取得した全文をモード内で読みます");
+  await expect(active.locator(".cinematic-transcript")).toContainText(
+    "取得した全文をモード内で読みます",
+  );
   await page.getByRole("button", { name: "ナレーションを開始" }).click();
   await expect
     .poll(() =>
@@ -310,7 +312,9 @@ test("synthetic local-voice callbacks coordinate narration and media without cla
     .toMatch(/記事 2：[\s\S]*取得した全文をモード内で読みます/);
   // A started utterance that never ends must still reach the existing watchdog.
   await page.clock.runFor(100_000);
-  await expect(page.locator(".immersive-narration-message")).toContainText("読み上げを続けられませんでした");
+  await expect(page.locator(".immersive-narration-message")).toContainText(
+    "読み上げを続けられませんでした",
+  );
   await expect(page.getByRole("button", { name: "ナレーションを開始" })).toHaveAttribute(
     "aria-pressed",
     "false",
