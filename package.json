@@ -53,7 +53,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261106.1",
     "@opennextjs/cloudflare": "^1.20.16",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4.3.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
@@ -68,7 +68,7 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.6",
     "vite-plus": "^1.5.0",
-    "vitest": "^5.0.5",
+    "vitest": "^5.1.0",
     "wrangler": "^4.158.0"
   },
   "packageManager": "pnpm@10.29.3",
