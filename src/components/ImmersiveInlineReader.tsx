@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import type { Article } from "../types";
-import { useArticleContent } from "../hooks/useArticleContent";
+import { useArticleContent, type ArticleContentState } from "../hooks/useArticleContent";
 import { useArticleViewContent } from "../hooks/useArticleViewContent";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { processContent } from "../lib/embed-utils";
@@ -15,15 +15,24 @@ import QuickReadingSettings from "./QuickReadingSettings";
 /** Uses the existing content API/cache and sanitizing pipeline, without reader read/AI effects. */
 export default function ImmersiveInlineReader({
   article,
+  contentState,
   onClose,
 }: {
   article: Article | null;
+  contentState?: ArticleContentState;
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const attempted = useRef<string | undefined>(undefined);
   const settings = useOptionalReaderSettings();
+  // Standalone readers retain their existing hook. A mode-owned reader shares the
+  // active request, error and retry state; its unused hook has no target or effects.
+  const ownContent = useArticleContent(
+    contentState ? undefined : article?.id,
+    contentState ? undefined : article?.link,
+    contentState ? undefined : article?.ogImage,
+  );
   const {
     storedContent,
     fetching,
@@ -32,7 +41,7 @@ export default function ImmersiveInlineReader({
     fetchFullContent,
     fetchFullContentOnce,
     resolvedOgImage,
-  } = useArticleContent(article?.id, article?.link, article?.ogImage);
+  } = contentState ?? ownContent;
   const theme =
     settings?.theme ??
     (typeof document !== "undefined" && document.documentElement.dataset.theme === "light"
@@ -45,7 +54,7 @@ export default function ImmersiveInlineReader({
     theme,
   );
   // Feed content length is not evidence that it is the complete source article.
-  // Only this explicit reader action requests the source, once, reusing an existing cache.
+  // Reuse the active mode request. Completed failures require the visible retry action.
   const canFetch =
     !storedContent &&
     isValidPublicUrl(article?.link || "") &&
@@ -68,10 +77,10 @@ export default function ImmersiveInlineReader({
       return;
     }
     const key = `${article.id}:${article.link}`;
-    if (attempted.current === key || fetching) return;
+    if (attempted.current === key || fetching || fetchError) return;
     attempted.current = key;
     if (canFetch) void fetchFullContentOnce();
-  }, [article, fetching, canFetch, fetchFullContentOnce]);
+  }, [article, fetching, canFetch, fetchError, fetchFullContentOnce]);
   if (!article) return null;
   return (
     <div

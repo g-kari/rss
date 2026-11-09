@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import ImmersiveArticleMode from "./ImmersiveArticleMode";
+import { VisualModeProvider } from "../contexts/VisualModeContext";
 import ArticleRecommendations from "./ArticleRecommendations";
 import { getPopupOpenCount } from "../lib/popup-lock";
+import { contentLruCache } from "../lib/lru-cache";
+import { getProviderContentCacheId } from "../lib/slide-providers";
 import type { Article, Feed } from "../types";
 
 const now = Date.parse("2026-09-30T12:00:00Z");
@@ -118,6 +121,121 @@ describe("ImmersiveArticleMode", () => {
     expect(
       vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes("/api/content?")),
     ).toHaveLength(1);
+  });
+  it("retains supplied responsive feed images when cached fulltext has no images", () => {
+    const small = "https://example.com/preserved-cover-300x168.webp";
+    const large = "https://example.com/preserved-cover-1600x900.webp";
+    const source = {
+      ...articles[0],
+      id: "preserve-responsive-feed-image",
+      ogImage: small,
+      content: `<img src="${small}" srcset="${large} 1600w, ${small} 300w">`,
+    };
+    contentLruCache.set(
+      getProviderContentCacheId(source.id, source.link),
+      "<p>取得済み全文には画像がありません。</p>",
+    );
+
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(large)),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps the loaded feed body image after OGP fails with image-free cached fulltext", () => {
+    const body = "https://example.com/preserved-body.svg";
+    const source = {
+      ...articles[0],
+      id: "preserve-feed-body-fallback",
+      ogImage: "https://example.com/broken-preserved-ogp.jpg",
+      content: `<img src="/api/image-proxy?url=%ZZ.jpg"><img src="${body}" width="800" height="450">`,
+    };
+    contentLruCache.set(
+      getProviderContentCacheId(source.id, source.link),
+      "<p>取得済み全文には画像がありません。</p>",
+    );
+
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(body)),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps cached-body then feed-body image order without admitting unsafe candidates", () => {
+    const cached = "https://example.com/preserved-cached-body.jpg";
+    const feed = "https://example.com/preserved-feed-body.jpg";
+    const source = {
+      ...articles[0],
+      id: "preserve-cached-and-feed-image-order",
+      ogImage: "https://example.com/broken-order-ogp.jpg",
+      content: `<img src="/api/image-proxy?url=%ZZ.jpg"><img src="${feed}" width="800" height="450">`,
+      summary: "",
+    };
+    contentLruCache.set(
+      getProviderContentCacheId(source.id, source.link),
+      `<img src="http://127.0.0.1/private.jpg"><img src="${cached}" width="800" height="450">`,
+    );
+
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(source.ogImage)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(cached)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(feed)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("retains the current loaded body image after the shared content cache evicts it", () => {
+    const loaded = "https://example.com/preserved-retained-body.jpg";
+    const feed = "https://example.com/preserved-feed-after-eviction.jpg";
+    const source = {
+      ...articles[0],
+      id: "preserve-loaded-body-after-eviction",
+      ogImage: "https://example.com/broken-eviction-ogp.jpg",
+      content: `<img src="${feed}" width="800" height="450">`,
+    };
+    const cacheKey = getProviderContentCacheId(source.id, source.link);
+    contentLruCache.set(cacheKey, `<img src="${loaded}" width="800" height="450">`);
+
+    const view = render(
+      <ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />,
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(loaded)),
+    );
+
+    for (let i = 0; i < 15; i++)
+      contentLruCache.set(`image-preservation-eviction-${i}`, "<p>別の記事</p>");
+    expect(contentLruCache.get(cacheKey)).toBeNull();
+    view.rerender(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(loaded)),
+    );
+    fireEvent.error(document.querySelector(".cinematic-image img")!);
+    expect(document.querySelector(".cinematic-image img")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent(feed)),
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
   it("continues through all loaded articles without a next-batch confirmation", () => {
     render(<ImmersiveArticleMode {...props} />);
@@ -303,5 +421,136 @@ describe("ImmersiveArticleMode", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     rerender(<ArticleRecommendations {...props} userId="one" enabled />);
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("active-only automatic article requests", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it.each([undefined, "", "http://127.0.0.1/private", "javascript:alert(1)"])(
+    "never starts body or OGP for an invalid active URL %s",
+    async (link) => {
+      vi.useFakeTimers();
+      const source = {
+        ...articles[0],
+        id: "invalid-request-boundary",
+        link,
+        ogImage: undefined,
+      } as Article;
+      render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("an initially hidden active card starts neither body nor OGP until visible", async () => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    const source = { ...articles[0], id: "initially-hidden-requests", ogImage: undefined };
+    render(
+      <VisualModeProvider>
+        <ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />
+      </VisualModeProvider>,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    visibility.mockReturnValue("visible");
+    fireEvent(document, new Event("visibilitychange"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls.filter((url) => url.includes("/api/content?"))).toHaveLength(1);
+    expect(urls.filter((url) => url.includes("/api/ogp?"))).toHaveLength(1);
+  });
+
+  it.each([false, true])(
+    "hidden interruption aborts unfinished content and resumes once, including inline-open=%s",
+    async (inlineOpen) => {
+      const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+      let resolveOld!: (response: Response) => void;
+      vi.mocked(fetch).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOld = resolve;
+          }),
+      );
+      const source = { ...articles[0], id: `hide-resume-body-${inlineOpen}` };
+      render(
+        <VisualModeProvider>
+          <ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />
+        </VisualModeProvider>,
+      );
+      if (inlineOpen) fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+      const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+      visibility.mockReturnValue("hidden");
+      fireEvent(document, new Event("visibilitychange"));
+      expect(signal?.aborted).toBe(true);
+      await act(async () => {
+        resolveOld(
+          new Response(
+            JSON.stringify({
+              content: '<p>obsolete hidden body</p><img src="https://example.com/obsolete.jpg">',
+            }),
+          ),
+        );
+      });
+      expect(contentLruCache.get(getProviderContentCacheId(source.id, source.link))).toBeNull();
+      expect(document.querySelector('img[src*="obsolete.jpg"]')).toBeNull();
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ content: "<p>resumed visible body</p>" })),
+      );
+      visibility.mockReturnValue("visible");
+      fireEvent(document, new Event("visibilitychange"));
+      await waitFor(() =>
+        expect(contentLruCache.get(getProviderContentCacheId(source.id, source.link))).toContain(
+          "resumed visible body",
+        ),
+      );
+      expect(fetch).toHaveBeenCalledTimes(2);
+      if (inlineOpen) {
+        const reader = screen.getByRole("dialog", { name: "ここで記事の本文を読む" });
+        expect(within(reader).getByText("resumed visible body")).toBeInTheDocument();
+      }
+    },
+  );
+
+  it("shares automatic failure with inline reading and retries only on its button", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "synthetic unavailable" }), { status: 503 }),
+    );
+    const source = {
+      ...articles[0],
+      id: "shared-auto-error",
+      content: "<p>complete feed fallback</p>",
+    };
+    render(<ImmersiveArticleMode {...props} articles={[source]} candidates={[source]} />);
+    fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
+    const reader = screen.getByRole("dialog", { name: "ここで記事の本文を読む" });
+    await waitFor(() => expect(within(reader).getByRole("alert")).toBeInTheDocument());
+    expect(within(reader).getByText("complete feed fallback")).toBeInTheDocument();
+    expect(within(reader).getByText(/全文とは限りません/)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ content: "<p>explicit retry succeeded</p>" })),
+    );
+    fireEvent.click(within(reader).getByRole("button", { name: "全文取得を再試行" }));
+    await waitFor(() =>
+      expect(within(reader).getByText("explicit retry succeeded")).toBeInTheDocument(),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+    fireEvent.click(within(reader).getByRole("button", { name: "ショート表示に戻る" }));
+    fireEvent.click(screen.getByRole("button", { name: "ここで読む" }));
+    const reopened = screen.getByRole("dialog", { name: "ここで記事の本文を読む" });
+    expect(within(reopened).getByText("explicit retry succeeded")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,4 +1,9 @@
-import { test, expect, type Page } from "@playwright/test";
+import { qualityParagraphs } from "./helpers/immersive-article-data";
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+} from "./helpers/active-article-request";
+import { test, expect, type Page, type Route } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
@@ -31,6 +36,7 @@ test.beforeAll(async () => {
   html = `<!doctype html><html lang="ja"><meta charset="utf-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   const state = {
     rejected: [] as string[],
     errors: [] as string[],
@@ -40,7 +46,7 @@ test.beforeEach(async ({ page }) => {
   };
   diagnostics.set(page, state);
   page.on("pageerror", (error) => state.errors.push(error.message));
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const source = url.searchParams.get("url");
@@ -65,6 +71,14 @@ test.beforeEach(async ({ page }) => {
       });
     }
     if (kind === "content") {
+      const active = await matchActiveArticleRequest(page, request, "https://quality.test", {
+        "quality-fixture": "https://publisher.test/article",
+      });
+      if (!active) {
+        state.rejected.push(`${request.method()} ${url.href}`);
+        return route.abort();
+      }
+      if (active.aborted) return route.abort();
       state.content++;
       return route.fulfill({
         status: state.failContent ? 503 : 200,
@@ -72,7 +86,7 @@ test.beforeEach(async ({ page }) => {
         body: JSON.stringify(
           state.failContent
             ? { error: "合成の通信エラー" }
-            : { content: "<p>元記事から取得した本文をここで読みます。</p>" },
+            : { content: `${qualityParagraphs}<p>元記事から取得した本文をここで読みます。</p>` },
         ),
       });
     }
@@ -105,7 +119,10 @@ for (const viewport of [
       await expect
         .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
         .toBe(1600);
-      expect(diagnostics.get(page)!.content).toBe(0);
+      await expect(page.locator(".cinematic-transcript")).toContainText(
+        "元記事から取得した本文をここで読みます。",
+      );
+      await expect.poll(() => diagnostics.get(page)!.content).toBe(1);
       await page.getByRole("button", { name: "次の説明" }).click();
       const caption = page.locator(".cinematic-caption");
       await expect(caption).toContainText("11.5万人");
@@ -136,7 +153,7 @@ for (const viewport of [
       await page.getByRole("button", { name: "前の説明" }).click();
       await expect(caption).toHaveText("大きな画像と説明を文の終わりまで読む");
     });
-    test("inline reading labels feed-only text, extracts once despite long feed content, and reuses cache", async ({
+    test("inline reading shares automatic extraction and reuses its body cache", async ({
       page,
     }, info) => {
       await page.goto("https://quality.test/");
@@ -207,4 +224,64 @@ test("cached extraction does not fetch again and tiny-only images keep native di
     .poll(() => image.evaluate((element) => element.clientWidth))
     .toBeLessThanOrEqual(300);
   await page.screenshot({ path: info.outputPath("tiny-image-native-size.png") });
+});
+
+test("hidden inline extraction aborts, resumes once, and rejects a late old body", async ({
+  page,
+}) => {
+  const pending: Route[] = [];
+  let contentCalls = 0;
+  let aborted = 0;
+  const target = "https://publisher.test/article";
+  const contentUrl = `https://quality.test/api/content?url=${encodeURIComponent(target)}`;
+  page.on("requestfailed", (request) => {
+    if (request.url() === contentUrl) aborted++;
+  });
+  await page.route(contentUrl, async (route) => {
+    const active = await matchActiveArticleRequest(page, route.request(), "https://quality.test", {
+      "quality-fixture": target,
+    });
+    if (!active) {
+      diagnostics.get(page)!.rejected.push(route.request().url());
+      return route.abort();
+    }
+    if (active.aborted) return route.abort();
+    contentCalls++;
+    if (contentCalls === 1) {
+      pending.push(route);
+      return;
+    }
+    return route.fulfill({ json: { content: "<p>表示再開後の現在の本文です。</p>" } });
+  });
+  await page.goto("https://quality.test/");
+  await page.clock.install();
+  await page.getByRole("button", { name: "ドパガキモードを開く" }).click();
+  await expect.poll(() => pending.length).toBe(1);
+  await page.getByRole("button", { name: "ここで読む", exact: true }).click();
+  const body = page.getByRole("dialog", { name: "ここで記事の本文を読む" });
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect.poll(() => aborted).toBe(1);
+  await page.clock.runFor(10_000);
+  expect(contentCalls).toBe(1);
+  await expect(body).toContainText("9段落目");
+  await expect(body).toContainText("全文とは限りません");
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(body.getByText("表示再開後の現在の本文です。", { exact: true })).toBeVisible();
+  expect(contentCalls).toBe(2);
+  await pending[0].fulfill({
+    json: { content: "<p>古い非表示の本文を反映してはいけません。</p>" },
+  });
+  await page.clock.runFor(80);
+  await expect(body).not.toContainText("古い非表示の本文");
+  await expect(body.getByText("表示再開後の現在の本文です。", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "ここで読む", exact: true }).click();
+  await expect(body.getByText("表示再開後の現在の本文です。", { exact: true })).toBeVisible();
+  expect(contentCalls).toBe(2);
 });

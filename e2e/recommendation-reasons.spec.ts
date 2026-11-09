@@ -1,3 +1,7 @@
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+} from "./helpers/active-article-request";
 import { test, expect, type Page } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
@@ -27,24 +31,44 @@ test.beforeAll(async () => {
   html = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif;margin:0}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   const result = { requests: [] as string[], errors: [] as string[] };
   diagnostics.set(page, result);
   page.on("pageerror", (error) => result.errors.push(error.message));
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     if (
       request.url() === "https://rss-preview.test/" &&
       request.method() === "GET" &&
-      request.isNavigationRequest()
+      request.isNavigationRequest() &&
+      request.frame() === page.mainFrame() &&
+      request.resourceType() === "document"
     )
       return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
     if (
       request.url() === "https://rss-preview.test/api/push/config" &&
       request.method() === "GET" &&
+      !request.isNavigationRequest() &&
+      request.frame() === page.mainFrame() &&
+      request.resourceType() === "fetch" &&
       ["one", "two"].includes(request.headers()["x-rss-account-id"])
     )
       return route.fulfill({
         json: { recommendationEnabled: false, recommendationDismissals: [] },
+      });
+    const active = await matchActiveArticleRequest(
+      page,
+      request,
+      "https://rss-preview.test",
+      Object.fromEntries(["a", "b", "c", "d"].map((id) => [id, `https://example.com/${id}`])),
+    );
+    if (active?.aborted) return route.abort();
+    if (active)
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(
+          active.kind === "ogp" ? {} : { content: "<p>合成記事の全文です。</p>" },
+        ),
       });
     result.requests.push(`${request.method()} ${request.url()}`);
     return route.abort();

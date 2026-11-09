@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useSyncedRef } from "./useSyncedRef";
 import { getProviderContentCacheId } from "../lib/slide-providers";
 import { contentLruCache } from "../lib/lru-cache";
 import { apiFetch } from "../lib/api-fetch";
@@ -24,7 +25,7 @@ const OGP_STAGGER_WINDOW = 10; // 10 件ごとにカウンターを wrap する
  * `useArticleContent` フックの戻り値型。
  * 記事全文コンテンツのフェッチ状態・キャッシュ・OGP画像解決結果を保持する。
  */
-interface ArticleContentState {
+export interface ArticleContentState {
   /** フェッチ済み or キャッシュ済みのコンテンツ（なければ null） */
   storedContent: string | null;
   fetching: boolean;
@@ -33,7 +34,7 @@ interface ArticleContentState {
   fetchRetryable: boolean;
   /** 全文取得。成功時は onFetched コールバックを呼ぶ（AI 連携用） */
   fetchFullContent: (onFetched?: (content: string) => void) => Promise<void>;
-  /** Explicit one-shot intents skip an already-running matching request. Manual refresh stays separate. */
+  /** Automatic/explicit one-shot intents share a matching request. Manual refresh stays separate. */
   fetchFullContentOnce: () => Promise<void>;
   /** OGP 画像がない場合に /api/ogp から動的解決した URL */
   resolvedOgImage: string | null;
@@ -53,7 +54,10 @@ export function useArticleContent(
   articleId: string | undefined,
   articleLink: string | undefined,
   articleOgImage: string | undefined | null,
+  requestAllowed = true,
 ): ArticleContentState {
+  // Callers may suspend network work without dropping identity-bound content/errors.
+  const requestContextRef = useSyncedRef({ articleId, articleLink, requestAllowed });
   // リロード時の /api/ogp burst を防ぐ stagger 遅延（ms）。
   // モジュールレベルカウンターをフック初回レンダー時に 1 回だけ読んで ref に保持する。
   // hook インターフェース（引数/返り値）は変えない。
@@ -155,6 +159,13 @@ export function useArticleContent(
     }
   }, [articleId, articleLink]);
 
+  useEffect(() => {
+    if (requestAllowed) return;
+    fetchAbortControllerRef.current?.controller.abort();
+    fetchAbortControllerRef.current = null;
+    setFetching(false);
+  }, [requestAllowed]);
+
   // 同じ ID のままリンクだけ更新された場合も、前 URL のエラー表示を持ち越さない。
   useEffect(() => {
     if (previousArticleLinkRef.current === articleLink) return;
@@ -172,7 +183,7 @@ export function useArticleContent(
   // 書き込み (cacheOgpEntry) で本 effect が再発火しても再 fetch ループにはならない。
   const cachedImage = articleLink ? ogpCache[articleLink] : undefined;
   useEffect(() => {
-    if (!articleLink) {
+    if (!requestAllowed || !articleLink) {
       setResolvedOgImage(null);
       return;
     }
@@ -191,17 +202,24 @@ export function useArticleContent(
     const controller = new AbortController();
     // リロード時の /api/ogp burst を防ぐため、マウント順に応じた遅延を挟む（#762）
     const delay = staggerDelayRef.current ?? 0;
+    const currentRequest = () =>
+      readerMountedRef.current &&
+      !controller.signal.aborted &&
+      requestContextRef.current.requestAllowed &&
+      requestContextRef.current.articleId === articleId &&
+      requestContextRef.current.articleLink === articleLink;
     const timerId = setTimeout(() => {
+      if (!currentRequest()) return;
       apiFetch(`/api/ogp?url=${encodeURIComponent(articleLink)}`, { signal: controller.signal })
         .then((r) => {
-          if (!readerMountedRef.current || controller.signal.aborted) return null;
+          if (!currentRequest()) return null;
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<OgpData>;
         })
         .then((data) => {
           // Aborting fetch cannot retract a response whose JSON decoding already
           // started. Do not publish/cache an obsolete article's late result.
-          if (!readerMountedRef.current || controller.signal.aborted || !data?.image) return;
+          if (!currentRequest() || !data?.image) return;
           const { image } = data;
           setResolvedOgImage(image);
           // OgpCacheContext に書き戻す。useOgpCache 側の cacheOgpEntry が:
@@ -212,7 +230,7 @@ export function useArticleContent(
           cacheOgpEntry(articleLink, { image });
         })
         .catch((err: unknown) => {
-          if (!readerMountedRef.current || controller.signal.aborted || isAbortError(err)) return;
+          if (!currentRequest() || isAbortError(err)) return;
           devError("[useArticleContent] OGP fetch failed", articleLink, err);
         });
     }, delay);
@@ -224,11 +242,18 @@ export function useArticleContent(
     // Context cache に書き込まれた image を detail view が即座に拾う (#1088 Finding 1、
     // cross-view repair の core 機構)。`cacheOgpEntry` は identity 永続 stable で再発火に寄与
     // しないが、本 effect 内で呼ぶため deps に残す。
-  }, [articleId, articleLink, articleOgImage, cachedImage, cacheOgpEntry]);
+  }, [articleId, articleLink, articleOgImage, cachedImage, cacheOgpEntry, requestAllowed]);
 
   const fetchFullContent = useCallback(
     async (onFetched?: (content: string) => void) => {
-      if (!articleLink) {
+      if (
+        !readerMountedRef.current ||
+        !requestAllowed ||
+        !articleLink ||
+        !requestContextRef.current.requestAllowed ||
+        requestContextRef.current.articleId !== articleId ||
+        requestContextRef.current.articleLink !== articleLink
+      ) {
         autoReadDebug("useArticleContent.fetch-skipped", {
           articleId,
           reason: "no-article-link",
@@ -245,6 +270,12 @@ export function useArticleContent(
       fetchAbortControllerRef.current?.controller.abort();
       const controller = new AbortController();
       fetchAbortControllerRef.current = { controller, articleId, articleLink };
+      const currentRequest = () =>
+        readerMountedRef.current &&
+        !controller.signal.aborted &&
+        requestContextRef.current.requestAllowed &&
+        requestContextRef.current.articleId === articleId &&
+        requestContextRef.current.articleLink === articleLink;
       setFetching(true);
       setFetchError("");
       setFetchRetryable(true);
@@ -256,7 +287,7 @@ export function useArticleContent(
         // 旧記事の fetchError を setFetchError して新記事に leak する。各 await 後に abort recheck
         // する (#1115 useArticleAi と同じ sibling pattern、fetchedState は id-tag 済だが
         // fetchError は未 keyed のため本 guard が必要)。
-        if (!readerMountedRef.current || controller.signal.aborted) return;
+        if (!currentRequest()) return;
         // #688 / #869: 非 2xx を `buildFetchErrorMessage` で集約整形 (useArticleAi と統合)。
         // #693 (#688 後追い): JSON parse 失敗 (Cloudflare HTML エラーページ等) を捕捉して
         // onParseError callback で debug log を出す。これがないと本番で「fallback メッセージ
@@ -274,7 +305,7 @@ export function useArticleContent(
                 }),
             },
           );
-          if (!readerMountedRef.current || controller.signal.aborted) return;
+          if (!currentRequest()) return;
           setFetchError(message);
           setFetchRetryable(retryable);
           autoReadDebug("useArticleContent.fetch-http-error", {
@@ -285,7 +316,7 @@ export function useArticleContent(
           return;
         }
         const data = (await res.json()) as { content?: string; error?: string };
-        if (!readerMountedRef.current || controller.signal.aborted) return;
+        if (!currentRequest()) return;
         if (data.content) {
           if (articleId)
             contentLruCache.set(getProviderContentCacheId(articleId, articleLink), data.content);
@@ -305,7 +336,7 @@ export function useArticleContent(
           });
         }
       } catch (err) {
-        if (!readerMountedRef.current || controller.signal.aborted || isAbortError(err)) {
+        if (!currentRequest() || isAbortError(err)) {
           autoReadDebug("useArticleContent.fetch-aborted", {
             articleId,
             // この時点での ref の状態。null なら useEffect[articleId] が abort した、
@@ -328,7 +359,7 @@ export function useArticleContent(
         }
       }
     },
-    [articleId, articleLink],
+    [articleId, articleLink, requestAllowed],
   );
 
   const fetchFullContentOnce = useCallback(async () => {
