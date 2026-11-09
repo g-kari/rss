@@ -1,3 +1,4 @@
+import { summaryFixtureDescription } from "../helpers/immersive-article-data";
 // Synthetic data around the production UI. The fixture never implements summary selection.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -21,12 +22,7 @@ const userId = "summary-test";
 const empty = new Set<string>();
 const noop = () => {};
 const description = (index: number) =>
-  fixtureCase === "long-fallback"
-    ? `フィード説明 ${index + 1}。${Array.from(
-        { length: 100 },
-        (_, paragraph) => `読み込み済みの説明の段落 ${paragraph + 1} を自分のペースで読みます。`,
-      ).join("\n\n")}`
-    : `フィード説明 ${index + 1}。すでに読み込んだ説明を自分のペースで読みます。保存済みの要約を確認しても新しいAI処理は行いません。`;
+  summaryFixtureDescription(index, fixtureCase === "long-fallback");
 const articles: Article[] = Array.from({ length: 23 }, (_, index) => ({
   id: String(index),
   feedHash: "summary-preview",

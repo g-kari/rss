@@ -1,3 +1,4 @@
+import { qualityParagraphs as paragraphs } from "../helpers/immersive-article-data";
 // Actual immersive components, synthetic feed/body variants, no account or read-state writes.
 import { createRoot } from "react-dom/client";
 import { useState } from "react";
@@ -8,12 +9,6 @@ import { contentLruCache } from "../../src/lib/lru-cache";
 import { getProviderContentCacheId } from "../../src/lib/slide-providers";
 
 const scenario = new URLSearchParams(location.search).get("case");
-const sentence =
-  "日本コロムビアは1日、YouTubeチャンネル登録者数11.5万人を超えたクリエイターの新しい活動について発表しました。";
-const paragraphs = Array.from(
-  { length: 9 },
-  (_, index) => `<p>${index + 1}段落目。${sentence}</p>`,
-).join("");
 const article = makeArticle({
   id: "quality-fixture",
   feedHash: "quality",

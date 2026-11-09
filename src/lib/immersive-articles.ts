@@ -113,11 +113,13 @@ export function immersiveVideoSource(article: Article): string | undefined {
 export function immersiveThumbnailSources(
   article: Article,
   ogpCache: Record<string, string>,
+  loadedContent?: string | null,
 ): string[] {
   const cachedBody = contentLruCache.get(getProviderContentCacheId(article.id, article.link));
   const candidates = [
     ...resolveThumbnailSources(article, ogpCache),
     ...collectImageUrlsFromHtml(cachedBody || "", { preferResponsive: true }),
+    ...collectImageUrlsFromHtml(loadedContent || "", { preferResponsive: true }),
     ...collectImageUrlsFromHtml(article.content || "", { preferResponsive: true }),
     ...collectImageUrlsFromHtml(article.summary, { preferResponsive: true }),
   ];

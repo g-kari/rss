@@ -1,3 +1,8 @@
+import {
+  installActiveArticleCapture,
+  matchActiveArticleRequest,
+  previewArticles,
+} from "./helpers/active-article-request";
 import { test, expect } from "@playwright/test";
 import { build } from "esbuild";
 import postcss from "postcss";
@@ -25,14 +30,15 @@ test.beforeAll(async () => {
       { from: resolve(root, "app/globals.css") },
     ),
   ]);
-  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
+  html = `<!doctype html><html lang="ja"><meta charset="utf-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css.css}</style><style>body{font-family:system-ui,sans-serif}</style><div id="root"></div><script>${outputFiles![0].text.replaceAll("</script", "<\\/script")}</script></html>`;
 });
 
 test.beforeEach(async ({ page }) => {
+  await installActiveArticleCapture(page);
   unexpectedRequests = [];
   pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     unexpectedRequests.push(route.request().url());
     return route.abort();
   });
@@ -40,41 +46,50 @@ test.beforeEach(async ({ page }) => {
     Object.defineProperty(navigator, "deviceMemory", { value: 2 });
     Object.defineProperty(navigator, "hardwareConcurrency", { value: 2 });
   });
-  await page.route("https://rss-preview.test/**", (route) => {
-    const url = new URL(route.request().url());
-    if (route.request().method() !== "GET") {
-      unexpectedRequests.push(`${route.request().method()} ${url.href}`);
-      return route.abort();
+  await page.route("https://rss-preview.test/**", async (route) => {
+    const request = route.request();
+    const mainFrame = request.frame() === page.mainFrame();
+    const url = request.url();
+    if (request.method() === "GET" && mainFrame) {
+      if (
+        request.isNavigationRequest() &&
+        request.resourceType() === "document" &&
+        url === "https://rss-preview.test/"
+      )
+        return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+      if (
+        !request.isNavigationRequest() &&
+        request.resourceType() === "image" &&
+        [
+          "https://rss-preview.test/body.svg",
+          ...["image.svg", "body.svg"].flatMap((name) => {
+            const source = encodeURIComponent(`https://rss-preview.test/${name}`);
+            const proxy = `https://rss-preview.test/api/image-proxy?url=${source}`;
+            return [proxy, `${proxy}&error=empty`];
+          }),
+        ].includes(url)
+      )
+        return route.fulfill({
+          contentType: "image/svg+xml",
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="teal"/></svg>',
+        });
     }
-    // The sanitized inline body loads this exact same-origin fixture image directly.
-    if (!route.request().isNavigationRequest() && url.href === "https://rss-preview.test/body.svg")
-      return route.fulfill({
-        contentType: "image/svg+xml",
-        body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="teal"/></svg>',
-      });
-    if (
-      !["/", "/favicon.ico", "/api/content", "/api/ogp", "/api/image-proxy"].includes(url.pathname)
-    ) {
-      unexpectedRequests.push(url.href);
-      return route.abort();
-    }
-    if (url.pathname === "/favicon.ico") return route.fulfill({ status: 204, body: "" });
-    if (url.pathname === "/api/image-proxy")
-      return route.fulfill({
-        contentType: "image/svg+xml",
-        body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="teal"/></svg>',
-      });
-    if (url.pathname === "/api/ogp")
+    const active = await matchActiveArticleRequest(
+      page,
+      request,
+      "https://rss-preview.test",
+      previewArticles,
+    );
+    if (active?.aborted) return route.abort();
+    if (active)
       return route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ image: "" }),
+        body: JSON.stringify(
+          active.kind === "ogp" ? {} : { content: "<p>取得した全文をモード内で読みます</p>" },
+        ),
       });
-    if (url.pathname === "/api/content")
-      return route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ content: "<p>取得した全文をモード内で読みます</p>" }),
-      });
-    return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+    unexpectedRequests.push(`${request.method()} ${url}`);
+    return route.abort();
   });
   await page.goto("https://rss-preview.test/");
 });
@@ -134,7 +149,11 @@ test("inline read pauses, Escape restores focus, and outside read removes the cu
   const here = page.getByRole("button", { name: "ここで読む", exact: true });
   await here.click();
   await expect(page.getByRole("dialog", { name: "ここで記事の本文を読む" })).toBeVisible();
-  await expect(page.getByText("取得した全文をモード内で読みます")).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "ここで記事の本文を読む" })
+      .getByText("取得した全文をモード内で読みます", { exact: true }),
+  ).toBeVisible();
   await page.clock.runFor(60000);
   await expect(page.locator(".immersive-navigation [role=status]")).toHaveText("1 / 10件");
   await page.keyboard.press("Escape");
@@ -189,10 +208,11 @@ test("synthetic local-voice callbacks coordinate narration and media without cla
   page,
 }, testInfo) => {
   await page.addInitScript(() => {
-    let current: { onstart?: () => void; onend?: () => void } | null = null;
+    let current: { text?: string; onstart?: () => void; onend?: () => void } | null = null;
     const fixture = {
       calls: 0,
       cancels: 0,
+      startedText: "",
       completeArticle() {
         while (current) {
           const utterance = current;
@@ -223,6 +243,7 @@ test("synthetic local-voice callbacks coordinate narration and media without cla
           fixture.calls++;
           current = utterance;
           current?.onstart?.();
+          fixture.startedText = current?.text ?? "";
         },
       },
       configurable: true,
@@ -247,8 +268,25 @@ test("synthetic local-voice callbacks coordinate narration and media without cla
       () => (window as unknown as { narrationFixture: { calls: number } }).narrationFixture.calls,
     ),
   ).toBe(0);
+  // Wait for the known automatic body before computing the narration watchdog.
+  const active = page.locator('.immersive-slide[aria-hidden="false"]');
+  await expect(active.locator(".cinematic-transcript")).toContainText(
+    "取得した全文をモード内で読みます",
+  );
   await page.getByRole("button", { name: "ナレーションを開始" }).click();
-  await page.clock.runFor(60000);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { narrationFixture: { startedText: string } }).narrationFixture
+            .startedText,
+      ),
+    )
+    .toMatch(/記事 1：[\s\S]*取得した全文をモード内で読みます/);
+  // The article clock is 20s; 25s is still below the 30s minimum voice watchdog.
+  await page.clock.runFor(25_000);
+  await expect(active.locator(".cinematic-progress span")).toHaveAttribute("style", "width: 100%;");
+  await expect(page.locator(".immersive-narration-message")).toContainText("端末内の日本語音声");
   await expect(page.getByRole("status")).toHaveText("1 / 10件");
   await page.getByRole("button", { name: "自動再生を一時停止" }).click();
   await page.evaluate(() =>
@@ -260,6 +298,28 @@ test("synthetic local-voice callbacks coordinate narration and media without cla
   await page.getByRole("button", { name: "自動再生を再開" }).click();
   await expect(page.getByRole("status")).toHaveText("2 / 10件");
   await page.screenshot({ path: testInfo.outputPath("synthetic-narration-controls.png") });
+  await expect(
+    page.locator('.immersive-slide[aria-hidden="false"] .cinematic-transcript'),
+  ).toContainText("取得した全文をモード内で読みます");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { narrationFixture: { startedText: string } }).narrationFixture
+            .startedText,
+      ),
+    )
+    .toMatch(/記事 2：[\s\S]*取得した全文をモード内で読みます/);
+  // A started utterance that never ends must still reach the existing watchdog.
+  await page.clock.runFor(100_000);
+  await expect(page.locator(".immersive-narration-message")).toContainText(
+    "読み上げを続けられませんでした",
+  );
+  await expect(page.getByRole("button", { name: "ナレーションを開始" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(page.locator(".immersive-navigation [role=status]")).not.toHaveText("2 / 10件");
   await page.keyboard.press("Escape");
   expect(
     await page.evaluate(
@@ -276,7 +336,21 @@ test("failed OGP falls back to an already-loaded body image", async ({ page }, t
       return route.abort();
     }
     const source = new URL(route.request().url()).searchParams.get("url");
-    if (source?.endsWith("/body.svg"))
+    const target = encodeURIComponent(source || "");
+    const proxy = `https://rss-preview.test/api/image-proxy?url=${target}`;
+    if (
+      route.request().frame() !== page.mainFrame() ||
+      route.request().isNavigationRequest() ||
+      route.request().resourceType() !== "image" ||
+      !["https://rss-preview.test/body.svg", "https://rss-preview.test/image.svg"].includes(
+        source || "",
+      ) ||
+      ![proxy, `${proxy}&error=empty`].includes(route.request().url())
+    ) {
+      unexpectedRequests.push(route.request().url());
+      return route.abort();
+    }
+    if (source === "https://rss-preview.test/body.svg")
       return route.fulfill({
         contentType: "image/svg+xml",
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="teal"/></svg>',
