@@ -61,11 +61,11 @@ importers:
         specifier: ^18.1.1
         version: 18.1.1
       onnxruntime-web:
-        specifier: ^1.30.0
-        version: 1.30.0
+        specifier: ^1.31.1
+        version: 1.31.1
       piper-plus:
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=2ef893f6c14f38003f716c851c620a874bc168f1a4aa2e0cb28ab304a6e97a5b)(onnxruntime-web@1.30.0)
+        version: 0.8.1(patch_hash=2ef893f6c14f38003f716c851c620a874bc168f1a4aa2e0cb28ab304a6e97a5b)(onnxruntime-web@1.31.1)
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -2891,11 +2891,11 @@ packages:
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
-  onnxruntime-common@1.30.0:
-    resolution: {integrity: sha512-7fdVWjAID1dVhH/G8qK3APARunV4VkBFoCQAP7qp4Wkab0mrorvmc+sqiT+mKXOzDqdjN5j+/Z9nb4gzNPWcyA==}
+  onnxruntime-common@1.31.1:
+    resolution: {integrity: sha512-F+nnYNiQtmNJ95V6R/isBJqiVpdANCrsMEg1OaF+Bkbl3GAtzWLR7Ng17Ld0QtYtYJyotOHPJzOQn1Y6PLZjpg==}
 
-  onnxruntime-web@1.30.0:
-    resolution: {integrity: sha512-q0y+JrrtukXSzsBWEMccVfqX25LRmosXHF+CaRJmg8pZClzcV7svNc4rKY3jL02Vb7QmRMDs1SigqR4CXAfKYQ==}
+  onnxruntime-web@1.31.1:
+    resolution: {integrity: sha512-5GeH+bWQ+HxM10z7erGlsWqryrwMbSvm/1tkIsKTT48g0fI19VXVVC435t4t7VsPdSQeS7NmuZPXrQ73k82URw==}
 
   oxfmt@0.76.0:
     resolution: {integrity: sha512-Yo9RIn9lRWTm/U8obHbXUWc39lCpEFXlEggFoPx01zS18OCFi7mAwMmL05+p1AunuJgSkONffWyBHJzpMMCRuQ==}
@@ -6210,14 +6210,14 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  onnxruntime-common@1.30.0: {}
+  onnxruntime-common@1.31.1: {}
 
-  onnxruntime-web@1.30.0:
+  onnxruntime-web@1.31.1:
     dependencies:
       flatbuffers: 25.9.23
       guid-typescript: 1.0.9
       long: 5.3.2
-      onnxruntime-common: 1.30.0
+      onnxruntime-common: 1.31.1
       platform: 1.3.6
       protobufjs: 7.6.6
 
@@ -6316,10 +6316,10 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  piper-plus@0.8.1(patch_hash=2ef893f6c14f38003f716c851c620a874bc168f1a4aa2e0cb28ab304a6e97a5b)(onnxruntime-web@1.30.0):
+  piper-plus@0.8.1(patch_hash=2ef893f6c14f38003f716c851c620a874bc168f1a4aa2e0cb28ab304a6e97a5b)(onnxruntime-web@1.31.1):
     dependencies:
       '@piper-plus/g2p': 0.4.2
-      onnxruntime-web: 1.30.0
+      onnxruntime-web: 1.31.1
 
   platform@1.3.6: {}
 
@@ -6356,7 +6356,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.2
-      '@types/node': 26.6.5
+      '@types/node': 26.6.6
       long: 5.3.2
 
   proxy-addr@2.0.8:
