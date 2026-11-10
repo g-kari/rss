@@ -282,7 +282,7 @@ describe("partition and monotonic request isolation", () => {
     { provider: "workers-ai" },
     { authUsable: false },
     { enabled: false },
-    { model: "@cf/meta/llama-3.2-3b-instruct" },
+    { model: "@cf/mistralai/mistral-small-3.1-24b-instruct" },
   ] as Partial<ImmersiveSummaryCacheOptions>[])(
     "aborts and clears on context changes, including abort-ignoring results: %j",
     async (patch) => {

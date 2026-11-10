@@ -69,3 +69,55 @@ for (const width of [390, 1280]) {
     await expect(model).toHaveValue("@cf/google/gemma-4-26b-a4b-it");
   });
 }
+
+for (const retired of [
+  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3.1-70b-instruct",
+  "@cf/meta/llama-3.2-3b-instruct",
+  "@cf/qwen/qwen3-30b-a3b-fp8",
+  "@cf/google/gemma-3-27b-it",
+  "@cf/qwen/qwen2.5-coder-1.5b-instruct",
+]) {
+  test(`廃止・利用不能モデル ${retired} は設定を破壊せず切り替え、表示だけでAIを呼ばない`, async ({
+    page,
+  }) => {
+    const unexpected: string[] = [];
+    await page.addInitScript((model) => {
+      localStorage.setItem("rss-ai-model", model);
+      localStorage.setItem('rss-ai-model:"fixture-user"', model);
+      localStorage.setItem('rss-ai-provider:"fixture-user"', "browser");
+    }, retired);
+    await page.route("**/*", (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      if (
+        url.origin === "https://ai-settings.test" &&
+        url.pathname === "/" &&
+        request.isNavigationRequest()
+      )
+        return route.fulfill({ contentType: "text/html", body: html });
+      if (
+        url.origin === "https://ai-settings.test" &&
+        url.pathname === "/api/push/config" &&
+        request.method() === "GET"
+      )
+        return route.fulfill({ contentType: "application/json", body: "{}" });
+      unexpected.push(request.url());
+      return route.abort();
+    });
+    await page.goto("https://ai-settings.test/");
+    const provider = page.getByRole("combobox", { name: "AI の実行先", exact: true });
+    const model = page.getByRole("combobox", { name: "Workers AI モデル", exact: true });
+    await expect(provider).toHaveValue("browser");
+    await expect(model).toHaveValue("@cf/google/gemma-4-26b-a4b-it");
+    await expect(model).toBeDisabled();
+    await expect(model.locator(`option[value="${retired}"]`)).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('rss-ai-model:"fixture-user"'))).toBe(
+      retired,
+    );
+    await provider.selectOption("workers-ai");
+    await expect(model).toBeEnabled();
+    await expect(model).toHaveValue("@cf/google/gemma-4-26b-a4b-it");
+    expect(unexpected).toEqual([]);
+  });
+}

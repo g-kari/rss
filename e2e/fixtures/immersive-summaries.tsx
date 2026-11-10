@@ -10,7 +10,7 @@ import {
   type ReaderSettings,
 } from "../../src/contexts/ReaderSettingsContext";
 import { VisualModeProvider } from "../../src/contexts/VisualModeContext";
-import { DEFAULT_AI_MODEL, type WorkersAiModelId } from "../../src/lib/ai-models";
+import { type WorkersAiModelId } from "../../src/lib/ai-models";
 import type { AiProviderPreference } from "../../src/lib/ai-preferences";
 import type { Article, Feed } from "../../src/types";
 
@@ -67,7 +67,9 @@ function Preview() {
   const [saved, setSaved] = useState(new Set<string>());
   const [dismissed, setDismissed] = useState(new Set<string>());
   const [articleCount, setArticleCount] = useState(23);
-  const [model, setModel] = useState<WorkersAiModelId>(DEFAULT_AI_MODEL);
+  const [model, setModel] = useState<WorkersAiModelId>(
+    "@cf/mistralai/mistral-small-3.1-24b-instruct",
+  );
   const [provider, setProvider] = useState<AiProviderPreference>(
     fixtureCase === "browser" ? "browser" : fixtureCase === "auto" ? "auto" : "workers-ai",
   );

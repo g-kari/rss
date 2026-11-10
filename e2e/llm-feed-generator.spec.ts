@@ -168,7 +168,7 @@ test.describe("extractLinkStructure — エッジケース", () => {
 
 const defaultSelectors = {
   articleLink: "article a.post-link",
-  model: "@cf/meta/llama-3.1-8b-instruct-fp8",
+  model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   generatedAt: "2025-01-01T00:00:00.000Z",
 };
 

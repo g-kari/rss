@@ -24,23 +24,17 @@ export function prepareAiArticle(content: string) {
   };
 }
 
-/** Provider contracts are independent: Qwen3 choices output still uses max_tokens. */
-export function buildAiInputs(model: WorkersAiModelId, messages: AiMessage[]) {
-  // Official Qwen soft switch, not an unsupported Workers AI template parameter.
-  // https://huggingface.co/Qwen/Qwen3-30B-A3B#switching-between-thinking-and-non-thinking-mode
-  const configuredMessages =
-    model === "@cf/qwen/qwen3-30b-a3b-fp8"
-      ? messages.map((message, index) =>
-          index === messages.length - 1
-            ? { ...message, content: `${message.content}\n/no_think` }
-            : message,
-        )
-      : messages;
+/** Keep provider-specific token/output contracts and disable Gemma thinking explicitly. */
+export function buildAiInputs(
+  model: WorkersAiModelId,
+  messages: AiMessage[],
+  maxOutputTokens = AI_MAX_OUTPUT_TOKENS,
+) {
   return {
-    messages: configuredMessages,
+    messages,
     ...(CHAT_COMPLETION_MODEL_IDS.has(model)
-      ? { max_completion_tokens: AI_MAX_OUTPUT_TOKENS }
-      : { max_tokens: AI_MAX_OUTPUT_TOKENS }),
+      ? { max_completion_tokens: maxOutputTokens }
+      : { max_tokens: maxOutputTokens }),
     ...(REASONING_MODEL_IDS.has(model) ? { reasoning_effort: "low" } : {}),
     ...(model === "@cf/google/gemma-4-26b-a4b-it"
       ? { chat_template_kwargs: { enable_thinking: false } }

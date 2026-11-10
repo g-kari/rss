@@ -67,6 +67,33 @@ beforeEach(() => {
 });
 
 describe("runAiJob model handling", () => {
+  it.each([
+    "@cf/meta/llama-3.1-8b-instruct",
+    "@cf/meta/llama-3.1-70b-instruct",
+    "@cf/google/gemma-3-12b-it",
+    "@cf/meta/llama-3.2-3b-instruct",
+    "@cf/qwen/qwen3-30b-a3b-fp8",
+    "@cf/google/gemma-3-27b-it",
+    "@cf/qwen/qwen2.5-coder-1.5b-instruct",
+  ])(
+    "rejects stale client model %s before cache, fetch, rate limit or inference",
+    async (model) => {
+      for (const type of ["summary", "translation"] as const) {
+        const response = await execute(model, type);
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({
+          code: "INVALID_MODEL",
+          retryable: false,
+          replacementModel: DEFAULT_AI_MODEL,
+        });
+      }
+      expect(getAiCacheByUrl).not.toHaveBeenCalled();
+      expect(checkSlidingWindow).not.toHaveBeenCalled();
+      expect(fetchArticleContent).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    },
+  );
+
   it("returns explicit manual retry eligibility/cooldown without duplicate AI", async () => {
     vi.mocked(claimSummaryGeneration).mockResolvedValueOnce(null);
     vi.mocked(summaryGenerationRetryAfter).mockResolvedValueOnce(300);
@@ -102,12 +129,13 @@ describe("runAiJob model handling", () => {
     },
   );
 
-  it("uses the default only when model is omitted", async () => {
+  it("uses Gemma4 when the model is omitted", async () => {
     const response = await execute();
     expect(await response.json()).toEqual({ result: "legacy result" });
     expect(run).toHaveBeenCalledWith(DEFAULT_AI_MODEL, {
       messages: [{ role: "user", content: `<article>\n${articleBody}\n</article>` }],
-      max_tokens: 2048,
+      max_completion_tokens: 2048,
+      chat_template_kwargs: { enable_thinking: false },
     });
     expect(getAiCacheByUrl).toHaveBeenCalledWith(env.RSS_DATA, url, "summary", DEFAULT_AI_MODEL);
     expect(setAiSummaryByUrl).toHaveBeenCalledWith(
@@ -191,8 +219,8 @@ describe("runAiJob model handling", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("retains the stricter Llama 70B limit", async () => {
-    await execute("@cf/meta/llama-3.1-70b-instruct");
+  it("retains the stricter Qwen 3.8 limit", async () => {
+    await execute("@cf/qwen/qwen3.8-27b");
     expect(checkSlidingWindow).toHaveBeenCalledWith(
       env.RATE_LIMIT,
       "users/reader/ai-cooldown.json",

@@ -5,7 +5,7 @@ import { DEFAULT_AI_MODEL } from "./ai-models";
 import { sha256Hex } from "./r2";
 
 const url = "https://example.com/article";
-const otherModel = "@cf/meta/llama-3.2-3b-instruct";
+const otherModel = "@cf/mistralai/mistral-small-3.1-24b-instruct";
 let data: Map<string, string>;
 let bucket: R2Bucket;
 
@@ -31,6 +31,24 @@ describe("AI cache model isolation", () => {
   it("does not use a legacy result whose model is unknown", async () => {
     await setAiCacheByUrl(bucket, url, "legacy");
     expect(await getAiCacheByUrl(bucket, url, "summary", DEFAULT_AI_MODEL)).toBeNull();
+  });
+
+  it("does not relabel, delete or expose retired model cache envelopes", async () => {
+    const retired = "@cf/meta/llama-3.1-8b-instruct";
+    const hash = await sha256Hex(JSON.stringify([retired, url]));
+    const raw = JSON.stringify({
+      kind: "article-summary",
+      version: 1,
+      result: "old result",
+      metadata: { model: retired },
+    });
+    data.set(`ai-cache/summary/model-url-${hash}`, raw);
+    data.set(`ai-cache/summary-v1/model-url-${hash}`, raw);
+    const before = [...data];
+    expect(await getAiCacheByUrl(bucket, url, "summary", retired)).toBeNull();
+    expect(await getAiCacheByUrl(bucket, url, "summary", DEFAULT_AI_MODEL)).toBeNull();
+    expect([...data]).toEqual(before);
+    expect(bucket.put).not.toHaveBeenCalled();
   });
 
   it("partitions results by model, operation and article URL", async () => {

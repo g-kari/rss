@@ -16,6 +16,7 @@ export default defineConfig({
     "reader-motion.spec.ts",
     "reader-title.spec.ts",
     "quick-reading-settings.spec.ts",
+    "ai-settings.spec.ts",
     "settings-navigation.spec.ts",
     "json-restore.spec.ts",
     "feed-retry-status.spec.ts",
