@@ -81,32 +81,67 @@ export async function runScheduledSummaryPrecompute(
   }
 }
 
-// Primary Cloudflare model + pricing pages verified 2026-10-02. No cached-input discount.
-// This snapshot deliberately expires. Revalidate before enabling or extending its lifetime.
-const PRICES_VERIFIED_AT = Date.parse("2026-10-02T00:00:00Z");
-const PRICES_VALID_UNTIL = Date.parse("2026-11-01T00:00:00Z");
-const PRICE_BOUNDS: Partial<
-  Record<
-    WorkersAiModelId,
-    { inputContext: number; inputUsdPerMillion: number; outputUsdPerMillion: number }
-  >
-> = {
-  "@cf/google/gemma-4-26b-a4b-it": {
-    inputContext: 256000,
-    inputUsdPerMillion: 0.1,
-    outputUsdPerMillion: 0.3,
+interface PrecomputePrice {
+  inputContext: number;
+  inputUsdPerMillion: number;
+  outputUsdPerMillion: number;
+}
+
+interface PriceSnapshot {
+  verifiedAt: number;
+  validUntil: number;
+  prices: Partial<Record<WorkersAiModelId, PrecomputePrice>>;
+}
+
+// Reviewed, bounded windows, never an environment override or automatic renewal.
+// Keep the historical window and its expiry gap; checking one model must not renew another.
+const PRICE_SNAPSHOTS: readonly PriceSnapshot[] = [
+  {
+    verifiedAt: Date.parse("2026-10-02T00:00:00Z"),
+    validUntil: Date.parse("2026-11-01T00:00:00Z"),
+    prices: {
+      "@cf/google/gemma-4-26b-a4b-it": {
+        inputContext: 256000,
+        inputUsdPerMillion: 0.1,
+        outputUsdPerMillion: 0.3,
+      },
+      "@cf/mistralai/mistral-small-3.1-24b-instruct": {
+        inputContext: 128000,
+        inputUsdPerMillion: 0.351,
+        outputUsdPerMillion: 0.555,
+      },
+      "@cf/qwen/qwen3-30b-a3b-fp8": {
+        inputContext: 32768,
+        inputUsdPerMillion: 0.0509,
+        outputUsdPerMillion: 0.335,
+      },
+    },
   },
-  "@cf/mistralai/mistral-small-3.1-24b-instruct": {
-    inputContext: 128000,
-    inputUsdPerMillion: 0.351,
-    outputUsdPerMillion: 0.555,
+  {
+    // Gemma only, verified 2026-11-10 against both official model and pricing pages:
+    // https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/
+    // https://developers.cloudflare.com/workers-ai/platform/pricing/
+    // Publishing this window resumes existing scheduled work; review activation first.
+    verifiedAt: Date.parse("2026-11-10T00:00:00Z"),
+    validUntil: Date.parse("2026-12-01T00:00:00Z"),
+    prices: {
+      "@cf/google/gemma-4-26b-a4b-it": {
+        inputContext: 256000,
+        inputUsdPerMillion: 0.1,
+        outputUsdPerMillion: 0.3,
+      },
+    },
   },
-  "@cf/qwen/qwen3-30b-a3b-fp8": {
-    inputContext: 32768,
-    inputUsdPerMillion: 0.0509,
-    outputUsdPerMillion: 0.335,
-  },
-};
+];
+
+function precomputePrice(model: WorkersAiModelId, now: number): PrecomputePrice | null {
+  if (!Number.isFinite(now)) return null;
+  const applicable = PRICE_SNAPSHOTS.filter(
+    (snapshot) => now >= snapshot.verifiedAt && now < snapshot.validUntil && snapshot.prices[model],
+  );
+  // Overlapping reviews for the same model are ambiguous; never guess a price.
+  return applicable.length === 1 ? applicable[0].prices[model]! : null;
+}
 
 interface PrecomputeConfig {
   model: WorkersAiModelId;
@@ -116,6 +151,7 @@ interface PrecomputeConfig {
   maxArticles: number;
   maxDailyArticles: number;
   reservationMicros: number;
+  inputContext: number;
 }
 
 function usdMicros(value: string | undefined): number | null {
@@ -126,9 +162,8 @@ function usdMicros(value: string | undefined): number | null {
 
 /** Not a billing hard cap: reserve the full model input context, not a guessed chars/token ratio. */
 export function precomputeReservationMicros(model: WorkersAiModelId, now: number): number | null {
-  const price = PRICE_BOUNDS[model];
-  if (!price || !Number.isFinite(now) || now < PRICES_VERIFIED_AT || now >= PRICES_VALID_UNTIL)
-    return null;
+  const price = precomputePrice(model, now);
+  if (!price) return null;
   return Math.ceil(
     price.inputContext * price.inputUsdPerMillion +
       AI_MAX_OUTPUT_TOKENS * price.outputUsdPerMillion,
@@ -145,6 +180,7 @@ export function summaryPrecomputeConfig(
   )
     return null;
   const model = env.RSS_SUMMARY_PRECOMPUTE_MODEL;
+  const price = precomputePrice(model, now);
   const reservationMicros = precomputeReservationMicros(model, now);
   const runMicros = usdMicros(env.RSS_SUMMARY_PRECOMPUTE_RUN_USD);
   const dayMicros = usdMicros(env.RSS_SUMMARY_PRECOMPUTE_DAY_USD);
@@ -152,6 +188,7 @@ export function summaryPrecomputeConfig(
   const maxArticles = Number(env.RSS_SUMMARY_PRECOMPUTE_MAX_ARTICLES);
   const maxDailyArticles = Number(env.RSS_SUMMARY_PRECOMPUTE_MAX_DAILY_ARTICLES);
   if (
+    !price ||
     !reservationMicros ||
     !runMicros ||
     !dayMicros ||
@@ -169,6 +206,7 @@ export function summaryPrecomputeConfig(
   return {
     model,
     reservationMicros,
+    inputContext: price.inputContext,
     runMicros,
     dayMicros,
     monthMicros,
@@ -364,10 +402,9 @@ export async function runSummaryPrecompute(
         continue;
       }
       const usage = getAiUsage(output);
-      const price = PRICE_BOUNDS[config.model]!;
       if (
         usage &&
-        (usage.inputTokens > price.inputContext || usage.outputTokens > AI_MAX_OUTPUT_TOKENS)
+        (usage.inputTokens > config.inputContext || usage.outputTokens > AI_MAX_OUTPUT_TOKENS)
       ) {
         await failSummaryGeneration(env.RSS_DATA, claim);
         break;
