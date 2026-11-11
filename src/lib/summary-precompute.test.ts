@@ -139,16 +139,22 @@ describe("summary precompute fail-closed gates", () => {
     );
     expect(precomputeReservationMicros(model, now)).toBe(26215);
   });
-  it.each([
-    "@cf/meta/llama-3.1-8b-instruct",
-    "@cf/meta/llama-3.1-70b-instruct",
-    "@cf/meta/llama-3.2-3b-instruct",
-    "@cf/qwen/qwen3-30b-a3b-fp8",
-  ])("never aliases retired scheduled configuration %s", async (retired) => {
+  it.each(
+    [
+      "@cf/meta/llama-3.1-8b-instruct",
+      "@cf/meta/llama-3.1-70b-instruct",
+      "@cf/meta/llama-3.2-3b-instruct",
+      "@cf/qwen/qwen3-30b-a3b-fp8",
+    ].flatMap((retired) =>
+      ["2026-10-02T04:00:00Z", "2026-11-10T04:00:00Z"].map((date) => [retired, date]),
+    ),
+  )("never aliases retired scheduled configuration %s at %s", async (retired, date) => {
     env.RSS_SUMMARY_PRECOMPUTE_MODEL = retired;
-    expect(await execute()).toBe(0);
+    const time = Date.parse(date);
+    expect(await execute([url], time, time)).toBe(0);
     expect(bucket.get).not.toHaveBeenCalled();
     expect(bucket.put).not.toHaveBeenCalled();
+    expect(matchCfCache).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
   });
   it.each([
@@ -443,6 +449,97 @@ describe("approved scheduled rollout", () => {
   const scheduled = (urls = [url], time = now) =>
     runScheduledSummaryPrecompute(env, urls, "https://rss.example.com", time);
 
+  it.each([
+    ["2026-10-01T23:59:59.999Z", 0],
+    ["2026-10-02T00:00:00.000Z", 1],
+    ["2026-10-31T23:59:59.999Z", 1],
+    ["2026-11-01T00:00:00.000Z", 0],
+    ["2026-11-01T00:00:00.001Z", 0],
+    ["2026-11-09T23:59:59.999Z", 0],
+    ["2026-11-10T00:00:00.000Z", 1],
+    ["2026-11-30T23:59:59.999Z", 1],
+    ["2026-12-01T00:00:00.000Z", 0],
+    ["2026-12-01T00:00:00.001Z", 0],
+  ] as const)(
+    "respects the reviewed Gemma window at %s (%i generated)",
+    async (date, generated) => {
+      approvedEnv();
+      const time = Date.parse(date);
+      vi.mocked(Date.now).mockReturnValue(time);
+      expect(await scheduled([url], time)).toBe(generated);
+      if (generated === 0) {
+        expect(bucket.get).not.toHaveBeenCalled();
+        expect(bucket.put).not.toHaveBeenCalled();
+        expect(matchCfCache).not.toHaveBeenCalled();
+        expect(run).not.toHaveBeenCalled();
+      } else {
+        expect(run).toHaveBeenCalledOnce();
+        expect(run.mock.calls[0][0]).toBe("@cf/google/gemma-4-26b-a4b-it");
+        expect(run.mock.calls[0][1]).toMatchObject({
+          max_completion_tokens: 2048,
+          chat_template_kwargs: { enable_thinking: false },
+        });
+        const key = `ai-cache/summary-budget/${date.slice(0, 7)}.json`;
+        expect(JSON.parse(store.get(key)!.value).micros).toBe(26215);
+        expect(JSON.parse(store.get(SUMMARY_PRECOMPUTE_LEASE_KEY)!.value).status).toBe("finished");
+      }
+    },
+  );
+  it("renews only Gemma; other price windows stay expired", () => {
+    const renewal = Date.parse("2026-11-10T00:00:00Z");
+    expect(precomputeReservationMicros("@cf/google/gemma-4-26b-a4b-it", renewal)).toBe(26215);
+    expect(
+      precomputeReservationMicros("@cf/mistralai/mistral-small-3.1-24b-instruct", renewal),
+    ).toBeNull();
+    for (const clock of [NaN, Infinity, -Infinity]) {
+      expect(precomputeReservationMicros("@cf/google/gemma-4-26b-a4b-it", clock)).toBeNull();
+    }
+  });
+  it("retains the reservation without AI when R2 I/O crosses the renewed expiry", async () => {
+    approvedEnv();
+    const time = Date.parse("2026-11-30T23:59:59.999Z");
+    vi.mocked(Date.now).mockReturnValue(time);
+    const key = "ai-cache/summary-budget/2026-11.json";
+    const put = vi.mocked(bucket.put).getMockImplementation()!;
+    vi.mocked(bucket.put).mockImplementation(async (...args) => {
+      const result = await put(...args);
+      if (args[0] === key) vi.mocked(Date.now).mockReturnValue(time + 1);
+      return result;
+    });
+    expect(await scheduled([url], time)).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(JSON.parse(store.get(key)!.value).micros).toBe(26215);
+    expect(JSON.parse(store.get(SUMMARY_PRECOMPUTE_LEASE_KEY)!.value).status).toBe("finished");
+    expect(
+      await claimSummaryGeneration(bucket, url, "@cf/google/gemma-4-26b-a4b-it"),
+    ).not.toBeNull();
+  });
+  it("keeps earlier November reservations when resuming", async () => {
+    approvedEnv();
+    const time = Date.parse("2026-11-10T04:00:00Z");
+    vi.mocked(Date.now).mockReturnValue(time);
+    const key = "ai-cache/summary-budget/2026-11.json";
+    store.set(key, {
+      etag: "existing-november-budget",
+      value: JSON.stringify({
+        version: 1,
+        month: "2026-11",
+        micros: 969955,
+        days: { "2026-11-02": 969955 },
+        runs: Object.fromEntries(
+          Array.from({ length: 8 }, (_, index) => [
+            `2026-11-02T0${index}:00:00.000Z`,
+            { micros: (index === 7 ? 2 : 5) * 26215, calls: index === 7 ? 2 : 5 },
+          ]),
+        ),
+      }),
+    });
+    expect(await scheduled([url, url + "/second"], time)).toBe(1);
+    expect(run).toHaveBeenCalledOnce();
+    const saved = JSON.parse(store.get(key)!.value);
+    expect(saved.micros).toBe(996170);
+    expect(saved.days["2026-11-02"]).toBe(969955);
+  });
   it("ships the approved explicit limits and enables the guarded scheduled path", async () => {
     expect(SUMMARY_PRECOMPUTE_ROLLOUT_ENABLED).toBe(true);
     expect(approvedEnv()).toMatchObject({
@@ -524,23 +621,29 @@ describe("approved scheduled rollout", () => {
     expect(run).not.toHaveBeenCalled();
     expect(matchCfCache).not.toHaveBeenCalled();
   });
-  it("USD 1 monthly admits at most 38 reservations, five per run", async () => {
-    approvedEnv();
-    for (let batch = 0; batch < 8; batch++) {
-      const time = now + batch * 30 * 60 * 1000;
-      vi.mocked(Date.now).mockReturnValue(time);
-      const urls = Array.from({ length: 6 }, (_, index) => url + "/" + batch + "/" + index);
-      expect(await scheduled(urls, time)).toBe(batch === 7 ? 3 : 5);
-    }
-    expect(await scheduled([url + "/exhausted"], now + 8 * 30 * 60 * 1000)).toBe(0);
-    expect(run).toHaveBeenCalledTimes(38);
-    expect(ledger().micros).toBe(996170);
-    expect(
-      Object.values(ledger().runs).every(
-        (entry: unknown) => (entry as { calls: number }).calls <= 5,
-      ),
-    ).toBe(true);
-  });
+  it.each(["2026-10-02T04:00:00Z", "2026-11-10T04:00:00Z"])(
+    "USD 1 monthly admits at most 38 reservations, five per run (%s)",
+    async (date) => {
+      approvedEnv();
+      const now = Date.parse(date);
+      const ledger = () =>
+        JSON.parse(store.get(`ai-cache/summary-budget/${date.slice(0, 7)}.json`)!.value);
+      for (let batch = 0; batch < 8; batch++) {
+        const time = now + batch * 30 * 60 * 1000;
+        vi.mocked(Date.now).mockReturnValue(time);
+        const urls = Array.from({ length: 6 }, (_, index) => url + "/" + batch + "/" + index);
+        expect(await scheduled(urls, time)).toBe(batch === 7 ? 3 : 5);
+      }
+      expect(await scheduled([url + "/exhausted"], now + 8 * 30 * 60 * 1000)).toBe(0);
+      expect(run).toHaveBeenCalledTimes(38);
+      expect(ledger().micros).toBe(996170);
+      expect(
+        Object.values(ledger().runs).every(
+          (entry: unknown) => (entry as { calls: number }).calls <= 5,
+        ),
+      ).toBe(true);
+    },
+  );
   it("cache misses and OFF retain zero AI calls after activation", async () => {
     approvedEnv();
     vi.mocked(matchCfCache).mockResolvedValue(null);

@@ -32,7 +32,7 @@ A publisher's full body cannot be proven available after extraction. New records
 
 ## Approved production rollout
 
-The November model migration does **not** renew the expired pricing window, change any rollout flag/configuration, or widen these approvals. At dates on/after 2026-11-01 the existing gate remains fail-closed.
+The November model migration alone does **not** renew the expired pricing window, change any rollout flag/configuration, or widen these approvals. Its original snapshot expired on 2026-11-01. The separate continuation candidate below adds a bounded Gemma window and still requires activation approval before merge/deployment.
 
 The separately reviewed activation enables the existing 30-minute cron's downstream summary step for **Gemma 4 only**, after explicit approval of at most 100 articles per UTC day and USD 1 monthly conservative application reservations. No schedule, credential, permission, service or binding is added. The selected UI model is independent; immersive reading still only reads cached summaries for its explicitly selected model and never generates on a miss.
 
@@ -57,6 +57,18 @@ Cloudflare settings were inspected before activation: the existing `rss-reader` 
 
 The freshly checked primary Gemma 4 model/pricing pages confirm 256000 context tokens, USD 0.10/M input and USD 0.30/M output on 2026-10-02. The snapshot remains valid only through 2026-10-31 UTC and **automatically stops new work on 2026-11-01** unless prices/contracts are revalidated in another reviewed change. The clock and UTC day are checked immediately before every reservation; delayed events crossing midnight are skipped.
 
+## Reviewed November continuation
+
+The 2026-11-10 code candidate adds a second, model-scoped price snapshot for **Gemma 4 only**, from 2026-11-10T00:00:00Z (inclusive) until 2026-12-01T00:00:00Z (exclusive). This is a proposed activation window, not an assertion that it has been deployed or that new spending is approved. **Merging/deploying this candidate resumes the existing cron's paid summary generation when its existing flag is true. Confirm continuation and the exact deployment before publication.** No live inference was used for verification.
+
+On 2026-11-10 the [official Gemma 4 page](https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/) and [Workers AI price table](https://developers.cloudflare.com/workers-ai/platform/pricing/) both give USD 0.10/M input and USD 0.30/M output; the model page gives a 256000-token context. The existing request uses `max_completion_tokens: 2048`, `chat_template_kwargs: { enable_thinking: false }` and the synchronous `choices` parser. The published schema includes `max_completion_tokens` and `chat_template_kwargs`, but does not independently guarantee that the thinking flag is honored at runtime. The existing output validation and conservative full-context reservation remain necessary.
+
+The original October bounds for retained Gemma/Mistral models and their 2026-11-01 expiry are preserved. The gap before November 10 remains closed, and Mistral receives no renewed window. The model-catalog migration removes retired Qwen3 30B from the executable price map, so an old configured ID is rejected before storage or AI in either window instead of being aliased to Gemma. Its historical snapshot remains documented below and in Git history; no existing ledger or cache is rewritten. [Cloudflare's November retirement notice](https://developers.cloudflare.com/changelog/post/2026-11-05-planned-model-deprecations/) recommends Gemma 4 for smaller-model workloads and retires Qwen3 30B on November 20. The catalog migration is inherited from PR #1514, not implemented a second time.
+
+All eight rollout settings, five-per-run, 100-per-day, concurrency one and USD 1/month remain unchanged. The reservation remains USD 0.026215 per attempt, so the monthly ledger permits at most 38 attempts and potentially fewer successful summaries. Existing November reservations, including failed/ambiguous attempts, are retained rather than reset at renewal. Cached summaries remain readable independently of pricing validity. No new endpoint, credential, binding, schedule or automatic renewal is introduced.
+
+Future continuation requires another reviewed model-specific snapshot with current official evidence. Overlapping valid snapshots for one model fail closed rather than choosing a price. Boundary tests cover both windows, their gap, per-model isolation, invalid clocks, the approved scheduled wrapper, reservation I/O crossing expiry, and retained monthly spending. At December 1, new work stops again unless a later reviewed change is authorized and deployed. Natural-cron observation and exact deployed-version checks are still required after any activation; mocked tests are not production evidence.
+
 ## Costs: estimates versus reservations
 
 Historical USD price snapshot used by the expired precompute gate (not renewed by the model migration):
@@ -65,6 +77,8 @@ Historical USD price snapshot used by the expired precompute gate (not renewed b
 | -------------------- | -----: | -----: | --------------------------------: |
 | Gemma4 26B A4B       |  $0.10 |  $0.30 |                         $0.026215 |
 | Mistral Small3.1 24B | $0.351 | $0.555 |                         $0.046065 |
+
+For historical accounting only, the removed Qwen3 30B snapshot used a 32768-token context, USD 0.0509/M input and USD 0.335/M output, with a 2354-microUSD reservation. It is not an executable or renewed model option.
 
 The reservation uses the **entire documented input context window** (256000 / 128000 tokens respectively), plus the 2048-token output allowance, with no cached-input discounts. This is intentionally much larger than an ordinary 8000-character article summary. A character/token heuristic is not treated as a proven upper bound. For example, an assumed 4000-input/256-output-token Gemma4 call costs about $0.000477; its reservation is approximately 55 times larger. This conservatism substantially reduces useful throughput under a small configured budget. A $1 monthly reservation limit permits at most 38 / 21 reservations for the two retained priced models, before failures or daily/run limits.
 
