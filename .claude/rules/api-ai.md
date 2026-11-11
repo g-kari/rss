@@ -20,18 +20,16 @@ description: AI 機能 (要約・翻訳) の API 仕様 — /api/ai/{summarize,t
 
 ### 利用可能なモデル
 
-| model                                  | 備考                      |
-| -------------------------------------- | ------------------------- |
-| `@cf/meta/llama-3.1-8b-instruct`       | 既存デフォルトを維持      |
-| `@cf/meta/llama-3.2-3b-instruct`       |                           |
-| `@cf/meta/llama-3.1-70b-instruct`      | 高コスト、5 回/分         |
-| `@cf/google/gemma-3-27b-it`            |                           |
-| `@cf/qwen/qwen2.5-coder-1.5b-instruct` |                           |
-| `@cf/qwen/qwen3.8-27b`                 | 高コスト、5 回/分         |
-| `@cf/google/gemma-4-26b-a4b-it`        |                           |
-| `@cf/zai-org/glm-5.3`                  | 有料アクセス必須、5 回/分 |
+| model                                          | 備考                      |
+| ---------------------------------------------- | ------------------------- |
+| `@cf/qwen/qwen3.8-27b`                         | 高コスト、5 回/分         |
+| `@cf/google/gemma-4-26b-a4b-it`                | 既定モデル                |
+| `@cf/mistralai/mistral-small-3.1-24b-instruct` | 多言語・要約、max_tokens  |
+| `@cf/zai-org/glm-5.3`                          | 有料アクセス必須、5 回/分 |
 
-2026-09-30 に公式モデルページと Workers 型定義で確認。新しい 3 モデルは `max_completion_tokens` と `choices[0].message.content` に対応し、内部推論テキストを結果として返さない。モデル省略時のみ既定値を使い、明示した未対応モデルは 400 とする。通常モデルは 20 回/分、課金 API のため KV 障害時は fail-closed。
+2026-11-08 に Cloudflare の [5月の廃止告知](https://developers.cloudflare.com/changelog/post/2026-05-08-planned-model-deprecations/) と [11月の廃止告知](https://developers.cloudflare.com/changelog/post/2026-11-05-planned-model-deprecations/) を確認。Llama 3.1 8B/70B、Llama 3.2 3B、Qwen3 30B A3B FP8 は選択肢から除外。旧モデルを明示したリクエストは `400 INVALID_MODEL` と `retryable: false` / `replacementModel` を返し、推論前に拒否する。省略時と保存済みの廃止モデル選択は Gemma 4 を使う。保存値は非破壊の読み替えで、旧キャッシュの生成モデルは書き換えない。Gemma 3 27B / Qwen 2.5 Coder 1.5B も現カタログと active model API 検索に存在せず schema GET が404のため利用不能として除外する（退役日未確認）。これらにも保存設定の読み替えと明示指定時の代替案内を適用する。
+
+Gemma 4、Qwen 3.8、GLM 5.3 は `max_completion_tokens` と `choices[0].message.content` に対応し、内部推論テキストを結果として返さない。Gemma 4 は thinking を無効化する。通常モデルは 20 回/分、高コストは5回/分、課金 API のため KV 障害時は fail-closed。詳細と価格・移行仕様は `docs/summary-precompute.md` を参照。
 
 ### ブラウザ側の実行先
 

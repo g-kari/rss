@@ -4,7 +4,7 @@
  * フロー:
  * 1. ページ HTML をフェッチ
  * 2. <a> タグ構造（href / テキスト / クラス / 祖先 5 段）を抽出・圧縮
- * 3. Workers AI (llama-3.1-8b) にセレクタ推論を依頼（1 行 JSON で返す）
+ * 3. Workers AI (Llama 3.3 70B FP8 fast) にセレクタ推論を依頼（1 行 JSON で返す）
  * 4. 推論したセレクタで HTML をスクレイプし ParsedFeed を返す
  */
 

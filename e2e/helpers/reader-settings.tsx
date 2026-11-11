@@ -37,7 +37,7 @@ export function TestReaderSettings({ children }: { children: ReactNode }) {
     aiProvider: "workers-ai",
     onChangeAiProvider: noop,
     aiUserId: null,
-    aiModel: "@cf/meta/llama-3.1-8b-instruct",
+    aiModel: "@cf/google/gemma-4-26b-a4b-it",
     onChangeAiModel: noop,
   };
   return <ReaderSettingsProvider value={value}>{children}</ReaderSettingsProvider>;

@@ -72,7 +72,7 @@ const settings: ReaderSettings = {
   aiProvider: "auto",
   onChangeAiProvider: vi.fn(),
   aiUserId: "one",
-  aiModel: "@cf/meta/llama-3.1-8b-instruct",
+  aiModel: "@cf/google/gemma-4-26b-a4b-it",
   onChangeAiModel: vi.fn(),
 };
 const props = {

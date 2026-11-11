@@ -44,6 +44,17 @@ describe("summary cache read API", () => {
     },
   );
   it.each([
+    "@cf/meta/llama-3.1-8b-instruct",
+    "@cf/meta/llama-3.1-70b-instruct",
+    "@cf/meta/llama-3.2-3b-instruct",
+    "@cf/qwen/qwen3-30b-a3b-fp8",
+    "@cf/google/gemma-3-27b-it",
+    "@cf/qwen/qwen2.5-coder-1.5b-instruct",
+  ])("rejects removed model %s without reading or relabeling cache", async (model) => {
+    expect((await POST(request({ model, urls: [url] }))).status).toBe(400);
+    expect(getAiSummaryByUrl).not.toHaveBeenCalled();
+  });
+  it.each([
     [],
     Array(13).fill(url),
     [url, "http://127.0.0.1/"],

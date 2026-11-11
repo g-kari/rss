@@ -26,7 +26,7 @@ vi.mock("../hooks/useArticleAi", () => ({
 }));
 vi.mock("../lib/browser-summarizer", () => ({ summarizeInBrowser: effects.summarizeInBrowser }));
 
-const model = "@cf/meta/llama-3.1-8b-instruct";
+const model = "@cf/mistralai/mistral-small-3.1-24b-instruct";
 const article = makeArticle({ title: "保存済みの要約をここで読む記事" });
 type ReaderProps = ComponentProps<typeof ImmersiveSummaryReader>;
 
@@ -156,7 +156,7 @@ describe("saved summary rendering", () => {
     expect(summary.result).toBe(original);
     expect(screen.getByTestId("summary-availability")).toHaveTextContent("保存済みのAI要約");
     expect(screen.getByTestId("summary-source")).toHaveTextContent(
-      "選択中のモデル: Llama 3.1 8B（バランス）",
+      "選択中のモデル: Mistral Small 3.1 24B（多言語・要約）",
     );
     expect(screen.getByText(/自動再生・読み上げを一時停止/)).toBeInTheDocument();
   });

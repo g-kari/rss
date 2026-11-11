@@ -11,17 +11,13 @@ describe("Workers AI provider contracts", () => {
     });
     expect(getAiResponseText({ response: "summary", usage: {} })).toBe("summary");
   });
-  it("uses Qwen choices response, max_tokens and only the documented soft switch", () => {
-    expect(
-      buildAiInputs("@cf/qwen/qwen3-30b-a3b-fp8", [{ role: "user", content: "article" }]),
-    ).toEqual({ messages: [{ role: "user", content: "article\n/no_think" }], max_tokens: 2048 });
-    expect(
-      getAiResponseText({
-        choices: [
-          { message: { content: "<think>private</think>summary", reasoning_content: "private" } },
-        ],
-      }),
-    ).toBe("summary");
+  it("uses the Gemma4 completion contract without Qwen soft switches", () => {
+    const messages = [{ role: "user" as const, content: "article" }];
+    expect(buildAiInputs("@cf/google/gemma-4-26b-a4b-it", messages)).toEqual({
+      messages,
+      max_completion_tokens: 2048,
+      chat_template_kwargs: { enable_thinking: false },
+    });
   });
   it.each([
     "<think>private",

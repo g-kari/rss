@@ -101,11 +101,6 @@ const PRICE_BOUNDS: Partial<
     inputUsdPerMillion: 0.351,
     outputUsdPerMillion: 0.555,
   },
-  "@cf/qwen/qwen3-30b-a3b-fp8": {
-    inputContext: 32768,
-    inputUsdPerMillion: 0.0509,
-    outputUsdPerMillion: 0.335,
-  },
 };
 
 interface PrecomputeConfig {

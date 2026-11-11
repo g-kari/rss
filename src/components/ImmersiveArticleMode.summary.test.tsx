@@ -220,7 +220,8 @@ it.each(["account", "scope", "model", "expired"])(
     const view = render(<ImmersiveArticleMode {...props} />);
     expect(screen.getByTestId("short-text")).toHaveTextContent("保存された要約 0");
     state.entries.clear();
-    if (boundary === "model") state.settings.aiModel = "@cf/google/gemma-4-26b-a4b-it";
+    if (boundary === "model")
+      state.settings.aiModel = "@cf/mistralai/mistral-small-3.1-24b-instruct";
     view.rerender(
       <ImmersiveArticleMode
         {...props}

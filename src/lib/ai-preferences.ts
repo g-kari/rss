@@ -24,7 +24,8 @@ export function loadAiPreferences(userId: string | null): AiPreferences {
     storageGet(aiPreferenceKey(STORAGE_KEYS.AI_MODEL, userId)) ?? storageGet(STORAGE_KEYS.AI_MODEL);
   return {
     provider: isAiProviderPreference(provider) ? provider : "auto",
-    // Preserve the model selected before user-scoped settings were introduced.
+    // Read retired/invalid selections as the supported default without rewriting storage.
+    // User-scoped and legacy values remain available on rollback; result keys use this new model.
     model: isWorkersAiModelId(model) ? model : DEFAULT_AI_MODEL,
     userId,
   };

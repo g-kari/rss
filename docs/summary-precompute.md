@@ -2,20 +2,23 @@
 
 ## Selectable models
 
-The existing default (`@cf/meta/llama-3.1-8b-instruct`) and existing model IDs are preserved. Two additional Workers AI models are selectable for explicit summaries/translations:
+The default for summaries/translations and both feed recommendation topic passes is now `@cf/google/gemma-4-26b-a4b-it`. Cloudflare recommends Gemma 4 as a smaller-model replacement. Its published price is USD 0.10/M input and USD 0.30/M output, with a 256000-token context. Qwen 3.8 remains an explicit higher-cost choice (USD 0.45/M input and USD 3.20/M output), rather than an automatic replacement. Verified 2026-11-08:
 
-- `@cf/mistralai/mistral-small-3.1-24b-instruct`: `max_tokens`, synchronous `response` string
-- `@cf/qwen/qwen3-30b-a3b-fp8`: `max_tokens`, synchronous `choices[0].message.content`
+- [Cloudflare November retirement announcement](https://developers.cloudflare.com/changelog/post/2026-11-05-planned-model-deprecations/): `@cf/meta/llama-3.2-3b-instruct` and `@cf/qwen/qwen3-30b-a3b-fp8` stop responding on **2026-11-20**, moved from November 15, with HTTP 410 / error 5028.
+- [Cloudflare May retirement announcement](https://developers.cloudflare.com/changelog/post/2026-05-08-planned-model-deprecations/): the old default `@cf/meta/llama-3.1-8b-instruct`, selectable `@cf/meta/llama-3.1-70b-instruct`, and recommendation model `@cf/google/gemma-3-12b-it` were retired on May 30.
+- [Gemma 4 model and contract](https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/), [Qwen 3.8 model and pricing](https://developers.cloudflare.com/workers-ai/models/qwen3.8-27b/), [Mistral model contract](https://developers.cloudflare.com/workers-ai/models/mistral-small-3.1-24b-instruct/).
 
-Qwen3 receives the documented `/no_think` soft instruction as the final trusted prompt suffix. This is not a guaranteed hard thinking switch. Closed thinking blocks are removed; empty, unclosed, nested, orphaned or escaped thinking traces are rejected. No reasoning/tool-call field is used as a fallback. No live inference or quality benchmark was run for this change.
+Those four selectable retired/retiring IDs are removed. Gemma 3 27B and Qwen 2.5 Coder 1.5B are also removed as unavailable: on 2026-11-08 they were absent from the [current model catalog](https://developers.cloudflare.com/workers-ai/models/), active-model read-only API searches returned no result, and their schema GETs returned HTTP 404. This does not assert a retirement date for these two IDs. The supported choices are Gemma 4, Qwen 3.8, GLM 5.3 and Mistral Small 3.1.
 
-Verified 2026-10-02 against primary sources:
+Gemma 4 uses `max_completion_tokens`, `chat_template_kwargs: { enable_thinking: false }`, and synchronous `choices[0].message.content`. Summaries/translations retain the 8000-character input / 2048-token completion limits and existing Japanese prompts. Recommendation topic extraction/refinement retains the existing two-pass flow and mixed Japanese/English JSON topic prompts, with an explicit 256-token completion limit per pass. Mistral continues to use `max_tokens` and the legacy `response` string. The retired Qwen3 `/no_think` prompt branch is removed. Closed thinking blocks are stripped; ambiguous or reasoning-only responses fail closed. No reasoning/tool-call field is a text fallback. No live inference or Japanese quality benchmark was run.
 
-- [Cloudflare Mistral model](https://developers.cloudflare.com/workers-ai/models/mistral-small-3.1-24b-instruct/)
-- [Cloudflare Qwen3 model](https://developers.cloudflare.com/workers-ai/models/qwen3-30b-a3b-fp8/)
-- [Official Qwen model card: thinking soft switch](https://huggingface.co/Qwen/Qwen3-30B-A3B#switching-between-thinking-and-non-thinking-mode)
-- [Cloudflare Gemma4 model](https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/)
-- [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+### Saved settings, stale clients and old results
+
+User-scoped and legacy browser selections of removed models resolve to the new supported default when loaded. This is a non-destructive read-time migration: localStorage is not rewritten. Provider choice remains unchanged, including browser-only mode. A later explicit selection is stored normally. Result cache keys use the resolved model, so old article results are not reused as Gemma 4 output.
+
+An explicit removed ID from a stale client still gets HTTP 400 `INVALID_MODEL`, now with `retryable: false` and `replacementModel`; it is never silently aliased to another paid model. Validation precedes cache, content fetch, rate-limit consumption and inference. Cache-only summary requests also reject removed IDs before storage reads.
+
+Existing R2 summary/translation objects and generation claims are not renamed, copied, deleted or assigned a new model. Removed-model summary reads fail closed instead of treating a JSON envelope as article text. On the new default, the old model's records are cache misses; old data remains available for rollback. This may increase cache misses for explicit manual requests, but does not add any automatic generation-on-miss or widen scheduled generation.
 
 ## Cache-only API
 
@@ -28,6 +31,8 @@ Legacy R2 summary keys remain `ai-cache/summary/model-url-{sha256([model,url])}`
 A publisher's full body cannot be proven available after extraction. New records therefore say `unknown`, or `truncated` when the input was definitely shortened. Old model-specific plaintext records remain usable with all provenance fields unknown/null. Unknown-model URL-only caches are never used for an explicitly selected model. Oversized/malformed/version-mismatched records and unsafe thinking output are ignored. New string cache readers transparently unwrap versioned summaries, then fall back to legacy text. An older deployment never sees a JSON envelope after rollback; new-only records become cache misses for it. Translation cache keys are unchanged.
 
 ## Approved production rollout
+
+The November model migration does **not** renew the expired pricing window, change any rollout flag/configuration, or widen these approvals. At dates on/after 2026-11-01 the existing gate remains fail-closed.
 
 The separately reviewed activation enables the existing 30-minute cron's downstream summary step for **Gemma 4 only**, after explicit approval of at most 100 articles per UTC day and USD 1 monthly conservative application reservations. No schedule, credential, permission, service or binding is added. The selected UI model is independent; immersive reading still only reads cached summaries for its explicitly selected model and never generates on a miss.
 
@@ -54,15 +59,14 @@ The freshly checked primary Gemma 4 model/pricing pages confirm 256000 context t
 
 ## Costs: estimates versus reservations
 
-Current published USD pricing per million input/output tokens:
+Historical USD price snapshot used by the expired precompute gate (not renewed by the model migration):
 
-| Model                |   Input | Output | Conservative reservation per call |
-| -------------------- | ------: | -----: | --------------------------------: |
-| Gemma4 26B A4B       |   $0.10 |  $0.30 |                         $0.026215 |
-| Mistral Small3.1 24B |  $0.351 | $0.555 |                         $0.046065 |
-| Qwen3 30B A3B FP8    | $0.0509 | $0.335 |                         $0.002354 |
+| Model                |  Input | Output | Conservative reservation per call |
+| -------------------- | -----: | -----: | --------------------------------: |
+| Gemma4 26B A4B       |  $0.10 |  $0.30 |                         $0.026215 |
+| Mistral Small3.1 24B | $0.351 | $0.555 |                         $0.046065 |
 
-The reservation uses the **entire documented input context window** (256000 / 128000 / 32768 tokens respectively), plus the 2048-token output allowance, with no cached-input discounts. This is intentionally much larger than an ordinary 8000-character article summary. A character/token heuristic is not treated as a proven upper bound. For example, an assumed 4000-input/256-output-token Gemma4 call costs about $0.000477; its reservation is approximately 55 times larger. This conservatism substantially reduces useful throughput under a small configured budget. A $1 monthly reservation limit permits at most 38 / 21 / 424 reservations for the three models, before failures or daily/run limits.
+The reservation uses the **entire documented input context window** (256000 / 128000 tokens respectively), plus the 2048-token output allowance, with no cached-input discounts. This is intentionally much larger than an ordinary 8000-character article summary. A character/token heuristic is not treated as a proven upper bound. For example, an assumed 4000-input/256-output-token Gemma4 call costs about $0.000477; its reservation is approximately 55 times larger. This conservatism substantially reduces useful throughput under a small configured budget. A $1 monthly reservation limit permits at most 38 / 21 reservations for the two retained priced models, before failures or daily/run limits.
 
 These are application usage reservations, **not a guaranteed Cloudflare invoice hard cap**. Provider prices/account plan, other AI features/manual calls, provider behavior, tax, Workers/R2 operations and existing body prefetch costs are outside this ledger. The published rate snapshot can change. Billing reconciliation and any account-level spend controls must be evaluated separately before activation.
 

@@ -15,8 +15,13 @@ import { fetchWithTimeout } from "./fetch";
 import { buildContentCacheKey } from "./fetch-article-content";
 import { matchCfCache } from "./cache-helper";
 
-// gemma-3-12b-it: 日本語・英語混在タイトルのトピック抽出に使用
-const MODEL: AiModelId = "@cf/google/gemma-3-12b-it" as AiModelId;
+import { DEFAULT_AI_MODEL } from "./ai-models";
+import { buildAiInputs } from "./ai-generation";
+import { getAiResponseText } from "./ai-output";
+
+// Use the supported default for both Japanese/English topic passes, without extra retries.
+const MODEL = DEFAULT_AI_MODEL;
+const TOPIC_MAX_OUTPUT_TOKENS = 256;
 
 /** Promise.allSettled の結果から fulfilled かつ非 null の値だけを収集する */
 function fulfilledValues<T>(settled: PromiseSettledResult<T | null>[]): T[] {
@@ -171,7 +176,7 @@ export async function writeCache(
 
 /**
  * ユーザーのエンゲージメントデータからトピックキーワードを抽出する。
- * Gemma 3 12B でフィード名・記事タイトルを解析し、日本語・英語混在に対応。
+ * Gemma 4 でフィード名・記事タイトルを解析し、日本語・英語混在に対応。
  */
 export async function extractUserTopics(
   bucket: R2Bucket,
@@ -224,24 +229,29 @@ export async function extractUserTopics(
     .join("\n");
 
   try {
-    const response = (await ai.run(MODEL, {
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an assistant that analyzes RSS reader interests. " +
-            "Extract 5-10 DIVERSE topic keywords from the feed names and article titles provided by the user. " +
-            "Ensure variety across different domains — avoid repeating similar themes. " +
-            "If multiple feeds share the same genre (e.g. anime), represent it with one keyword only. " +
-            'Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド", "アニメ"]',
-        },
-        {
-          role: "user",
-          content: `Feed names:\n${sanitizedFeedTitles}\n\nArticle titles:\n${sanitizedArticleTitles}`,
-        },
-      ],
-    })) as { response?: string };
-    const topics = parseTopicArray(response.response ?? "");
+    const response: unknown = await ai.run(
+      MODEL as AiModelId,
+      buildAiInputs(
+        MODEL,
+        [
+          {
+            role: "system",
+            content:
+              "You are an assistant that analyzes RSS reader interests. " +
+              "Extract 5-10 DIVERSE topic keywords from the feed names and article titles provided by the user. " +
+              "Ensure variety across different domains — avoid repeating similar themes. " +
+              "If multiple feeds share the same genre (e.g. anime), represent it with one keyword only. " +
+              'Return a JSON array only. Example: ["TypeScript", "Rust", "クラウド", "アニメ"]',
+          },
+          {
+            role: "user",
+            content: `Feed names:\n${sanitizedFeedTitles}\n\nArticle titles:\n${sanitizedArticleTitles}`,
+          },
+        ],
+        TOPIC_MAX_OUTPUT_TOKENS,
+      ),
+    );
+    const topics = parseTopicArray(getAiResponseText(response));
     if (topics.length > 0) return topics;
   } catch (err) {
     // AI 失敗時は空配列（Brave Search は topics なしでも動作しない）
@@ -280,19 +290,24 @@ export async function refineUserTopics(topics: string[], ai: Ai): Promise<string
   const input = topics.map((topic) => sanitizeForPrompt(topic, 80)).filter(Boolean);
   if (input.length < 2) return topics;
   try {
-    const response = (await ai.run(MODEL, {
-      messages: [
-        {
-          role: "system",
-          content:
-            "You refine RSS interest topics for search. Merge near-duplicates, " +
-            "keep concrete names, and preserve diversity across domains. " +
-            'Return a JSON array only, with 3-10 concise topics. Example: ["TypeScript", "Rust"]',
-        },
-        { role: "user", content: `Candidate topics:\n${input.join("\n")}` },
-      ],
-    })) as { response?: string };
-    const refined = parseTopicArray(response.response ?? "");
+    const response: unknown = await ai.run(
+      MODEL as AiModelId,
+      buildAiInputs(
+        MODEL,
+        [
+          {
+            role: "system",
+            content:
+              "You refine RSS interest topics for search. Merge near-duplicates, " +
+              "keep concrete names, and preserve diversity across domains. " +
+              'Return a JSON array only, with 3-10 concise topics. Example: ["TypeScript", "Rust"]',
+          },
+          { role: "user", content: `Candidate topics:\n${input.join("\n")}` },
+        ],
+        TOPIC_MAX_OUTPUT_TOKENS,
+      ),
+    );
+    const refined = parseTopicArray(getAiResponseText(response));
     return refined.length > 0 ? refined : topics;
   } catch (err) {
     console.warn("[recommendation] refineUserTopics AI failed:", err);

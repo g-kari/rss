@@ -153,7 +153,7 @@ describe("useAiOperation 記事切替後の stale 結果防止 (#abort-guard)", 
 describe("useAiOperation AI の実行先とキャッシュ", () => {
   const auto = {
     provider: "auto",
-    model: "@cf/meta/llama-3.1-8b-instruct",
+    model: "@cf/google/gemma-4-26b-a4b-it",
     userId: "user-a",
   } as const;
   const cloud = { ...auto, provider: "workers-ai" } as const;
@@ -244,11 +244,11 @@ describe("useAiOperation AI の実行先とキャッシュ", () => {
     expect(mockApiFetch).toHaveBeenCalledTimes(1);
     await act(async () => result.current.run("https://example.com/1", "1", "article"));
     expect(mockApiFetch).toHaveBeenCalledTimes(1);
-    rerender({ prefs: { ...cloud, model: "@cf/meta/llama-3.2-3b-instruct" } });
+    rerender({ prefs: { ...cloud, model: "@cf/mistralai/mistral-small-3.1-24b-instruct" } });
     await act(async () => result.current.run("https://example.com/1", "1", "article"));
     expect(mockApiFetch).toHaveBeenCalledTimes(2);
     expect(JSON.parse(mockApiFetch.mock.calls[1][1]?.body as string).model).toBe(
-      "@cf/meta/llama-3.2-3b-instruct",
+      "@cf/mistralai/mistral-small-3.1-24b-instruct",
     );
     rerender({ prefs: { ...cloud, userId: "user-b" } });
     await act(async () => result.current.run("https://example.com/1", "1", "article"));
@@ -312,7 +312,7 @@ describe("useAiOperation 遅れて到着した本文取得 callback", () => {
         initialProps: {
           prefs: {
             provider: "auto",
-            model: "@cf/meta/llama-3.1-8b-instruct",
+            model: "@cf/google/gemma-4-26b-a4b-it",
             userId: "user-a",
           } as import("../lib/ai-preferences").AiPreferences,
           article: "article-a",
@@ -321,7 +321,11 @@ describe("useAiOperation 遅れて到着した本文取得 callback", () => {
     );
     const pendingContentCallback = result.current.run;
     rerender({
-      prefs: { provider: "workers-ai", model: "@cf/meta/llama-3.2-3b-instruct", userId: "user-b" },
+      prefs: {
+        provider: "workers-ai",
+        model: "@cf/mistralai/mistral-small-3.1-24b-instruct",
+        userId: "user-b",
+      },
       article: "article-b",
     });
     await act(async () =>

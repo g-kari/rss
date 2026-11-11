@@ -127,7 +127,10 @@ export async function getAiCacheByUrl(
   type: AiCacheType = "summary",
   model?: string,
 ): Promise<string | null> {
-  if (type === "summary" && isWorkersAiModelId(model)) {
+  if (type === "summary" && model !== undefined) {
+    // Removed model IDs must not fall through to a raw envelope/plaintext reader.
+    // Keep retired objects untouched for rollback; never relabel them as the replacement.
+    if (!isWorkersAiModelId(model)) return null;
     return (await getAiSummaryByUrl(bucket, url, model))?.result ?? null;
   }
   const obj = await bucket.get(await buildKey(url, type, model));
