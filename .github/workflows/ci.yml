@@ -26,7 +26,7 @@ jobs:
       - name: Node.js セットアップ
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "26"
           cache: "pnpm"
 
       - name: 依存パッケージインストール
@@ -77,7 +77,7 @@ jobs:
       - name: Node.js セットアップ
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "26"
           cache: "pnpm"
 
       - name: 依存パッケージインストール
