@@ -45,7 +45,7 @@
     "linkedom": "^0.18.15",
     "marked": "^18.2.1",
     "onnxruntime-web": "^1.31.1",
-    "piper-plus": "^0.8.1",
+    "piper-plus": "^0.9.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zod": "4.6.7"
